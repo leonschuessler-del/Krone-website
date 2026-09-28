@@ -17,6 +17,7 @@ export function Dialog({
   children,
   footer,
   size = "lg",
+  tone = "light",
   className,
 }: {
   open: boolean;
@@ -26,6 +27,7 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
   size?: "md" | "lg" | "xl";
+  tone?: "light" | "dark";
   className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -56,7 +58,8 @@ export function Dialog({
         if (e.target === ref.current) onClose();
       }}
       className={cn(
-        "m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-3xl bg-paper p-0 text-ink shadow-lift backdrop:bg-anthracite/55 backdrop:backdrop-blur-[2px]",
+        "m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-3xl p-0 shadow-lift backdrop:bg-anthracite/55 backdrop:backdrop-blur-[2px]",
+        tone === "dark" ? "panel-dark text-paper" : "bg-paper text-ink",
         "sm:m-auto sm:rounded-3xl",
         size === "md" && "sm:max-w-lg",
         size === "lg" && "sm:max-w-3xl",
@@ -67,14 +70,14 @@ export function Dialog({
     >
       {open && (
         <div className="flex max-h-[92dvh] flex-col">
-          <header className="flex items-start justify-between gap-4 border-b border-sand px-5 py-4 sm:px-7 sm:py-5">
+          <header className={cn("flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-7 sm:py-5", tone === "dark" ? "border-white/10" : "border-sand")}>
             <div>
               <h2 id="dialog-title" className="font-serif text-2xl leading-tight">
                 {title}
               </h2>
-              {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+              {description && <p className={cn("mt-1 text-sm", tone === "dark" ? "text-paper/60" : "text-muted")}>{description}</p>}
             </div>
-            <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-cream" aria-label="Schließen">
+            <button type="button" onClick={onClose} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", tone === "dark" ? "hover:bg-white/10" : "hover:bg-cream")} aria-label="Schließen">
               <X className="h-5 w-5" />
             </button>
           </header>

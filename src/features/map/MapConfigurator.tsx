@@ -143,8 +143,8 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
     <div ref={sectionRef} className="relative" data-testid="map-configurator">
       {/* Toolbar */}
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <span className="font-serif text-lg text-ink-soft">{siteConfig.mapSection.dateQuestion}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hidden font-serif text-lg text-ink-soft sm:inline">{siteConfig.mapSection.dateQuestion}</span>
           <button
             type="button"
             onClick={() => setScheduleOpen(true)}
@@ -284,8 +284,8 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
           </Button>
         </div>
       </div>
-      <Dialog open={sheetOpen} onClose={() => setSheetOpen(false)} title="Ihre Auswahl" size="md" className="panel-dark lg:hidden">
-        <div className="text-paper">{panel}</div>
+      <Dialog open={sheetOpen} onClose={() => setSheetOpen(false)} title="Ihre Auswahl" size="md" tone="dark" className="lg:hidden">
+        {panel}
       </Dialog>
 
       <Dialog
