@@ -28,7 +28,7 @@ async function main() {
 
 main().catch((err) => {
   const cause = (err as { cause?: { message?: string } })?.cause?.message;
-  const msg = err instanceof Error ? err.message.split("\n")[0] : String(err);
+  const msg = err instanceof Error ? (err.message.split("\n")[0] ?? "") : String(err);
   console.error("✖ Seed fehlgeschlagen:", cause ?? msg);
   if (/relation .* does not exist/i.test(cause ?? msg)) console.error("  Tipp: zuerst `npm run db:migrate` ausführen.");
   process.exit(1);
