@@ -1,5 +1,5 @@
 import { darken, lighten, P } from "../lib/color";
-import { lookAt, ON_FLAT, ON_TOP, type Scene, type V3 } from "../lib/persp";
+import { lookAt, ON_FLAT, ON_TOP, type Scene } from "../lib/persp";
 import { armchair, beams, chair, floorShadow, lightShaft, paintingFill, picture, pottedPlant, room, table, vaseFlowersSvg, wallGrid, windowOn } from "../lib/props";
 import { mulberry32, type Rand } from "../lib/rand";
 import { ellipseGlow, glow } from "../lib/svg";
@@ -10,7 +10,6 @@ const OAK = "#a98158";
 const FLOOR = "#b8946a";
 const LINEN = "#f6f1e6";
 const SAGE = "#8a9670";
-const MOSS = "#5f6c4c";
 const R = { x0: -2.3, x1: 2.3, z0: -2.0, z1: 4.8, h: 2.75 };
 
 function bedsideLamp(s: Scene, x: number, y: number, z: number, lit = true): void {

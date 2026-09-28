@@ -69,7 +69,7 @@ export class WebmEncoder {
       "-c:v",
       "mjpeg",
       "-i",
-      "-",
+      "pipe:0",
       "-an",
       "-c:v",
       "libvpx",

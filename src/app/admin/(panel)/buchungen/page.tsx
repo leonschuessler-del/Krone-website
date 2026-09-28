@@ -49,9 +49,9 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
         description="Alle Online-Buchungen und unverbindlichen Anfragen. Zeiten in Ortszeit (Europe/Berlin)."
       />
 
-      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <nav aria-label="Filter" className="-mx-1 overflow-x-auto pb-1">
-          <ul className="flex min-w-max gap-1 px-1">
+      <div className="mb-4 flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
+        <nav aria-label="Filter" className="-mx-1 overflow-x-auto pb-1 md:overflow-visible">
+          <ul className="flex min-w-max gap-1.5 px-1 md:min-w-0 md:flex-wrap">
             {BOOKING_FILTERS.map((f) => {
               const active = f === filter;
               return (
@@ -72,7 +72,7 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
             })}
           </ul>
         </nav>
-        <form method="get" action="/admin/buchungen" className="flex w-full items-center gap-2 xl:w-96" role="search">
+        <form method="get" action="/admin/buchungen" className="flex w-full items-center gap-2 md:max-w-md 2xl:w-96" role="search">
           <input type="hidden" name="filter" value={filter} />
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-taupe" aria-hidden />

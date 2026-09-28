@@ -21,6 +21,7 @@
     "db:seed": "tsx scripts/db-seed.ts",
     "db:reset": "tsx scripts/db-reset.ts",
     "admin:create": "tsx scripts/admin-create.ts",
+    "media:demo": "tsx --tsconfig tsconfig.json scripts/demo-media/generate.ts",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "engines": {

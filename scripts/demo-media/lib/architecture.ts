@@ -305,7 +305,7 @@ export function wallLantern(s: Scene, p: V3, lit: boolean): void {
 }
 
 /** Topiary ball in a pot. */
-export function boxwoodSvg(r = 0.35, pot = P.inkSoft): string {
+export function boxwoodSvg(r = 0.35, pot: string = P.inkSoft): string {
   return (
     `<path d="M${-r * 0.7} 0 L${-r * 0.8} ${-r * 0.9} H${r * 0.8} L${r * 0.7} 0Z" fill="${pot}"/>` +
     `<circle cx="0" cy="${-r * 1.8}" r="${r}" fill="#4f6b3b"/>` +

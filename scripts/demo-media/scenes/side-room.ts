@@ -2,7 +2,6 @@ import { darken, P } from "../lib/color";
 import { lookAt, ON_FLAT, ON_TOP, type Scene, type V3 } from "../lib/persp";
 import {
   bokeh,
-  candle,
   chair,
   chandelier,
   leafySvg,

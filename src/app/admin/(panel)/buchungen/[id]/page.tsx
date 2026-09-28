@@ -21,7 +21,7 @@ import {
   RENTAL_MODE_LABEL,
 } from "@/features/admin/labels";
 import { Badge, Card, DataItem, DataList, DemoBadge, EmptyState, PageHeader, PaymentBadge, SpaceDot, StatusBadge, tableClass, tdClass, thClass } from "@/features/admin/ui";
-import { BOOKING_STATUS_LABEL } from "@/domain/booking";
+import { BOOKING_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/domain/booking";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatDuration, formatInstantDateLong, formatMoney, formatTime } from "@/lib/format";
 import { requireAdminPage } from "@/server/auth/admin-session";
@@ -38,7 +38,7 @@ function auditText(action: string, data: unknown): string {
     const to = BOOKING_STATUS_LABEL[d.to as BookingStatus] ?? d.to;
     return `Status: ${from} → ${to}${d.blocksCreated ? ` (${d.blocksCreated} Belegung${d.blocksCreated === 1 ? "" : "en"} angelegt)` : ""}`;
   }
-  if (action === "booking.payment_status" && d.to) return `Zahlungsstatus → ${d.to}`;
+  if (action === "booking.payment_status" && d.to) return `Zahlungsstatus → ${PAYMENT_STATUS_LABEL[d.to as PaymentStatus] ?? d.to}`;
   return AUDIT_ACTION_LABEL[action] ?? action;
 }
 

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gt, gte, ilike, inArray, isNull, lt, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { BOOKING_STATUS_LABEL, canTransition, InvalidTransitionError, statusBlocksAvailability } from "@/domain/booking";
-import { addDays, dayBounds, localRangeToInterval, zonedDateTimeToUtc, type LocalDate } from "@/domain/time";
+import { addDays, dayBounds, localRangeToInterval, utcToLocal, zonedDateTimeToUtc, type LocalDate } from "@/domain/time";
 import type { BookingStatus, PaymentStatus } from "@/domain/types";
 import { formatDateTime, formatInstantDateLong, formatMoney, formatTimeRange } from "@/lib/format";
 import type { Database } from "@/server/db/client";
@@ -419,7 +419,11 @@ async function findConflicts(db: Database, spaceId: string, start: Date, end: Da
 }
 
 function describeConflict(c: { reason: string | null; startAt: Date; endAt: Date }): string {
-  return `${c.reason ?? "Belegung"}, ${formatDateTime(c.startAt)} – ${formatDateTime(c.endAt)} Uhr`;
+  const sameDay = utcToLocal(c.startAt.getTime()).date === utcToLocal(c.endAt.getTime()).date;
+  const period = sameDay
+    ? `${formatInstantDateLong(c.startAt)}, ${formatTimeRange(c.startAt.getTime(), c.endAt.getTime())}`
+    : `${formatDateTime(c.startAt)} – ${formatDateTime(c.endAt)} Uhr`;
+  return `${c.reason ?? "Belegung"}, ${period}`;
 }
 
 export async function updateBookingByAdmin(db: Database, id: string, patch: AdminBookingUpdate, actor: string, now = Date.now()): Promise<BookingUpdateResult> {
