@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { formatDateMedium, formatDateShort, formatDateTime, formatTime } from "@/lib/format";
 import { requireAdminPage } from "@/server/auth/admin-session";
 import { getDb } from "@/server/db/client";
-import { getCalendarData } from "@/server/services/admin-service";
+import { getCalendarData, requestTime } from "@/server/services/admin-service";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Kalender" };
@@ -21,7 +21,7 @@ const mondayOf = (d: LocalDate) => addDays(d, -(isoWeekday(d) - 1));
 export default async function AdminCalendarPage({ searchParams }: { searchParams: Promise<{ from?: string; days?: string }> }) {
   await requireAdminPage("/admin/kalender");
   const sp = await searchParams;
-  const now = Date.now();
+  const now = requestTime();
   const today = todayLocal(now);
   const days = sp.days === "14" ? 14 : 7;
   const from = mondayOf(sp.from && isLocalDate(sp.from) ? sp.from : today);

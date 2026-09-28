@@ -9,7 +9,7 @@ import { formatDateTime, formatDayMonth, formatMoney, formatTime } from "@/lib/f
 import { utcToLocal } from "@/domain/time";
 import { requireAdminPage } from "@/server/auth/admin-session";
 import { getDb } from "@/server/db/client";
-import { getDashboardData } from "@/server/services/admin-service";
+import { getDashboardData, requestTime } from "@/server/services/admin-service";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Übersicht" };
@@ -21,7 +21,7 @@ function greeting(now: number) {
 
 export default async function AdminDashboardPage() {
   const admin = await requireAdminPage("/admin");
-  const now = Date.now();
+  const now = requestTime();
   const data = await getDashboardData(await getDb(), now);
   const { kpi } = data;
 

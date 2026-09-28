@@ -22,8 +22,11 @@ export async function adminApi<T = unknown>(url: string, options: { method?: "GE
     return { ok: false, status: 0, code: "NETWORK", message: "Keine Verbindung zum Server. Bitte erneut versuchen." };
   }
   const data = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string; details?: unknown } } | null;
-  if (res.status === 401 && typeof window !== "undefined") {
+  // expired / missing session (not: wrong credentials on the login form)
+  if (res.status === 401 && data?.error?.code === "UNAUTHORIZED" && typeof window !== "undefined") {
     const next = encodeURIComponent(window.location.pathname + window.location.search);
+    // full page load on purpose: drops all client state of the expired session
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign(`/admin/login?next=${next}`);
   }
   if (!res.ok) {

@@ -32,7 +32,8 @@ export function LoginForm({ next, disabled = false }: { next: string; disabled?:
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+    // method=post: even a submit before hydration never puts the password into the URL
+    <form onSubmit={onSubmit} method="post" action="/api/admin/login" className="mt-6 space-y-4" noValidate>
       <div>
         <label htmlFor="login-email" className={labelClass}>
           E-Mail-Adresse

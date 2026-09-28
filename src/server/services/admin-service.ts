@@ -61,6 +61,14 @@ export function isExclusionViolation(err: unknown): boolean {
 
 const asInt = (v: unknown) => Number(v ?? 0);
 
+/**
+ * Request time for admin server pages. They are rendered dynamically once per
+ * request (force-dynamic), so reading the clock here is deterministic per render.
+ */
+export function requestTime(): number {
+  return Date.now();
+}
+
 // ---------------------------------------------------------------------------
 // Audit log
 // ---------------------------------------------------------------------------

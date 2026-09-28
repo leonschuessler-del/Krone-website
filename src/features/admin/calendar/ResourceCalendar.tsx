@@ -13,7 +13,6 @@ import { BLOCK_TYPE_LABEL } from "../labels";
 import { Badge, DataItem, DataList, DemoBadge, Notice } from "../ui";
 import type { CalendarBarView, CalendarDayView, CalendarSpaceView } from "./types";
 
-const NAME_COL = 190;
 const BAR_TOP = 10;
 const BAR_HEIGHT = 38;
 const LANE_HEIGHT = 15;
@@ -78,9 +77,12 @@ export function ResourceCalendar({
     <>
       <div className="card-surface overflow-hidden p-0">
         <div className="overflow-x-auto" data-testid="resource-calendar">
-          <div className="grid" style={{ gridTemplateColumns: `${NAME_COL}px repeat(${n}, minmax(${colMin}px, 1fr))`, minWidth: NAME_COL + n * colMin }}>
+          <div
+            className="grid [--name-col:118px] md:[--name-col:190px]"
+            style={{ gridTemplateColumns: `var(--name-col) repeat(${n}, minmax(${colMin}px, 1fr))`, minWidth: `calc(var(--name-col) + ${n * colMin}px)` }}
+          >
             {/* header */}
-            <div className="sticky left-0 z-20 border-b border-r border-sand bg-paper px-4 py-3 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted">Bereich</div>
+            <div className="sticky left-0 z-20 border-b border-r border-sand bg-paper px-3 py-3 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted md:px-4">Bereich</div>
             {days.map((d, i) => (
               <div
                 key={d.date}
@@ -114,7 +116,7 @@ export function ResourceCalendar({
               const height = BAR_TOP * 2 + BAR_HEIGHT + space.inquiryLanes * LANE_HEIGHT + (space.inquiryLanes ? 4 : 0);
               return (
                 <div key={space.id} className="contents" data-space-row={space.id}>
-                  <div className="sticky left-0 z-10 flex items-center gap-2.5 border-b border-r border-sand bg-white px-4" style={{ minHeight: height }}>
+                  <div className="sticky left-0 z-10 flex items-center gap-2 border-b border-r border-sand bg-white px-2.5 md:gap-2.5 md:px-4" style={{ minHeight: height }}>
                     <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: space.color }} aria-hidden />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-ink">{space.name}</p>

@@ -98,7 +98,8 @@ async function main(): Promise<void> {
     // 2) Ken-Burns tours -----------------------------------------------------
     if (args.tours) {
       const spaces = ALL_SCENES.filter((s) => s.tour && clean.has(s.folder));
-      await pool(spaces, 3, async (space) => {
+      // sequential: parallel pages contend for the shared browser raster process
+      await pool(spaces, 1, async (space) => {
         const t = Date.now();
         const images = clean.get(space.folder) ?? [];
         const outWebm = join(OUT, space.folder, "tour.webm");
