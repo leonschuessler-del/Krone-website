@@ -24,7 +24,12 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => setOpen(false), [pathname]);
+  // Close the mobile menu on navigation (state adjusted during render, no effect needed).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setOpen(false);
+  }
 
   useEffect(() => {
     document.documentElement.style.overflow = open ? "hidden" : "";
@@ -82,7 +87,7 @@ export function Header() {
             href={headerCta.href}
             variant={transparent ? "gold" : "primary"}
             size="sm"
-            className="hidden sm:inline-flex"
+            className="max-sm:hidden"
           >
             {headerCta.label}
             {selectionCount > 0 && (

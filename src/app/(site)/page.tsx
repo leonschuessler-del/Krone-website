@@ -8,6 +8,7 @@ import { faqItems } from "@/content/faq";
 import { siteConfig } from "@/config/site";
 import { FaqList } from "@/features/home/FaqList";
 import { Hero } from "@/features/home/Hero";
+import { StructuredData } from "@/features/home/StructuredData";
 import { MapConfigurator } from "@/features/map/MapConfigurator";
 import { SpaceCard } from "@/features/spaces/SpaceCard";
 import { env } from "@/lib/env";
@@ -35,6 +36,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <StructuredData />
       <Hero />
 
       {/* Positioning */}

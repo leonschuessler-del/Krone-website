@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // PGlite (embedded Postgres, WASM) and node-postgres must not be bundled.
   serverExternalPackages: ["@electric-sql/pglite", "pg"],
+  // SQL migrations and the embedded database's WASM files are read at runtime.
+  outputFileTracingIncludes: {
+    "/**": ["./drizzle/**/*", "./node_modules/@electric-sql/pglite/dist/**/*"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 828, 1080, 1366, 1600, 1920, 2560],

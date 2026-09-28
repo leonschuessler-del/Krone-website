@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { mapConfig } from "@/config/map";
 import type { HeroVideoSources } from "@/lib/media";
 
@@ -11,19 +11,23 @@ import type { HeroVideoSources } from "@/lib/media";
  * Without a film file, an animated placeholder based on our own bird's-eye
  * site plan is shown (slow camera drift) – visually leading into the map.
  */
+const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+function getReducedMotion(): boolean {
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  return window.matchMedia(REDUCED_QUERY).matches || saveData;
+}
+
 export function HeroVideo({ sources }: { sources: HeroVideoSources }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const [reduced, setReduced] = useState(false);
+  const reduced = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => false);
   const hasVideo = Boolean(sources.mp4 || sources.webm);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
-    setReduced(mq.matches || saveData);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
 
   useEffect(() => {
     const video = ref.current;

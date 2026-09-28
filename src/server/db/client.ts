@@ -39,7 +39,23 @@ async function createPostgres(url: string): Promise<Database> {
   });
   holder.close = () => pool.end();
   holder.kind = "postgres";
-  return drizzle(pool, { schema }) as unknown as Database;
+  const db = drizzle(pool, { schema });
+  if (process.env.AUTO_MIGRATE !== "false") {
+    // Zero-config deployments (e.g. Vercel + Neon): migrate on first use.
+    // An advisory lock prevents concurrent instances from migrating twice.
+    const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+    const client = await pool.connect();
+    try {
+      await client.query("select pg_advisory_lock(727274)");
+      await migrate(drizzle(client, { schema }), { migrationsFolder: MIGRATIONS_FOLDER });
+      const { ensureSeeded } = await import("./seed");
+      await ensureSeeded(drizzle(client, { schema }) as unknown as Database);
+    } finally {
+      await client.query("select pg_advisory_unlock(727274)").catch(() => undefined);
+      client.release();
+    }
+  }
+  return db as unknown as Database;
 }
 
 async function createPglite(dataDir: string | undefined): Promise<Database> {

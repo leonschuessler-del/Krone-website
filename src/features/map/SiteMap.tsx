@@ -172,7 +172,7 @@ export function SiteMap({
               data-dimmed={dimmed}
               data-hovered={hoveredId === space.id}
               className="site-map-space"
-              style={{ ["--space-color" as string]: space.color, ["--reveal-index" as string]: i }}
+              style={{ ["--space-color" as string]: space.color, ["--reveal-index" as string]: i, cursor: interactive || onActivate ? "pointer" : "default" }}
               {...(interactive
                 ? {
                     role: "checkbox",
@@ -189,7 +189,7 @@ export function SiteMap({
                     onFocus: () => setHoveredId(space.id),
                     onBlur: () => setHoveredId((h) => (h === space.id ? null : h)),
                   }
-                : { "aria-hidden": true, style: { ["--space-color" as string]: space.color, cursor: onActivate ? "pointer" : "default" }, onClick: () => onActivate?.(space.id) })}
+                : { "aria-hidden": true, onClick: () => onActivate?.(space.id) })}
             >
               <title>{label}</title>
               <polygon className="space-shape" points={pts} />

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import type { TermDefinition } from "@/content/terms";
 import { describeSelectionIssue, getFullVenueSpaceIds, isFullVenueSelection, sanitizeSpaceIds, validateSelection } from "@/domain/selection";
 import { useAvailabilityCheck } from "@/features/availability/use-availability-check";
+import { fetchJson, useAsyncResource } from "@/lib/use-async-resource";
 import { AvailabilityResult } from "@/features/booking/AvailabilityResult";
 import { scheduleHasRange, usePriceQuote } from "@/features/booking/hooks";
 import { PriceBreakdown } from "@/features/booking/PriceBreakdown";
@@ -57,12 +58,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<{ bookingNumber: string; token: string; amount: number } | null>(null);
-  const [handover, setHandover] = useState<{ state: "idle" | "loading" | "ready" | "error"; handover: HandoverOption[]; ret: HandoverOption[]; individual: boolean }>({
-    state: "idle",
-    handover: [],
-    ret: [],
-    individual: false,
-  });
+
   const honeypot = useRef<HTMLInputElement>(null);
   const navigatingRef = useRef(false);
   const topRef = useRef<HTMLDivElement>(null);
@@ -106,25 +102,25 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
   }, [hydrated, selected.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load handover options for step 6.
+  const handoverRes = useAsyncResource<{ handover: HandoverOption[]; return: HandoverOption[]; individual: boolean }>(
+    `${requestedStart}|${requestedEnd}`,
+    s.step === 6 && Boolean(requestedStart && requestedEnd),
+    (signal) => fetchJson(`/api/handover?start=${encodeURIComponent(requestedStart ?? "")}&end=${encodeURIComponent(requestedEnd ?? "")}`, { signal }),
+    0,
+  );
+  const handover = {
+    state: handoverRes.state,
+    handover: handoverRes.data?.handover ?? [],
+    ret: handoverRes.data?.return ?? [],
+    individual: handoverRes.data?.individual ?? false,
+  };
   useEffect(() => {
-    if (s.step !== 6 || !requestedStart || !requestedEnd) return;
-    let cancelled = false;
-    setHandover((h) => ({ ...h, state: "loading" }));
-    fetch(`/api/handover?start=${encodeURIComponent(requestedStart)}&end=${encodeURIComponent(requestedEnd)}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const data = (await res.json()) as { handover: HandoverOption[]; return: HandoverOption[]; individual: boolean };
-        if (cancelled) return;
-        setHandover({ state: "ready", handover: data.handover, ret: data.return, individual: data.individual });
-        const st = useBookingStore.getState();
-        if (st.handover.handoverSlotId && !data.handover.some((o) => o.value === st.handover.handoverSlotId)) st.setHandover({ handoverSlotId: null });
-        if (st.handover.returnSlotId && !data.return.some((o) => o.value === st.handover.returnSlotId)) st.setHandover({ returnSlotId: null });
-      })
-      .catch(() => !cancelled && setHandover((h) => ({ ...h, state: "error" })));
-    return () => {
-      cancelled = true;
-    };
-  }, [s.step, requestedStart, requestedEnd]);
+    const data = handoverRes.data;
+    if (!data) return;
+    const st = useBookingStore.getState();
+    if (st.handover.handoverSlotId && !data.handover.some((o) => o.value === st.handover.handoverSlotId)) st.setHandover({ handoverSlotId: null });
+    if (st.handover.returnSlotId && !data.return.some((o) => o.value === st.handover.returnSlotId)) st.setHandover({ returnSlotId: null });
+  }, [handoverRes.data]);
 
   const selectionIssues = validateSelection(selected, spaces).filter((i) => i.type !== "empty");
   const requiredTerms = terms.filter((t) => t.requiredFor.includes(mode));
@@ -261,7 +257,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
           return;
         }
         if (session.provider === "stripe" && session.checkoutUrl) {
-          window.location.href = session.checkoutUrl;
+          window.location.assign(session.checkoutUrl);
           return;
         }
         if (session.provider === "demo") {
