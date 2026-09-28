@@ -24,7 +24,7 @@ den Betreiber.
 5. [Tests](#tests)
 6. [Entwicklung, Build & Deployment](#entwicklung-build--deployment)
 7. [Seiten & Funktionen](#seiten--funktionen)
-8. [Medien austauschen](#medien-austauschen)
+8. [Medien austauschen](#medien-austauschen) · [Scroll-Rundgang](#scroll-rundgang-eröffnungs-film)
 9. [Grundriss / Karte bearbeiten](#grundriss--karte-bearbeiten)
 10. [Preise bearbeiten](#preise-bearbeiten)
 11. [Verfügbarkeit](#verfügbarkeit)
@@ -153,7 +153,7 @@ Deployment auf Vercel + Neon oder auf jede Node-Umgebung:
 
 | Route | Inhalt |
 |---|---|
-| `/` | Hero-Film, Positionierung, **interaktive Karte + Konfigurator**, Bereiche, Ausstattung, Hotel, Galerie, Buchungsschritte, FAQ, Kontakt |
+| `/` | **Scroll-Rundgang durch alle Räume** → **interaktiver Grundriss + Konfigurator**, Positionierung, Bereiche, Ausstattung, Hotel, Galerie, Buchungsschritte, FAQ, Kontakt |
 | `/bereiche` | Übersicht aller Bereiche |
 | `/bereiche/restaurant` · `kueche` · `nebenzimmer` · `buehne` · `alte-wirtschaft` · `wintergarten` · `biergarten` · `hotel` | Detailseiten mit Galerie, Video, Fakten, Mini-Karte, Verfügbarkeitskalender, Auswahl |
 | `/buchen?spaces=restaurant,stage,winter-garden` | Buchungs-Wizard in 9 Schritten; die Auswahl ist per URL teilbar und wird serverseitig validiert |
@@ -191,6 +191,28 @@ Demo-Illustrationen aus `public/media/_demo/` angezeigt, sichtbar als
 „Beispielbild“ bzw. „Testfilm“ markiert. Fehlt beides, erscheint ein neutraler
 Platzhalter; leere Videoflächen gibt es nicht. Die Demo-Medien lassen sich
 mit `npm run media:demo` neu erzeugen.
+
+## Scroll-Rundgang (Eröffnungs-„Film“)
+
+Die Startseite beginnt mit einem scrollgesteuerten Rundgang: Beim Scrollen
+fliegt die Kamera über das Grundstück, taucht nacheinander in jeden Bereich ein
+(Restaurant → Bühne → Nebenzimmer → Alte Wirtschaft → Küche → Wintergarten →
+Biergarten → Hotel) und endet wieder in der Vogelperspektive. Direkt danach
+folgt der interaktive Grundriss. Jeder Raum hat im Rundgang „Details ansehen“
+und „Auswählen“.
+
+- Konfiguration: `src/config/tour.ts`. Dort stehen Reihenfolge,
+  Kamerapositionen, Scrolllänge pro Kapitel (`scrollPerChapterVh`) und Texte.
+- **Storyboard-Modus** (Standard): eigene Grundstücksgrafik plus die Bilder
+  jedes Bereichs (`hero` und `gallery-01`, echte Fotos haben Vorrang vor den
+  Demo-Illustrationen).
+- **Video-Modus** (echter Imagefilm): `public/media/hero/krone-property-tour.mp4`
+  ablegen, in `tour.ts` `video.enabled = true`, `video.duration` und je Kapitel
+  `videoTime` (Sekunden) setzen. Der Film wird dann per Scroll „gescrubbt“,
+  die Kapitel-Einblendungen bleiben erhalten. Für flüssiges Scrubben kurze
+  Keyframe-Abstände verwenden (siehe `public/media/hero/README.md`).
+- Bei `prefers-reduced-motion` und ohne JavaScript erscheint stattdessen ein
+  statischer Hero.
 
 ## Grundriss / Karte bearbeiten
 
