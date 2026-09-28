@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getFullVenueSpaceIds } from "@/domain/selection";
 import { createTestDb, type Database } from "@/server/db/client";
 import { availabilityBlocks, bookingItems, bookings, emailLog } from "@/server/db/schema";
-import { getDemoScenario } from "@/server/db/seed";
+import { getDemoScenario, seedDatabase } from "@/server/db/seed";
 import { checkAvailability } from "@/server/services/availability-service";
 import { BookingError, createBooking, getPublicBooking, type BookingSubmission } from "@/server/services/booking-service";
 import { getHandoverOptions } from "@/server/services/handover-service";
@@ -182,5 +182,13 @@ describe("booking creation", () => {
     const input = await submission(["kitchen"], scenario.oldTavernReservedDate, "10:00", "14:00");
     const created = await createBooking(db, input);
     expect(await getPublicBooking(db, created.bookingNumber, "x".repeat(32))).toBeNull();
+  });
+
+  it("seeding the demo data twice does not duplicate demo blocks", async () => {
+    const demoBlocks = async () => (await db.select().from(availabilityBlocks).where(eq(availabilityBlocks.isDemo, true))).length;
+    const before = await demoBlocks();
+    expect(before).toBeGreaterThan(0);
+    await seedDatabase(db, { demo: true });
+    expect(await demoBlocks()).toBe(before);
   });
 });

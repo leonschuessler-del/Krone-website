@@ -1,4 +1,4 @@
-import { count, sql } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { spaceSeeds } from "@/content/spaces";
 import { defaultSettings, demoSettings } from "@/content/settings";
 import { extraSeeds } from "@/content/extras";
@@ -233,6 +233,12 @@ async function seedDemo(db: Database, today: LocalDate): Promise<void> {
     createdBy: "seed",
   });
   const beerGardenDays = [0, 1, 2, 3, 4].map((i) => addDays(sc.beerGardenClosedFrom, i));
+  // blocks have generated ids → guard against a second demo seed
+  const [{ n: existingDemoBlocks }] = (await db
+    .select({ n: count() })
+    .from(t.availabilityBlocks)
+    .where(eq(t.availabilityBlocks.isDemo, true))) as [{ n: number }];
+  if (Number(existingDemoBlocks) > 0) return;
   await db.insert(t.availabilityBlocks).values([
     block("winter-garden", sc.winterGardenBookedDate, 0, 24 * 60 + 120, "booked", "Hochzeitsfeier"),
     block("stage", sc.stageMaintenanceDate, 14 * 60, 20 * 60, "maintenance", "Wartung Bühnentechnik"),
