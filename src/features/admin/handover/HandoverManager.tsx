@@ -66,8 +66,8 @@ function SlotColumn({ kind, slots }: { kind: "handover" | "return"; slots: Hando
             <li key={s.id} className={cn("flex flex-wrap items-center gap-3 px-5 py-3", !s.active && "opacity-60")}>
               <span className="w-20 font-serif text-2xl font-semibold lining-nums tabular-nums">{s.time}</span>
               <span className="min-w-0 flex-1 text-sm">
-                <span className="block font-semibold">{s.label ?? `${s.time} Uhr`}</span>
-                <span className="text-xs text-muted">{weekdaysLabel(s.weekdays)}</span>
+                <span className="block font-semibold">{weekdaysLabel(s.weekdays)}</span>
+                {s.label && s.label !== `${s.time} Uhr` && <span className="text-xs text-muted">{s.label}</span>}
               </span>
               {s.isDemo && <DemoBadge />}
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
