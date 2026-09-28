@@ -18,7 +18,12 @@ export function Header() {
   const selectionCount = useSelectionCount();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    // On pages with a full-screen hero/tour the header stays transparent until its end.
+    const onScroll = () => {
+      const heroes = Array.from(document.querySelectorAll<HTMLElement>("[data-hero]"));
+      const heroEnd = heroes.reduce((max, el) => Math.max(max, el.offsetHeight), 0);
+      setScrolled(window.scrollY > (heroEnd > 0 ? heroEnd - 80 : 24));
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);

@@ -8,11 +8,13 @@ import { faqItems } from "@/content/faq";
 import { siteConfig } from "@/config/site";
 import { FaqList } from "@/features/home/FaqList";
 import { Hero } from "@/features/home/Hero";
+import { ScrollTour, type TourSpace } from "@/features/home/ScrollTour";
+import { tourConfig } from "@/config/tour";
 import { StructuredData } from "@/features/home/StructuredData";
 import { MapConfigurator } from "@/features/map/MapConfigurator";
 import { SpaceCard } from "@/features/spaces/SpaceCard";
 import { env } from "@/lib/env";
-import { getPropertyGallery } from "@/lib/media";
+import { getHeroVideo, getPropertyGallery } from "@/lib/media";
 import { listSpaceViews } from "@/server/services/space-service";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +34,48 @@ export default async function HomePage() {
     ...spaces.flatMap((s) => s.media.gallery.slice(0, 1).map((g) => ({ ...g, spaceId: s.id }))),
   ].slice(0, 7);
   const hotel = spaces.find((s) => s.id === "hotel");
+  const tourSpaces: TourSpace[] = spaces.map((s) => ({
+    id: s.id,
+    name: s.name,
+    code: s.code,
+    color: s.color,
+    href: s.href,
+    shortDescription: s.shortDescription,
+    bookable: s.bookable,
+    polygon: s.shape?.polygon ?? null,
+    labelPosition: s.shape?.labelPosition ?? null,
+    images: [s.media.hero, ...s.media.gallery]
+      .filter((m): m is NonNullable<typeof m> => Boolean(m))
+      .filter((m, i, arr) => arr.findIndex((x) => x.src === m.src) === i)
+      .slice(0, 2)
+      .map((m) => ({ src: m.src, alt: m.alt, isReal: m.isReal })),
+  }));
+  const film = getHeroVideo();
+  const scrubVideo = tourConfig.video.enabled && film.isReal && film.mp4 ? film.mp4 : null;
   const eventSpaces = spaces.filter((s) => s.bookable);
 
   return (
     <>
       <StructuredData />
-      <Hero />
+      <ScrollTour spaces={tourSpaces} hero={{ eyebrow: siteConfig.hero.eyebrow, subline: siteConfig.hero.subline }} videoSrc={scrubVideo} videoPoster={film.poster} />
+      {/* Static hero for reduced motion and no-JS */}
+      <div className="hero-static hidden motion-reduce:block" data-hero>
+        <Hero />
+      </div>
+      <noscript>
+        <style>{".tour-section{display:none!important}.hero-static{display:block!important}"}</style>
+      </noscript>
+
+      {/* Interactive map */}
+      <section id="karte" className="relative scroll-mt-20 bg-cream py-20 md:py-28" aria-labelledby="map-title">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+        <div className="container-page">
+          <SectionHeading id="map-title" eyebrow={siteConfig.mapSection.eyebrow} title={siteConfig.mapSection.title} className="mb-10">
+            <p>{siteConfig.mapSection.text}</p>
+          </SectionHeading>
+          <MapConfigurator spaces={spaces} demo={demo} />
+        </div>
+      </section>
 
       {/* Positioning */}
       <section id="location" className="relative bg-paper py-24 md:py-32" aria-labelledby="location-title">
@@ -59,17 +97,6 @@ export default async function HomePage() {
               </div>
             ))}
           </dl>
-        </div>
-      </section>
-
-      {/* Interactive map */}
-      <section id="karte" className="relative scroll-mt-20 bg-cream py-20 md:py-28" aria-labelledby="map-title">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
-        <div className="container-page">
-          <SectionHeading id="map-title" eyebrow={siteConfig.mapSection.eyebrow} title={siteConfig.mapSection.title} className="mb-10">
-            <p>{siteConfig.mapSection.text}</p>
-          </SectionHeading>
-          <MapConfigurator spaces={spaces} demo={demo} />
         </div>
       </section>
 

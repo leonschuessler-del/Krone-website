@@ -280,3 +280,15 @@
 }
 .rail::-webkit-scrollbar { display: none; }
 .rail > * { scroll-snap-align: start; }
+
+/* ---------------------------------------------------------------------------
+ * Scroll tour (homepage opening "film")
+ * Height = one scroll step per chapter + one viewport for the sticky stage.
+ * ------------------------------------------------------------------------- */
+.tour-section {
+  --tour-step: var(--tour-step-mobile, 52vh);
+  height: calc(var(--tour-chapters, 10) * var(--tour-step) + 100svh);
+}
+@media (min-width: 768px) {
+  .tour-section { --tour-step: var(--tour-step-desktop, 62vh); }
+}
