@@ -50,7 +50,8 @@ test.describe("Grundstückskarte & Multi-Select", () => {
     await expect(map.locator('[data-space="winter-garden"]')).toHaveAttribute("data-status", "unavailable");
     await expect(map.locator('[data-space="restaurant"]')).toHaveAttribute("data-status", "available");
 
-    await page.getByTestId("selection-panel").first().getByRole("button", { name: /Wintergarten entfernen/ }).click();
+    // (the blocked-space notice offers the same action – use the one in the selection list)
+    await page.getByTestId("selection-panel").first().getByTestId("selected-list").getByRole("button", { name: /Wintergarten entfernen/ }).click();
     await expect(page.getByTestId("selection-panel").first().getByTestId("availability-summary")).toHaveText("Alle ausgewählten Bereiche sind verfügbar.");
   });
 
@@ -141,8 +142,12 @@ test("Unverbindliche Anfrage erhält eigene Nummer", async ({ page }) => {
   await page.getByLabel("PLZ *").fill("63849");
   await page.getByLabel("Ort *").fill("Leidersbach");
   await page.getByTestId("wizard-next").click();
+  await expect(page.getByTestId("step-title")).toContainText("Übergabe");
+  await page.locator('input[name="handover"]').last().check();
+  await page.locator('input[name="return"]').first().check();
   await page.getByTestId("wizard-next").click();
-  await page.getByTestId("term-privacy").check();
+  // booking vs. inquiry is chosen on the next step, so all starred terms are asked here
+  for (const id of ["house_rules", "rental_terms", "cancellation", "deposit", "handover", "privacy"]) await page.getByTestId(`term-${id}`).check();
   await page.getByTestId("wizard-next").click();
   await page.getByRole("radio", { name: /Unverbindlich anfragen/ }).click();
   await page.getByTestId("wizard-submit").click();

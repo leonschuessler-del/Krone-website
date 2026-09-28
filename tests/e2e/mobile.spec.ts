@@ -5,7 +5,8 @@ test("Mobile: Karte oben, Sticky-CTA zeigt Anzahl, Bottom Sheet mit Auswahl", as
   const map = page.getByTestId("site-map").first();
   await map.locator('[data-space="restaurant"]').click();
   await map.locator('[data-space="beer-garden"]').click();
-  await expect(page.getByText("2 Bereiche ausgewählt").first()).toBeVisible();
+  // the desktop side panel carries the same text but is hidden on phones
+  await expect(page.getByText("2 Bereiche ausgewählt").filter({ visible: true }).first()).toBeVisible();
   await page.getByRole("button", { name: /2 Bereiche ausgewählt/ }).click();
   const sheet = page.getByRole("dialog", { name: "Ihre Auswahl" });
   await expect(sheet.getByTestId("selected-list").locator("li")).toHaveCount(2);
