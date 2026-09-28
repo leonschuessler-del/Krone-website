@@ -149,6 +149,11 @@ npm start        # Produktionsserver
 Deployment auf Vercel + Neon oder auf jede Node-Umgebung:
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
+**Vorschau-Link ohne Server:** `npm run demo:browser` baut die komplette Website
+als statische Vorschau. Die Datenbank läuft dabei als WASM im Browser, Kalender
+und Buchung funktionieren. Die Vorschau lässt sich als Link teilen,
+Details stehen in [tools/browser-demo/README.md](tools/browser-demo/README.md).
+
 ## Seiten & Funktionen
 
 | Route | Inhalt |

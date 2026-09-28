@@ -1,0 +1,3 @@
+dist/
+dist-snapshot/
+app/migrations.generated.ts

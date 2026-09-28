@@ -22,7 +22,8 @@
     "db:reset": "tsx scripts/db-reset.ts",
     "admin:create": "tsx scripts/admin-create.ts",
     "media:demo": "tsx --tsconfig tsconfig.json scripts/demo-media/generate.ts",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "demo:browser": "node tools/browser-demo/build.mjs http://localhost:3200"
   },
   "engines": {
     "node": ">=20.9"
