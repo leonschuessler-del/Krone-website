@@ -1,0 +1,282 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * Zur Krone – Design Tokens
+ * Warm off-white / cream, anthracite / dark brown, gold as accent,
+ * warm natural tones. Space identity colours are used on the map only.
+ * ------------------------------------------------------------------------- */
+@theme {
+  --font-serif: var(--font-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-sans), system-ui, "Segoe UI", Arial, sans-serif;
+
+  --color-paper: #fbf8f2;
+  --color-cream: #f4eee2;
+  --color-sand: #e8dfcd;
+  --color-stone: #cfc5b3;
+  --color-taupe: #8f8474;
+  --color-ink: #231e1b;
+  --color-ink-soft: #3b332d;
+  --color-anthracite: #1c1917;
+  --color-night: #15120f;
+  --color-muted: #6b6158;
+
+  --color-gold: #b8904a;
+  --color-gold-light: #d8bb7e;
+  --color-gold-pale: #efe2c4;
+  --color-gold-dark: #8a6a2f;
+
+  --color-moss: #4f5b3d;
+  --color-olive: #7a7d5a;
+  --color-terracotta: #a4553a;
+
+  --color-success: #3f6b3a;
+  --color-success-pale: #e5eddf;
+  --color-warning: #a5711d;
+  --color-warning-pale: #f6ecd6;
+  --color-danger: #9b2f2f;
+  --color-danger-pale: #f5e1de;
+
+  /* Space identity colours (map) */
+  --color-space-restaurant: #9a3340;
+  --color-space-kitchen: #4f6d8a;
+  --color-space-side-room: #c49a2c;
+  --color-space-stage: #6f5a92;
+  --color-space-old-tavern: #b0662b;
+  --color-space-winter-garden: #6f9a68;
+  --color-space-beer-garden: #3f6b3a;
+  --color-space-hotel: #7a6f66;
+
+  --radius-card: 1.25rem;
+  --shadow-soft: 0 1px 2px rgb(35 30 27 / 0.05), 0 8px 24px -8px rgb(35 30 27 / 0.12);
+  --shadow-lift: 0 2px 6px rgb(35 30 27 / 0.06), 0 22px 48px -16px rgb(35 30 27 / 0.28);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-fade-up: fade-up 0.8s var(--ease-out-soft) both;
+  --animate-kenburns: kenburns 38s ease-in-out infinite alternate;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes kenburns {
+    from { transform: scale(1.02) translate3d(0, 0, 0); }
+    to { transform: scale(1.14) translate3d(-2.5%, -1.5%, 0); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "kern", "liga";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  p { text-wrap: pretty; }
+  ::selection { background: var(--color-gold-pale); color: var(--color-ink); }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    width: 100%;
+    max-width: 88rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .container-page { padding-inline: 2rem; }
+  }
+  @media (min-width: 1280px) {
+    .container-page { padding-inline: 3rem; }
+  }
+
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-gold-dark);
+  }
+
+  .gold-rule {
+    display: block;
+    height: 1px;
+    width: 3.5rem;
+    background: linear-gradient(90deg, var(--color-gold), transparent);
+  }
+
+  .card-surface {
+    background: #fff;
+    border: 1px solid color-mix(in oklab, var(--color-sand) 80%, transparent);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink-soft);
+    margin-bottom: 0.375rem;
+  }
+  .field-input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-stone);
+    background: #fff;
+    padding: 0.7rem 0.9rem;
+    font-size: 1rem;
+    color: var(--color-ink);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--color-gold);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-gold) 25%, transparent);
+  }
+  .field-input[aria-invalid="true"] {
+    border-color: var(--color-danger);
+  }
+  .field-error {
+    margin-top: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--color-danger);
+  }
+
+  /* Paper grain for dark panels – very subtle, CSS only */
+  .panel-dark {
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgb(184 144 74 / 0.08), transparent 60%),
+      linear-gradient(180deg, #1f1b18, #171411);
+    color: #f1ebe0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Interactive site map – polygon states
+ * Transitions are kept short (200 ms) and only on cheap properties.
+ * ------------------------------------------------------------------------- */
+.site-map-space {
+  cursor: pointer;
+  outline: none;
+  transition: transform 220ms var(--ease-out-soft), filter 220ms var(--ease-out-soft);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.site-map-space .space-shape {
+  fill: var(--space-color);
+  fill-opacity: 0.26;
+  stroke: var(--space-color);
+  stroke-opacity: 0.85;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: fill-opacity 220ms var(--ease-out-soft), stroke-width 220ms var(--ease-out-soft),
+    stroke 220ms var(--ease-out-soft), stroke-opacity 220ms var(--ease-out-soft);
+}
+.site-map-space .space-hatch { opacity: 0; transition: opacity 220ms var(--ease-out-soft); pointer-events: none; }
+.site-map-space .space-ring {
+  fill: none;
+  stroke: var(--color-gold-light);
+  stroke-width: 0;
+  stroke-opacity: 0;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+  transition: stroke-width 220ms var(--ease-out-soft), stroke-opacity 220ms var(--ease-out-soft);
+}
+
+@media (hover: hover) {
+  .site-map-space:hover .space-shape { fill-opacity: 0.42; stroke-width: 2.75; stroke-opacity: 1; }
+  .site-map-space:hover { filter: drop-shadow(0 6px 10px rgb(20 16 12 / 0.28)); transform: translateY(-2px); }
+}
+.site-map-space[data-hovered="true"] .space-shape { fill-opacity: 0.42; stroke-width: 2.75; stroke-opacity: 1; }
+
+.site-map-space:focus-visible .space-ring { stroke-width: 3; stroke-opacity: 1; stroke-dasharray: 6 4; }
+
+.site-map-space[data-selected="true"] .space-shape {
+  fill-opacity: 0.55;
+  stroke: var(--color-gold-light);
+  stroke-width: 3.25;
+  stroke-opacity: 1;
+}
+.site-map-space[data-selected="true"] {
+  filter: drop-shadow(0 0 6px rgb(216 187 126 / 0.75)) drop-shadow(0 8px 14px rgb(20 16 12 / 0.3));
+  transform: translateY(-3px);
+}
+
+.site-map-space[data-status="unavailable"] .space-shape {
+  fill: #6d665f;
+  fill-opacity: 0.38;
+  stroke: #d9d2c7;
+  stroke-dasharray: 7 5;
+  stroke-opacity: 0.9;
+}
+.site-map-space[data-status="unavailable"] .space-hatch { opacity: 0.55; }
+.site-map-space[data-status="unavailable"][data-selected="true"] .space-shape { stroke: #e7a59b; }
+.site-map-space[data-status="unavailable"][data-selected="true"] {
+  filter: drop-shadow(0 0 6px rgb(231 120 104 / 0.65));
+}
+
+.site-map-space[data-status="partial"] .space-shape { stroke-dasharray: 2 5; stroke-linecap: round; }
+.site-map-space[data-status="partial"] .space-hatch { opacity: 0.25; }
+
+.site-map-space[data-dimmed="true"] { opacity: 0.45; }
+
+.site-map-label { pointer-events: none; transition: opacity 220ms var(--ease-out-soft); }
+
+/* Boundaries fade in once when the map scrolls into view (progressive enhancement) */
+.site-map-reveal .site-map-space {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.site-map-reveal.is-revealed .site-map-space {
+  opacity: 1;
+  transform: none;
+  transition: opacity 700ms var(--ease-out-soft), transform 700ms var(--ease-out-soft), filter 220ms var(--ease-out-soft);
+  transition-delay: calc(var(--reveal-index, 0) * 90ms + 150ms);
+}
+.site-map-reveal .site-map-label { opacity: 0; }
+.site-map-reveal.is-revealed .site-map-label {
+  opacity: 1;
+  transition-delay: calc(var(--reveal-index, 0) * 90ms + 450ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-map-reveal .site-map-space, .site-map-reveal .site-map-label { opacity: 1; transform: none; }
+}
+
+/* Scrollbar-free horizontal rails (mobile galleries) */
+.rail {
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail > * { scroll-snap-align: start; }
