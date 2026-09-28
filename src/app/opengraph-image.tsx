@@ -19,7 +19,6 @@ export default async function OpengraphImage() {
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: "#1c1917" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={map} alt="" width={1200} height={800} style={{ position: "absolute", top: -60, left: 0, width: 1200, height: 800, opacity: 0.9 }} />
         <div
           style={{

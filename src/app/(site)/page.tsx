@@ -67,13 +67,18 @@ export default async function HomePage() {
       </noscript>
 
       {/* Interactive map */}
-      <section id="karte" className="relative scroll-mt-20 bg-cream py-20 md:py-28" aria-labelledby="map-title">
+      {/* -scroll-mt-22 cancels html's scroll-padding-top: /#karte lands flush under the fixed header */}
+      <section id="karte" className="relative -scroll-mt-22 bg-cream py-20 md:py-28" aria-labelledby="map-title">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         <div className="container-page">
           <SectionHeading id="map-title" eyebrow={siteConfig.mapSection.eyebrow} title={siteConfig.mapSection.title} className="mb-10">
             <p>{siteConfig.mapSection.text}</p>
           </SectionHeading>
-          <MapConfigurator spaces={spaces} demo={demo} />
+          {/* Tour → floor-plan handoff target: toolbar + whole map right under the header.
+              tabIndex -1: the router focuses it after the jump, so keyboard users continue in the map. */}
+          <div id="grundriss" tabIndex={-1} className="outline-none">
+            <MapConfigurator spaces={spaces} demo={demo} />
+          </div>
         </div>
       </section>
 

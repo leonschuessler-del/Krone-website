@@ -57,7 +57,14 @@ export interface TourFrame {
   scrollHint: number;
 }
 
-export function computeFrame(p: number, chapters: readonly TourChapter[], spans: readonly ChapterSpan[], wide: TourCamera): TourFrame {
+export function computeFrame(
+  p: number,
+  chapters: readonly TourChapter[],
+  spans: readonly ChapterSpan[],
+  wide: TourCamera,
+  /** Finale bird's-eye camera (see `overviewCamera`); defaults to the finale chapter's camera. */
+  overview: TourCamera = chapters[chapters.length - 1]!.camera,
+): TourFrame {
   const n = chapters.length;
   const progress = clamp01(p);
   let index = spans.findIndex((s) => progress >= s.start && progress < s.end);
@@ -82,7 +89,7 @@ export function computeFrame(p: number, chapters: readonly TourChapter[], spans:
     captionOpacity[0] = 1 - smoothstep(0.55, 0.9, t);
   } else if (index === n - 1 && chapter.spaceId === null) {
     // Finale: fly back out to the full bird's-eye view, boundaries appear.
-    camera = lerpCamera(prevCamera, chapter.camera, smoothstep(0, 0.45, t));
+    camera = lerpCamera(prevCamera, overview, smoothstep(0, 0.45, t));
     allPolygons = smoothstep(0.35, 0.65, t);
     captionOpacity[index] = smoothstep(0.4, 0.62, t);
   } else {
@@ -120,17 +127,33 @@ export interface Viewport {
 }
 
 /**
- * Screen transform for the site plan so that camera.(x,y) is centred and the
- * plan always covers the viewport (no empty edges).
+ * Screen transform for the site plan so that camera.(x,y) is centred.
+ * zoom >= 1 always covers the viewport (no empty edges); zoom < 1 (portrait
+ * overview) may letterbox, but keeps the plan fully inside the viewport.
  */
 export function cameraTransform(camera: TourCamera, vp: Viewport, map: { width: number; height: number }): { tx: number; ty: number; scale: number } {
   const cover = Math.max(vp.width / map.width, vp.height / map.height);
-  const scale = cover * Math.max(1, camera.zoom);
-  let tx = vp.width / 2 - camera.x * scale;
-  let ty = vp.height / 2 - camera.y * scale;
-  tx = Math.min(0, Math.max(vp.width - map.width * scale, tx));
-  ty = Math.min(0, Math.max(vp.height - map.height * scale, ty));
-  return { tx, ty, scale };
+  const scale = cover * camera.zoom;
+  // slack < 0: plan overflows -> clamp to its edges; slack >= 0: plan fits -> keep it fully inside
+  const place = (view: number, size: number, c: number) => {
+    const slack = view - size * scale;
+    return Math.min(Math.max(0, slack), Math.max(Math.min(0, slack), view / 2 - c * scale));
+  };
+  return { tx: place(vp.width, map.width, camera.x), ty: place(vp.height, map.height, camera.y), scale };
+}
+
+/** Plan x-range holding every bookable area (Biergarten x≈122 … Nebenzimmer/Bühne x≈996). */
+const OVERVIEW_SPAN = { from: 100, to: 1020 } as const;
+
+/**
+ * Finale bird's-eye camera for this viewport: unchanged on landscape; on portrait
+ * screens, where "cover" would crop the plan to a strip, zoom out below 1 so all
+ * areas stay in frame.
+ */
+export function overviewCamera(camera: TourCamera, vp: Viewport, map: { width: number; height: number }): TourCamera {
+  const cover = Math.max(vp.width / map.width, vp.height / map.height);
+  const zoom = vp.width / (OVERVIEW_SPAN.to - OVERVIEW_SPAN.from) / cover;
+  return zoom >= camera.zoom ? camera : { x: (OVERVIEW_SPAN.from + OVERVIEW_SPAN.to) / 2, y: camera.y, zoom };
 }
 
 /** Scroll position (px from the top of the tour) for jumping to a chapter. */

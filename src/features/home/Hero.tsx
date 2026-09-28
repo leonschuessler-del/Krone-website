@@ -10,7 +10,14 @@ export function Hero() {
   const isPlaceholder = !sources.isReal;
   return (
     <section className="relative isolate flex min-h-[100svh] items-end overflow-hidden bg-anthracite text-paper md:min-h-[min(100svh,56.25vw)] lg:min-h-[100svh]" aria-labelledby="hero-title">
-      <HeroVideo sources={sources} />
+      {sources.poster ? (
+        // Static fallback only (reduced motion / no-JS): a lazy <img> inside the display:none
+        // wrapper is never fetched, unlike <video poster>. With JS off, Chrome loads it eagerly.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={sources.poster} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <HeroVideo sources={sources} />
+      )}
       {/* legibility gradients */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-anthracite via-anthracite/35 to-anthracite/10" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-anthracite/70 via-anthracite/10 to-transparent" />

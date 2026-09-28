@@ -18,15 +18,23 @@ export function Header() {
   const selectionCount = useSelectionCount();
 
   useEffect(() => {
-    // On pages with a full-screen hero/tour the header stays transparent until its end.
+    // Transparent only while a hero is on screen: a static hero until ~80px before its end,
+    // the sticky tour stage until it unpins (otherwise its CTA/skip link scroll through the header).
     const onScroll = () => {
-      const heroes = Array.from(document.querySelectorAll<HTMLElement>("[data-hero]"));
-      const heroEnd = heroes.reduce((max, el) => Math.max(max, el.offsetHeight), 0);
-      setScrolled(window.scrollY > (heroEnd > 0 ? heroEnd - 80 : 24));
+      const heroEnd = Array.from(document.querySelectorAll<HTMLElement>("[data-hero]")).reduce((max, el) => {
+        if (!el.offsetHeight) return max; // hidden variant (e.g. static hero without reduced motion)
+        const end = el.offsetTop + el.offsetHeight - (el.dataset.hero === "sticky" ? window.innerHeight : 80);
+        return Math.max(max, end);
+      }, 0);
+      setScrolled(window.scrollY > (heroEnd > 0 ? heroEnd : 24));
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, []);
 
   // Close the mobile menu on navigation (state adjusted during render, no effect needed).

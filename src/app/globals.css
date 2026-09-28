@@ -1,4 +1,12 @@
 @import "tailwindcss";
+/* Short viewports (landscape phones, iPhone SE with toolbars): compact tour captions.
+   From lg up the full-size intro still fits down to ~580px, so common laptop
+   windows (e.g. 1280×620) keep the large headline. */
+@custom-variant short {
+  @media (height <= 640px) and (width < 64rem), (height <= 580px) {
+    @slot;
+  }
+}
 
 /* ---------------------------------------------------------------------------
  * Zur Krone – Design Tokens
@@ -67,7 +75,8 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
-    scroll-behavior: smooth;
+    /* No global smooth scrolling: anchor jumps and Back must not play the scroll tour
+       through; animated scrolls pass behavior: "smooth" in JS. */
     scroll-padding-top: 5.5rem;
   }
   body {
@@ -94,7 +103,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;

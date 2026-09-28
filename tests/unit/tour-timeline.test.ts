@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { tourConfig, WIDE_CAMERA } from "@/config/tour";
-import { cameraTransform, chapterSpans, computeFrame, smoothstep } from "@/features/home/tour-timeline";
+import { cameraTransform, chapterSpans, computeFrame, overviewCamera, smoothstep } from "@/features/home/tour-timeline";
 
 const chapters = tourConfig.chapters;
 const spans = chapterSpans(chapters);
@@ -60,13 +60,17 @@ describe("scroll tour timeline", () => {
   it("camera changes continuously (no jumps between chapters)", () => {
     // With a continuous path the change per step shrinks with the step size;
     // a discontinuity would stay large. 0.0005 ≈ 3 px of scroll on a laptop.
-    let prev = computeFrame(0, chapters, spans, WIDE_CAMERA).camera;
-    for (let i = 1; i <= 2000; i++) {
-      const cam = computeFrame(i / 2000, chapters, spans, WIDE_CAMERA).camera;
-      expect(Math.abs(cam.x - prev.x)).toBeLessThan(15);
-      expect(Math.abs(cam.y - prev.y)).toBeLessThan(15);
-      expect(Math.abs(Math.log(cam.zoom / prev.zoom))).toBeLessThan(0.03);
-      prev = cam;
+    // Also with the zoomed-out portrait overview as the finale target.
+    const portrait = overviewCamera(WIDE_CAMERA, { width: 390, height: 664 }, { width: 1536, height: 1024 });
+    for (const overview of [undefined, portrait]) {
+      let prev = computeFrame(0, chapters, spans, WIDE_CAMERA, overview).camera;
+      for (let i = 1; i <= 2000; i++) {
+        const cam = computeFrame(i / 2000, chapters, spans, WIDE_CAMERA, overview).camera;
+        expect(Math.abs(cam.x - prev.x)).toBeLessThan(15);
+        expect(Math.abs(cam.y - prev.y)).toBeLessThan(15);
+        expect(Math.abs(Math.log(cam.zoom / prev.zoom))).toBeLessThan(0.03);
+        prev = cam;
+      }
     }
   });
 
@@ -84,6 +88,29 @@ describe("scroll tour timeline", () => {
         expect(ty + 1024 * scale).toBeGreaterThanOrEqual(vp.height - 0.01);
       }
     }
+  });
+
+  it("finale overview keeps every bookable area in frame on portrait screens, unchanged on landscape", () => {
+    const MAP = { width: 1536, height: 1024 };
+    for (const vp of [
+      { width: 390, height: 664 },
+      { width: 820, height: 1180 },
+    ]) {
+      const cam = overviewCamera(WIDE_CAMERA, vp, MAP);
+      expect(cam.zoom).toBeGreaterThan(0);
+      const { tx, ty, scale } = cameraTransform(cam, vp, MAP);
+      // Biergarten (x≈122) … Nebenzimmer (x≈996) fully visible
+      expect(tx + 122 * scale).toBeGreaterThanOrEqual(0);
+      expect(tx + 996 * scale).toBeLessThanOrEqual(vp.width);
+      // letterboxed plan stays inside the viewport vertically
+      expect(ty).toBeGreaterThanOrEqual(0);
+      expect(ty + MAP.height * scale).toBeLessThanOrEqual(vp.height + 0.01);
+      // the finale flies to exactly that camera
+      const end = computeFrame(1, chapters, spans, WIDE_CAMERA, cam);
+      expect(end.camera.zoom).toBeCloseTo(cam.zoom);
+      expect(end.camera.x).toBeCloseTo(cam.x);
+    }
+    expect(overviewCamera(WIDE_CAMERA, { width: 1440, height: 900 }, MAP)).toBe(WIDE_CAMERA);
   });
 
   it("smoothstep is clamped and monotone", () => {

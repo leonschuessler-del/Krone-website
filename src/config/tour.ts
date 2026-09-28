@@ -73,7 +73,7 @@ export const tourConfig = {
   copy: {
     scrollHint: "Scrollen Sie durch die Krone",
     skip: "Rundgang überspringen",
-    finaleTitle: "Stellen Sie Ihre Location zusammen.",
+    finaleTitle: "Alles gesehen? Jetzt Bereiche wählen.",
     finaleText: "Wählen Sie jetzt auf dem Grundriss einen oder mehrere Bereiche – oder öffnen Sie die Details jedes Raums.",
     finaleCta: "Zum Grundriss",
   },
