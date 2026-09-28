@@ -103,6 +103,21 @@ export function bookableWindows(profile: SpaceAvailabilityProfile, from: LocalDa
     .filter((i) => i.end > i.start);
 }
 
+/**
+ * Windows that OPEN on a given local date (not clipped at midnight), e.g.
+ * Saturday 09:00 → Sunday 02:00. This is what "the event day" means to guests.
+ */
+export function dayOpeningWindows(profile: SpaceAvailabilityProfile, date: LocalDate): Interval[] {
+  return mergeIntervals(
+    (profile.weeklyHours[isoWeekday(date)] ?? []).map((w) => {
+      const open = timeToMinutes(w.open);
+      let close = timeToMinutes(w.close);
+      if (close <= open) close += 1440;
+      return { start: zonedToUtc(date, open), end: zonedToUtc(date, close) };
+    }),
+  );
+}
+
 /** Block intervals widened by the buffers of the space being requested. */
 function bufferedBlockIntervals(profile: SpaceAvailabilityProfile, blocks: readonly AvailabilityBlock[]): Interval[] {
   const before = profile.cleanupBufferMinutes * 60_000;
@@ -262,10 +277,10 @@ export interface DayStatus {
 export function spaceDayStatus(spaceId: SpaceId, date: LocalDate, ctx: AvailabilityContext): DayStatus {
   const profile = ctx.profiles[spaceId];
   if (!profile) return { status: "unknown", windows: [], free: [] };
-  const windows = bookableWindows(profile, date, date);
-  const dayEnd = dayBounds(date).end;
+  const windows = dayOpeningWindows(profile, date);
   // Only count future time as free.
-  const future = windows.map((w) => ({ start: Math.max(w.start, ctx.now), end: w.end })).filter((w) => w.end > w.start && w.start < dayEnd);
+  const nowSlot = Math.ceil(ctx.now / 1_800_000) * 1_800_000; // next half hour
+  const future = windows.map((w) => ({ start: Math.max(w.start, nowSlot), end: w.end })).filter((w) => w.end > w.start);
   if (future.length === 0) return { status: "closed", windows, free: [] };
   const free = subtractIntervals(future, bufferedBlockIntervals(profile, activeBlocksFor(spaceId, ctx)));
   const freeMs = totalDuration(free);

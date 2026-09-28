@@ -116,6 +116,7 @@ export async function checkAvailability(
   const spaceIds = input.spaceIds.filter((id) => ctx.profiles[id]);
 
   const common = getCommonAvailability(spaceIds, { from: dates[0]!, to: dates[dates.length - 1]! }, ctx);
+  let commonFree = common.common;
   const results: SpaceCheckResult[] = [];
   let bookingAllowed: boolean;
   let alternatives: AlternativeSlot[] = [];
@@ -146,6 +147,7 @@ export async function checkAvailability(
   } else {
     const date = dates[0]!;
     const day = selectionDayStatus(spaceIds, date, ctx);
+    commonFree = day.common;
     for (const id of spaceIds) {
       const s = spaceDayStatus(id, date, ctx);
       results.push({
@@ -193,7 +195,7 @@ export async function checkAvailability(
       name: r.name,
       reason: `${r.name} ist ${resolved.kind === "range" ? "in diesem Zeitraum" : "an diesem Tag"} nicht verfügbar.`,
     })),
-    commonFreeIntervals: common.common.map(isoInterval),
+    commonFreeIntervals: commonFree.map(isoInterval),
     summary: { total, available: availableCount, message },
     selectionIssues: issues,
     alternatives,
