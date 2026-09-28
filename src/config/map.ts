@@ -14,6 +14,6 @@ export const mapConfig = {
     alt: "Stilisierte Vogelperspektive des Grundstücks Zur Krone (schematisch)",
   },
   /** Show full names next to code badges from this rendered map width (px). */
-  showNamesFromWidth: 720,
+  showNamesFromWidth: 820,
   disclaimer: "Schematische Darstellung – nicht maßstabsgetreu. Raumgrenzen werden noch final abgestimmt.",
 } as const;
