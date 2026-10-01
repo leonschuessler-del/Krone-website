@@ -1,19 +1,19 @@
 /**
  * Map presentation config.
  *
- * baseLayer: the visual underlay beneath the interactive SVG polygons.
- *   - "generated": our own stylised site plan, rendered from
- *     `src/config/site-plan.ts` and served at /map/base.svg (default)
- *   - "image": any image with the same aspect ratio (1536:1024), e.g. a
- *     licensed drone orthophoto placed in /public/media/floorplan/
+ * baseLayer: the visual underlay beneath the interactive SVG polygons – a real,
+ * colour-graded drone photo (top-down) of the property, cropped to 3:2.
+ * Replace by putting another image with the same crop into /public/media/floorplan/
+ * and adjusting the polygons in src/config/floorplan.ts.
  */
 export const mapConfig = {
   baseLayer: {
-    type: "generated" as "generated" | "image",
-    src: "/map/base.svg",
-    alt: "Stilisierte Vogelperspektive des Grundstücks Zur Krone (schematisch)",
+    type: "image" as "generated" | "image",
+    src: "/media/floorplan/aerial-2048.webp",
+    srcSet: "/media/floorplan/aerial-1280.webp 1280w, /media/floorplan/aerial-2048.webp 2048w",
+    alt: "Drohnenaufnahme der Krone von oben mit den buchbaren Bereichen",
   },
   /** Show full names next to code badges from this rendered map width (px). */
   showNamesFromWidth: 820,
-  disclaimer: "Schematische Darstellung – nicht maßstabsgetreu. Raumgrenzen werden noch final abgestimmt.",
+  disclaimer: "Drohnenaufnahme von oben · Raumgrenzen sinngemäß eingezeichnet. Die Toiletten sind bei jeder Buchung inklusive.",
 } as const;

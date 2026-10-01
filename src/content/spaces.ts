@@ -178,21 +178,23 @@ export const spaceSeeds: SpaceSeed[] = [
     code: "H",
     name: "Hotel",
     type: "hotel",
-    level: "site",
+    level: "first-floor",
     color: "#7a6f66",
     mediaFolder: "hotel",
     sortOrder: 80,
-    // Hotel rooms need their own booking logic (room types, arrival/departure).
-    // Until that exists the hotel is shown as information + inquiry only.
-    bookable: false,
+    // The whole upper floor is rented as one unit (owner: 10 Zimmer + Wohnung).
+    // Single-room bookings are not offered here – inquiry only, priced individually.
+    bookable: true,
     includedInFullVenue: false,
-    availableForStandaloneRental: false,
+    availableForStandaloneRental: true,
     bookingMode: "inquiry",
-    shortDescription: "Übernachtungsmöglichkeiten im Landhotel – Details folgen.",
+    shortDescription: "Das komplette Hotel im Obergeschoss – 10 Zimmer und eine Wohnung, exklusiv für Ihre Gäste.",
     longDescription:
-      "Zur Krone ist auch Landhotel. Zimmerkategorien, Anzahl der Zimmer und Ausstattung werden noch ergänzt. " +
-      "Die genaue Lage des Hotelbereichs auf dem Grundstück wird noch eingezeichnet. [PLACEHOLDER]",
-    needsVerification: [...UNKNOWN_FACTS, "roomTypes", "roomCount", "mapPolygon"],
+      "Im Obergeschoss über Restaurant, Nebenzimmer und Bühne liegt das Landhotel: Doppel-, Dreibett- und Einzelzimmer mit eigenem Bad, " +
+      "ein heller Flur, ein Aufenthaltsraum mit Balkon und eine Wohnung mit eigener Küche. Das Hotel wird als Ganzes vermietet – " +
+      "ideal für Hochzeiten, Familienfeiern und Firmenevents, bei denen die Gäste direkt im Haus übernachten. " +
+      "Zimmeranzahl laut Betreiber; Bettenanzahl und Preise auf Anfrage.",
+    needsVerification: [...UNKNOWN_FACTS, "roomTypes", "bedCount"],
   },
 ];
 

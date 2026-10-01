@@ -69,6 +69,7 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
   const selected = selectedRaw.filter((id) => allIds.includes(id));
   const fullVenueIds = useMemo(() => getFullVenueSpaceIds(spaces), [spaces]);
   const fullVenueSelected = isFullVenueSelection(selected, spaces);
+  const hotel = useMemo(() => spaces.find((s) => s.type === "hotel" && s.bookable && s.active) ?? null, [spaces]);
 
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [view, setView] = useState<"map" | "list">("map");
@@ -254,6 +255,7 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
             <SpaceList spaces={spaces} selected={selected} statuses={statuses} detail={detail} onToggle={toggleSpace} />
           )}
           <MapLegend spaces={spaces} selected={selected} onToggle={toggleSpace} hasStatus={Boolean(schedule.date)} />
+          {hotel && <HotelCard hotel={hotel} selected={selected.includes(hotel.id)} status={statuses[hotel.id]} onToggle={() => toggleSpace(hotel.id)} />}
         </div>
 
         {/* Selection panel – desktop */}
@@ -687,6 +689,45 @@ function SelectionPanelContent({
             Lieber unverbindlich anfragen
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** The upper floor is rented as a whole – shown as its own button next to the map. */
+function HotelCard({ hotel, selected, status, onToggle }: { hotel: SpaceView; selected: boolean; status?: MapSpaceStatus; onToggle: () => void }) {
+  return (
+    <div
+      className={cn(
+        "mt-5 grid overflow-hidden rounded-[1.25rem] border bg-white shadow-soft transition-colors sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+        selected ? "border-gold ring-2 ring-gold/40" : "border-sand",
+      )}
+      data-testid="hotel-card"
+    >
+      <div className="relative min-h-44">
+        <SpaceImage space={hotel} className="absolute inset-0" sizes="(min-width: 640px) 30vw, 100vw" />
+        <span className="absolute left-3 top-3 rounded-full bg-anthracite/80 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-paper">1. Obergeschoss</span>
+      </div>
+      <div className="flex flex-col gap-3 p-5">
+        <div>
+          <p className="eyebrow">Übernachtung für Ihre Gäste</p>
+          <h3 className="mt-1 text-2xl">Hotel komplett mieten</h3>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{hotel.shortDescription}</p>
+        </div>
+        {status && status !== "unknown" && (
+          <p className={cn("text-sm font-semibold", status === "available" ? "text-success" : status === "unavailable" ? "text-danger" : "text-warning")}>
+            {status === "available" ? "✓ Im gewählten Zeitraum frei" : status === "unavailable" ? "Im gewählten Zeitraum belegt" : "Teilweise frei"}
+          </p>
+        )}
+        <div className="mt-auto flex flex-wrap gap-2">
+          <Button variant={selected ? "primary" : "gold"} size="sm" onClick={onToggle} aria-pressed={selected} data-testid="hotel-toggle">
+            {selected ? <Check className="h-4 w-4" /> : null}
+            {selected ? "Hotel ausgewählt" : "Hotel zur Auswahl hinzufügen"}
+          </Button>
+          <Link href={hotel.href} className="inline-flex h-9 items-center rounded-full border border-ink/15 px-4 text-sm font-semibold hover:border-ink/40">
+            Zimmer & Grundriss ansehen
+          </Link>
+        </div>
       </div>
     </div>
   );

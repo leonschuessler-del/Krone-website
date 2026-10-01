@@ -9,12 +9,11 @@ import { siteConfig } from "@/config/site";
 import { FaqList } from "@/features/home/FaqList";
 import { Hero } from "@/features/home/Hero";
 import { ScrollTour, type TourSpace } from "@/features/home/ScrollTour";
-import { tourConfig } from "@/config/tour";
 import { StructuredData } from "@/features/home/StructuredData";
 import { MapConfigurator } from "@/features/map/MapConfigurator";
 import { SpaceCard } from "@/features/spaces/SpaceCard";
 import { env } from "@/lib/env";
-import { getHeroVideo, getPropertyGallery } from "@/lib/media";
+import { getPropertyGallery } from "@/lib/media";
 import { listSpaceViews } from "@/server/services/space-service";
 
 export const dynamic = "force-dynamic";
@@ -44,20 +43,13 @@ export default async function HomePage() {
     bookable: s.bookable,
     polygon: s.shape?.polygon ?? null,
     labelPosition: s.shape?.labelPosition ?? null,
-    images: [s.media.hero, ...s.media.gallery]
-      .filter((m): m is NonNullable<typeof m> => Boolean(m))
-      .filter((m, i, arr) => arr.findIndex((x) => x.src === m.src) === i)
-      .slice(0, 2)
-      .map((m) => ({ src: m.src, alt: m.alt, isReal: m.isReal })),
   }));
-  const film = getHeroVideo();
-  const scrubVideo = tourConfig.video.enabled && film.isReal && film.mp4 ? film.mp4 : null;
   const eventSpaces = spaces.filter((s) => s.bookable);
 
   return (
     <>
       <StructuredData />
-      <ScrollTour spaces={tourSpaces} hero={{ eyebrow: siteConfig.hero.eyebrow, subline: siteConfig.hero.subline }} videoSrc={scrubVideo} videoPoster={film.poster} />
+      <ScrollTour spaces={tourSpaces} hero={{ eyebrow: siteConfig.hero.eyebrow, subline: siteConfig.hero.subline }} />
       {/* Static hero for reduced motion and no-JS */}
       <div className="hero-static hidden motion-reduce:block" data-hero>
         <Hero />

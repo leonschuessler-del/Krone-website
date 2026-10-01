@@ -132,6 +132,8 @@ export function SiteMap({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={mapConfig.baseLayer.src}
+          srcSet={mapConfig.baseLayer.srcSet}
+          sizes="(min-width: 1024px) 66vw, 100vw"
           alt={mapConfig.baseLayer.alt}
           width={W}
           height={H}
@@ -154,6 +156,16 @@ export function SiteMap({
             <line x1="0" y1="0" x2="0" y2="10" stroke="#f4efe6" strokeWidth="3" />
           </pattern>
         </defs>
+
+        {/* Fixed facilities (not bookable) – always part of every booking */}
+        {mapFeatures
+          .filter((f) => f.type === "toilets")
+          .map((f) => (
+            <g key={f.id} className="site-map-facility" aria-hidden="true">
+              <title>{`${f.label} – ${f.note ?? "nicht einzeln buchbar"}`}</title>
+              <polygon points={toPoints(f.polygon)} fill="#1c1917" fillOpacity={0.42} stroke="#f4efe6" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
+            </g>
+          ))}
 
         {drawn.map((space, i) => {
           const shape = space.shape!;
@@ -255,6 +267,28 @@ export function SiteMap({
             );
           })}
 
+          {mapFeatures
+            .filter((f) => f.type === "toilets" || f.type === "entrance")
+            .map((f) =>
+              f.type === "toilets" ? (
+                <span
+                  key={f.id}
+                  className="absolute grid h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-md border border-white/50 bg-anthracite/80 px-1 text-[0.62rem] font-bold tracking-wide text-paper shadow"
+                  style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
+                  title={`${f.label} – ${f.note}`}
+                >
+                  WC
+                </span>
+              ) : (
+                <span
+                  key={f.id}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-paper/90 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wider text-ink shadow"
+                  style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
+                >
+                  ↓ {f.label}
+                </span>
+              ),
+            )}
           {showParking &&
             mapFeatures
               .filter((f) => f.type === "parking")

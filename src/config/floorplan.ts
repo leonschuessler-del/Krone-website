@@ -43,13 +43,15 @@ export interface SpaceShape {
   labelPosition: { x: number; y: number } | null;
 }
 
-export type MapFeatureType = "parking" | "street" | "entrance";
+export type MapFeatureType = "parking" | "street" | "entrance" | "toilets";
 
 /** Non-rentable map features (not bookable, purely informative). */
 export interface MapFeature {
   id: string;
   type: MapFeatureType;
   label: string;
+  /** Short text shown on the map / in tooltips. */
+  note?: string;
   polygon: Point[];
   labelPosition: { x: number; y: number };
   rentable: false;
@@ -57,13 +59,13 @@ export interface MapFeature {
 
 export const floorplanMeta = {
   viewBox: { width: 1536, height: 1024 } satisfies MapViewBox,
-  isSchematic: true,
+  isSchematic: false,
   isSurveyAccurate: false,
   source:
-    "Schematisch nachgezeichnet nach der vom Eigentümer bereitgestellten Vogelperspektive mit markierten Bereichen (R, K, NZ, B, AW, WG, BG).",
-  lastUpdated: "2026-09-28",
+    "Echtes Drohnenfoto (senkrecht von oben, 30.09.2026, Datei dji_fly_20260930_151832). Raumgrenzen vom Eigentümer eingezeichnet und auf die Dachkanten übertragen.",
+  lastUpdated: "2026-10-01",
   /** Rotation of the building complex relative to north – for reference only. */
-  approximateRotationDeg: -7,
+  approximateRotationDeg: 0,
 } as const;
 
 export interface MapLevel {
@@ -82,66 +84,65 @@ export const mapLevels: MapLevel[] = [
   { id: "outdoor", label: "Außenbereich", shortLabel: "Außen", enabled: false },
 ];
 
+/*
+ * Coordinates: viewBox 1536×1024 over the cropped drone photo
+ * (/media/floorplan/aerial-2048.webp). Layout as marked by the owner:
+ * Alte Wirtschaft (top left) · Küche below · Hauptrestaurant with the entrance
+ * wing · Nebenzimmer · Bühne (right end, slightly raised) · Toiletten below the
+ * Bühne and next to the Wintergarten · Wintergarten (glass roof) · Biergarten.
+ * The hotel occupies the upper floor over Küche → Bühne and is booked as a
+ * whole via its own button (no outline on the ground-floor photo).
+ */
 export const spaceShapes: SpaceShape[] = [
   {
     spaceId: "restaurant",
     level: "ground-floor",
-    polygon: [
-      [556, 302], [606, 300], [620, 318], [697, 331], [706, 302], [790, 292],
-      [806, 309], [860, 318], [872, 354], [914, 358], [902, 512], [800, 498],
-      [786, 548], [758, 552], [748, 470], [662, 456], [642, 480], [627, 437],
-      [584, 441], [552, 410],
-    ],
-    labelPosition: { x: 772, y: 400 },
+    polygon: [[575, 255], [697, 255], [697, 178], [805, 178], [805, 262], [833, 262], [833, 552], [575, 552]],
+    labelPosition: { x: 704, y: 410 },
   },
   {
     spaceId: "kitchen",
     level: "ground-floor",
-    polygon: [[631, 215], [716, 223], [697, 331], [620, 318]],
-    labelPosition: { x: 667, y: 270 },
+    polygon: [[348, 252], [575, 252], [575, 550], [352, 550]],
+    labelPosition: { x: 462, y: 401 },
   },
   {
     spaceId: "side-room",
     level: "ground-floor",
-    polygon: [[914, 358], [996, 380], [994, 484], [934, 471], [902, 512]],
-    labelPosition: { x: 953, y: 425 },
+    polygon: [[833, 262], [975, 265], [975, 556], [833, 556]],
+    labelPosition: { x: 904, y: 410 },
   },
   {
     spaceId: "stage",
     level: "ground-floor",
-    polygon: [[934, 471], [994, 484], [990, 622], [905, 607], [914, 560]],
-    labelPosition: { x: 954, y: 548 },
+    polygon: [[975, 268], [1052, 276], [1086, 556], [975, 556]],
+    labelPosition: { x: 1024, y: 420 },
   },
   {
     spaceId: "old-tavern",
     level: "ground-floor",
-    polygon: [[442, 180], [579, 194], [548, 558], [395, 500]],
-    labelPosition: { x: 485, y: 372 },
+    polygon: [[338, 78], [562, 78], [562, 248], [338, 248]],
+    labelPosition: { x: 450, y: 163 },
   },
   {
     spaceId: "winter-garden",
     level: "ground-floor",
-    polygon: [
-      [800, 498], [902, 512], [914, 560], [905, 607], [898, 648], [765, 622],
-      [773, 566], [786, 548],
-    ],
-    labelPosition: { x: 842, y: 575 },
+    polygon: [[806, 566], [948, 566], [948, 730], [806, 730]],
+    labelPosition: { x: 877, y: 648 },
   },
   {
     spaceId: "beer-garden",
     level: "outdoor",
     polygon: [
-      [160, 150], [252, 172], [404, 206], [376, 492], [334, 490], [328, 538],
-      [262, 522], [170, 506], [122, 470], [130, 300],
+      [806, 732], [948, 732], [951, 673], [1103, 677], [1084, 764], [1020, 764],
+      [1017, 878], [867, 892], [837, 869], [783, 878], [735, 859], [742, 764],
     ],
-    labelPosition: { x: 262, y: 372 },
+    labelPosition: { x: 905, y: 812 },
   },
   {
-    // Hotel area is intentionally NOT drawn yet – the owner will supply the
-    // exact outline. Until then the hotel appears in the legend as
-    // "Abgrenzung folgt" and is not clickable on the map.
+    // Upper floor (10 Zimmer + Wohnung) – booked as a whole via the hotel button.
     spaceId: "hotel",
-    level: "site",
+    level: "first-floor",
     polygon: null,
     labelPosition: null,
   },
@@ -149,24 +150,34 @@ export const spaceShapes: SpaceShape[] = [
 
 export const mapFeatures: MapFeature[] = [
   {
-    id: "parking-east",
-    type: "parking",
-    label: "Parkplatz",
+    id: "toilets-main",
+    type: "toilets",
+    label: "Toilettenanlage",
+    note: "Bei jeder Buchung automatisch inklusive",
     rentable: false,
-    polygon: [[1012, 382], [1198, 384], [1226, 790], [1016, 796]],
-    labelPosition: { x: 1112, y: 600 },
+    polygon: [[956, 560], [1090, 560], [1090, 665], [956, 665]],
+    labelPosition: { x: 1023, y: 612 },
   },
   {
-    id: "parking-south",
-    type: "parking",
-    label: "Parkplatz",
+    id: "toilets-winter-garden",
+    type: "toilets",
+    label: "Toiletten",
+    note: "Bei jeder Buchung automatisch inklusive",
     rentable: false,
-    polygon: [[560, 760], [1012, 796], [1150, 806], [1150, 902], [560, 846]],
-    labelPosition: { x: 960, y: 850 },
+    polygon: [[727, 558], [804, 558], [804, 684], [727, 684]],
+    labelPosition: { x: 765, y: 621 },
+  },
+  {
+    id: "entrance",
+    type: "entrance",
+    label: "Haupteingang",
+    rentable: false,
+    polygon: [[697, 178], [805, 178], [805, 200], [697, 200]],
+    labelPosition: { x: 751, y: 150 },
   },
 ];
 
-/** Property boundary (Grundstücksgrenze) – schematic. */
+/** Legacy schematic boundary – only used by the old generated plan (/map/base.svg). */
 export const propertyBoundary: Point[] = [
   [160, 64], [204, 78], [440, 166], [582, 190], [742, 214], [756, 246],
   [870, 270], [962, 298], [972, 336], [1062, 336], [1196, 348], [1228, 780],

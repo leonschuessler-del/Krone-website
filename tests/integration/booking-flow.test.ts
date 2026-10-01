@@ -175,7 +175,7 @@ describe("booking creation", () => {
   it("requires accepted terms and rejects tampered selections", async () => {
     const input = await submission(["restaurant"], scenario.oldTavernReservedDate, "10:00", "14:00");
     await expect(createBooking(db, { ...input, acceptedTerms: [] })).rejects.toMatchObject({ code: "TERMS_REQUIRED" });
-    await expect(createBooking(db, { ...input, spaceIds: ["restaurant", "hotel"] })).rejects.toMatchObject({ code: "INVALID_SELECTION" });
+    await expect(createBooking(db, { ...input, spaceIds: ["restaurant", "does-not-exist"] })).rejects.toMatchObject({ code: "INVALID_SELECTION" });
   });
 
   it("wrong access token does not reveal a booking", async () => {

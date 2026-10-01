@@ -23,7 +23,7 @@ describe("full venue selection (Test 61)", () => {
 
 describe("selection sanitising (URL state)", () => {
   it("drops unknown/invalid ids and duplicates", () => {
-    expect(sanitizeSpaceIds("restaurant,stage,winter-garden,foo,<script>,stage,hotel", spaces)).toEqual(["restaurant", "stage", "winter-garden"]);
+    expect(sanitizeSpaceIds("restaurant,stage,winter-garden,foo,<script>,stage,hotel", spaces)).toEqual(["restaurant", "stage", "winter-garden", "hotel"]);
   });
 
   it("validates requires / incompatibleWith rules", () => {
