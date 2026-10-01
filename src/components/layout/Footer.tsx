@@ -13,7 +13,7 @@ export function Footer() {
         <div>
           <Logo tone="light" />
           <p className="mt-6 max-w-xs font-serif text-2xl leading-snug text-paper/90">
-            Ein Ort. <span className="italic text-gold-light">Viele Möglichkeiten.</span>
+            Feiern. Tagen. <span className="italic text-gold-light">Begeistern.</span>
           </p>
           <p className="mt-3 text-sm tracking-[0.18em] text-paper/55 uppercase">{siteConfig.tagline}</p>
         </div>
@@ -35,12 +35,20 @@ export function Footer() {
           <h2 className="eyebrow !text-gold-light">Kontakt</h2>
           <address className="mt-5 space-y-2 text-[0.95rem] not-italic text-paper/75">
             <p className="text-paper">
-              {siteConfig.name}
+              Landhotel Gasthof „Zur Krone“
               <br />
               {formatAddressLine()}
             </p>
             {siteConfig.address.street === null && <p className="text-xs text-paper/45">Straße folgt</p>}
-            <p>{contact.phone ?? <span className="text-paper/45">Telefon: Angabe folgt</span>}</p>
+            <p>
+              {contact.phone ? (
+                <a href={`tel:${contact.phone.replace(/[\s-]/g, "")}`} className="hover:text-paper">
+                  Telefon {contact.phone}
+                </a>
+              ) : (
+                <span className="text-paper/45">Telefon: Angabe folgt</span>
+              )}
+            </p>
             <p>
               {contact.email ? (
                 <a href={`mailto:${contact.email}`} className="hover:text-paper">

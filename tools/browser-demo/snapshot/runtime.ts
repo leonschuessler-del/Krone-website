@@ -43,7 +43,7 @@ interface PreviewSpace {
 
 declare global {
   interface Window {
-    __PREVIEW__: { spaces: PreviewSpace[]; headerTop: string; headerScrolled: string };
+    __PREVIEW__: { spaces: PreviewSpace[]; headerTop: string; headerScrolled: string; legal: Record<string, { title: string; html: string }> };
   }
 }
 
@@ -95,7 +95,7 @@ function toggle(id: string, force?: boolean) {
 
 function updateSelectionUi() {
   const n = selected.size;
-  document.querySelectorAll<SVGGElement>("#karte [data-space-id]").forEach((g) => g.setAttribute("data-selected", String(selected.has(g.dataset.spaceId!))));
+  document.querySelectorAll<SVGGElement>("[data-space-id]").forEach((g) => g.setAttribute("data-selected", String(selected.has(g.dataset.spaceId!))));
   document.querySelectorAll<HTMLElement>("[data-toggle-space]").forEach((b) => b.setAttribute("aria-pressed", String(selected.has(b.dataset.toggleSpace!))));
   const label = n === 0 ? "Noch keine Auswahl" : n === 1 ? "1 Bereich ausgewählt" : `${n} Bereiche ausgewählt`;
   document.querySelectorAll<HTMLElement>("[data-testid=selection-count]").forEach((el) => (el.textContent = label));
@@ -308,6 +308,8 @@ const flow = {
   to: "23:00",
   month: today.slice(0, 7),
   form: { event: "", guests: "", name: "", email: "", phone: "", message: "" },
+  mode: "inquiry" as "inquiry" | "booking",
+  terms: false,
   error: "",
   ref: "",
 };
@@ -416,13 +418,17 @@ function renderFlow() {
         <label>Telefon<input name="phone" type="tel" autocomplete="tel" value="${esc(f.phone)}"></label>
         <label class="pv-span">Nachricht<textarea name="message" rows="3">${esc(f.message)}</textarea></label>
         ${flow.error ? `<p class="pv-error pv-span" role="alert">${esc(flow.error)}</p>` : ""}
-        <div class="pv-actions pv-span"><button type="button" class="pv-btn" data-flow-step="2">Zurück</button><button type="submit" class="pv-btn pv-btn-gold">Unverbindlich anfragen</button></div>
+        <label class="pv-span pv-check-row"><input type="checkbox" name="terms" ${flow.terms ? "checked" : ""}> Ich habe die <button type="button" class="pv-link" data-legal="datenschutz">Datenschutzerklärung</button> gelesen.</label>
+        <div class="pv-actions pv-span"><button type="button" class="pv-btn" data-flow-step="2">Zurück</button><button type="submit" name="mode" value="inquiry" class="pv-btn">Unverbindlich anfragen</button><button type="submit" name="mode" value="booking" class="pv-btn pv-btn-gold">Verbindlich buchen</button></div>
+        <p class="pv-small pv-span">Vorschau: Es wird keine echte Buchung angelegt und nichts versendet.</p>
       </form>`;
   } else {
+    const booking = flow.mode === "booking";
     body = `<div class="pv-done">
-      <p class="pv-eyebrow">Anfrage eingegangen</p>
+      <p class="pv-eyebrow">${booking ? "Buchung eingegangen" : "Anfrage eingegangen"}</p>
       <h2 class="pv-h2">Vielen Dank, ${esc(flow.form.name.split(" ")[0] ?? "")}!</h2>
-      <p class="pv-ref">Ihre Anfragenummer <strong>${esc(flow.ref)}</strong></p>
+      <p class="pv-ref">${booking ? "Ihre Buchungsnummer" : "Ihre Anfragenummer"} <strong>${esc(flow.ref)}</strong></p>
+      <p class="pv-text">${booking ? "Die Räume sind für Sie reserviert. Die Krone bestätigt die Buchung persönlich und meldet sich zu Ablauf, Bewirtung und Übernachtung." : "Die Krone prüft Ihre Anfrage und meldet sich mit einem Angebot."}</p>
       <dl class="pv-facts">
         <div><dt>Bereiche</dt><dd>${esc([...flow.spaces].map(nameOf).join(", "))}</dd></div>
         <div><dt>Termin</dt><dd>${flow.date ? esc(fmtDate(flow.date)) : ""}<br>${flow.from}–${flow.to} Uhr</dd></div>
@@ -435,13 +441,20 @@ function renderFlow() {
     </div>`;
   }
   openDialog(`<p class="pv-eyebrow">Verfügbarkeit &amp; Anfrage</p>${stepper()}${body}`, { wide: true, label: "Verfügbarkeit und Anfrage" });
+  if (flow.date) {
+    const short = new Date(`${flow.date}T12:00:00`).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" });
+    document.querySelectorAll<HTMLElement>("[data-flow-at=date] .truncate").forEach((el) => (el.textContent = `${short} · ${flow.from}–${flow.to}`));
+  }
 }
 
-function submitFlow(form: HTMLFormElement) {
-  const fd = new FormData(form);
+function submitFlow(form: HTMLFormElement, submitter?: HTMLElement | null) {
+  const fd = new FormData(form, submitter ?? undefined);
   for (const k of Object.keys(flow.form) as Array<keyof typeof flow.form>) flow.form[k] = String(fd.get(k) ?? "").trim();
+  flow.mode = fd.get("mode") === "booking" ? "booking" : "inquiry";
+  flow.terms = !!fd.get("terms");
   if (!flow.form.name) flow.error = "Bitte geben Sie Ihren Namen an.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(flow.form.email)) flow.error = "Bitte geben Sie eine gültige E-Mail-Adresse an.";
+  else if (!flow.terms) flow.error = "Bitte bestätigen Sie, dass Sie die Datenschutzerklärung gelesen haben.";
   else flow.error = "";
   if (flow.error || !flow.date) return renderFlow();
   // final check right before saving (another request could have taken the slot)
@@ -451,7 +464,7 @@ function submitFlow(form: HTMLFormElement) {
     flow.step = 2;
     return renderFlow();
   }
-  flow.ref = generateBookingNumber("inquiry", Number(flow.date.slice(0, 4)));
+  flow.ref = generateBookingNumber(flow.mode, Number(flow.date.slice(0, 4)));
   requests = [...requests, { ref: flow.ref, spaceIds: ids, date: flow.date, from: flow.from, to: flow.to, name: flow.form.name, guests: flow.form.guests, event: flow.form.event }];
   saveRequests(requests);
   flow.step = 4;
@@ -522,6 +535,11 @@ function initEvents() {
     }
     if ((hit = t("[data-area-list]"))) return openAreaList();
     if ((hit = t("[data-map-zoom]"))) return openDialog(`<img src="media/floorplan/aerial-2900.webp" alt="Drohnenaufnahme der Krone von oben" class="pv-img-full">`, { wide: true, label: "Karte groß" });
+    if ((hit = t("[data-legal]"))) {
+      e.preventDefault();
+      const doc = data.legal?.[hit.dataset.legal!];
+      if (doc) return openDialog(`<div class="pv-legal">${doc.html}</div>`, { wide: true, label: doc.title });
+    }
     if ((hit = t("[data-page]"))) {
       e.preventDefault();
       return openInfo(hit.dataset.page!, "Diese Seite ist in der Vorschau nicht enthalten. Rechtstexte und weitere Unterseiten werden vor dem Start vom Betreiber ergänzt.");
@@ -539,7 +557,7 @@ function initEvents() {
       selected.clear();
       return updateSelectionUi();
     }
-    if ((hit = t("#karte [data-space-id]"))) return toggle(hit.dataset.spaceId!);
+    if ((hit = t("[data-space-id]"))) return toggle(hit.dataset.spaceId!);
     if ((hit = t("[data-pv-menu]"))) return toggleMenu();
     if ((hit = t("[data-pv-sheet]"))) return openAreaList();
     if ((hit = t("[data-lightbox]"))) return openDialog(`<img src="${hit.dataset.lightbox}" alt="" class="pv-img-full">`, { wide: true, label: "Bild" });
@@ -561,7 +579,7 @@ function initEvents() {
   document.addEventListener("submit", (e) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
-    if (form.matches("[data-flow-form]")) return submitFlow(form);
+    if (form.matches("[data-flow-form]")) return submitFlow(form, (e as SubmitEvent).submitter);
     openDialog(`<p class="pv-eyebrow">Kontakt</p><h2 class="pv-h2">Danke für Ihre Nachricht!</h2><p class="pv-text">In der fertigen Website geht sie direkt an die Krone. In dieser Vorschau wird nichts versendet.</p><div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Schließen</button></div>`, { label: "Kontakt" });
   });
   // mobile bottom bar only while the map is on screen (as on the website)
@@ -582,7 +600,7 @@ function initEvents() {
       const n = bySlug.get(room.slug)!.images.length;
       showImage((room.index + (e.key === "ArrowRight" ? 1 : n - 1)) % n);
     }
-    const g = (e.target as Element).closest?.<SVGGElement>("#karte [data-space-id]");
+    const g = (e.target as Element).closest?.<SVGGElement>("[data-space-id]");
     if (g && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
       toggle(g.dataset.spaceId!);

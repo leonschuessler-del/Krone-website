@@ -145,3 +145,11 @@ body { font-size: 1rem; }
 .pv-done .pv-ref { margin-top: 0.8rem; font-size: 1.05rem; }
 .pv-done .pv-ref strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; padding: 0.15rem 0.5rem; border-radius: 0.4rem; background: var(--color-cream); }
 [data-hotel-toggle].pv-on { background: var(--color-paper) !important; color: var(--color-anthracite) !important; }
+/* legal pages in a dialog */
+.pv-legal h1 { font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.05; margin-top: 0.4rem; }
+.pv-legal section { border-top: 1px solid var(--color-sand); padding-top: 1.25rem; margin-top: 1.25rem; }
+.pv-legal h2 { font-size: 1.5rem; line-height: 1.15; }
+.pv-legal p, .pv-legal li { color: var(--color-ink-soft); line-height: 1.6; margin-top: 0.5rem; }
+.pv-legal ul { list-style: disc; padding-left: 1.25rem; }
+.pv-check-row { flex-direction: row !important; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
+.pv-check-row input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-gold-dark); }

@@ -81,6 +81,20 @@ const polyChapters = chapters
 
 // 3) snapshot the rendered page
 const browser = await chromium.launch();
+const legal = {};
+{
+  const lp = await browser.newPage();
+  for (const slug of ["impressum", "datenschutz", "agb", "mietbedingungen", "hausordnung"]) {
+    await lp.goto(`${BASE}/${slug}`, { waitUntil: "load" });
+    legal[slug] = await lp.evaluate(() => {
+      const h1 = document.querySelector("main h1, h1");
+      const root = h1.parentElement;
+      const parts = [h1.outerHTML, ...[...root.children].filter((el) => el !== h1 && !el.matches("nav")).map((el) => el.outerHTML)];
+      return { title: h1.textContent.trim(), html: parts.join("") };
+    });
+  }
+  await lp.close();
+}
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 await page.goto(BASE + "/", { waitUntil: "load" });
 await page.waitForTimeout(1500);
@@ -140,6 +154,10 @@ const result = await page.evaluate(
         } else if (h === "/bereiche") a.setAttribute("href", "#bereiche");
         else if (h.startsWith("/galerie")) a.setAttribute("href", "#galerie");
         else if (h.startsWith("/kontakt")) a.setAttribute("href", "#kontakt");
+        else if ((m = h.match(/^\/(impressum|datenschutz|agb|mietbedingungen|hausordnung)$/))) {
+          a.setAttribute("href", "#");
+          a.dataset.legal = m[1];
+        }
         else if (h.startsWith("/faq")) a.setAttribute("href", "#faq");
         else if (h.startsWith("/buchen")) {
           a.setAttribute("href", "#karte");
@@ -151,7 +169,7 @@ const result = await page.evaluate(
       });
       root.querySelectorAll('button[aria-label="Menü öffnen"]').forEach((b) => b.setAttribute("data-pv-menu", ""));
       // select buttons (tour captions, space cards)
-      root.querySelectorAll("button[aria-pressed][aria-label$=' auswählen']").forEach((b) => {
+      root.querySelectorAll("button[aria-pressed][aria-label$=' auswählen']:not([data-toggle-space])").forEach((b) => {
         const name = b.getAttribute("aria-label").replace(/ auswählen$/, "");
         const s = byName.get(name);
         if (!s) return;
@@ -164,6 +182,10 @@ const result = await page.evaluate(
           text.replaceWith(span);
         }
       });
+      for (const src of root.querySelectorAll("source[srcset]")) {
+        const v = src.getAttribute("srcset");
+        if (v.startsWith("/media/")) src.setAttribute("srcset", v.slice(1));
+      }
       // images
       for (const img of root.querySelectorAll("img")) {
         const src = img.getAttribute("src");
@@ -286,6 +308,7 @@ const payload = {
   spaces: spaces.map(({ shape: _shape, ...s }) => s),
   headerTop: result.headers[0],
   headerScrolled: result.headers[1],
+  legal,
 };
 const title = "Zur Krone Vorschau";
 const pill = `<div class="pv-pill" aria-hidden="true">Vorschau · Demo-Inhalte</div>`;

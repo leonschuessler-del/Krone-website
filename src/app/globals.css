@@ -289,3 +289,41 @@
 .tour-rail-dot { width: 0.5rem; height: 0.5rem; background: rgb(255 255 255 / 0.45); transition: all 0.3s; }
 .tour-rail:hover .tour-rail-dot { background: rgb(255 255 255 / 0.8); }
 .tour-rail[data-active="true"] .tour-rail-dot { width: 0.75rem; height: 0.75rem; background: var(--color-gold-light); }
+
+/* Planner at the end of the film: photo with clickable areas + panel */
+.tour-backdrop { transform: scale(1.15); filter: blur(28px) brightness(0.42) saturate(0.6); }
+.tour-aerial {
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
+  mask-composite: intersect;
+}
+.tour-area { cursor: pointer; }
+.tour-area polygon {
+  fill: rgb(255 255 255 / 0.04);
+  stroke: rgb(244 239 230 / 0.8);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  transition: fill 0.25s, stroke 0.25s, stroke-width 0.25s;
+}
+.tour-area:hover polygon { fill: rgb(255 255 255 / 0.16); stroke: #fff; }
+.tour-area[data-selected="true"] polygon { fill: rgb(232 229 223 / 0.5); stroke: #fff; stroke-width: 2.6; }
+.tour-labels > * { pointer-events: none; will-change: transform; }
+.tour-section[data-planner="on"] .tour-aerial,
+.tour-section[data-planner="on"] .tour-labels > button { pointer-events: auto; }
+.tour-label { border-color: rgb(255 255 255 / 0.28); background: rgb(21 18 15 / 0.66); color: var(--color-paper); }
+.tour-label-code { border: 1px solid rgb(255 255 255 / 0.4); }
+.tour-label:hover { background: rgb(21 18 15 / 0.85); border-color: rgb(255 255 255 / 0.6); }
+.tour-label[aria-pressed="true"] { background: var(--color-paper); border-color: #fff; color: var(--color-anthracite); }
+.tour-label[aria-pressed="true"] .tour-label-code { background: var(--color-anthracite); color: var(--color-paper); border-color: transparent; }
+@media (max-width: 1023px) { .tour-label-name { display: none; } .tour-label { padding: 0.125rem; } .tour-parking { font-size: 0; gap: 0; padding-right: 0.125rem; } }
+.tour-planner-list { scrollbar-width: none; }
+.tour-planner-list::-webkit-scrollbar { display: none; }
+.tour-planner-item[aria-pressed="true"] .tour-planner-code { display: none; }
+.tour-planner-item[aria-pressed="true"] .tour-planner-check { display: block; }
+.tour-railnav { transition: opacity 0.3s; }
+.tour-section[data-planner="on"] .tour-railnav { opacity: 0; pointer-events: none; }
+.tour-planner-item[aria-pressed="true"] .tour-planner-badge { border-color: transparent; background: var(--color-paper); color: var(--color-anthracite); }
+@media (max-width: 1023px) { .tour-planner-item[aria-pressed="true"] .tour-planner-badge { background: var(--color-anthracite); color: var(--color-paper); } }

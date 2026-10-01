@@ -10,8 +10,9 @@ import frameCounts from "@/generated/tour-frames.json";
  *  Order: Anflug von außen → Hauptrestaurant → Nebenzimmer → Bühne →
  *  Wintergarten → Biergarten → Küche → Alte Wirtschaft → Hotel → Blick von oben.
  *
- *  Each chapter is an image sequence (/public/media/tour/frames/<id>/, packed
- *  4 frames per file) drawn on a canvas. Unlike video seeking this scrubs smoothly in every
+ *  Each chapter is an image sequence (/public/media/tour/frames/<id>/{d,m}/,
+ *  packed 6 frames per file; d = 16:9 1920×1080, m = 9:16 810×1440 for phones)
+ *  drawn on a canvas. Unlike video seeking this scrubs smoothly in every
  *  browser (incl. iOS Safari and embedded viewers) and in both directions.
  *  The grading/extraction pipeline is documented in docs/MEDIA.md.
  * ============================================================================
@@ -31,8 +32,9 @@ export interface TourChapter {
   spaceId: string | null;
   /** Image sequence scrubbed by scroll: `${dir}00.webp` … */
   frames: { dir: string; count: number };
-  /** First frame (instant first paint). */
+  /** First frame (instant first paint), 16:9 and 9:16. */
   poster: string;
+  posterPortrait: string;
   /** Short line under the title (intro/finale use their own copy). */
   kicker?: string;
 }
@@ -46,11 +48,12 @@ export const FINALE_START_CAMERA: TourCamera = { x: 820, y: 420, zoom: 1.6 };
  * Frames per chapter come from the media pipeline (tools/media/film.py writes
  * src/generated/tour-frames.json): the count follows the amount of camera
  * movement, so every scroll step shows the same small step of motion.
- * Files: pNN.webp (packs of 4 frames), preview.webp (all frames, small), poster.webp.
+ * Files per set (d/, m/): pNN.webp (packs of 6 frames), poster.webp (first frame).
  */
 const clip = (id: keyof typeof frameCounts) => ({
   frames: { dir: `/media/tour/frames/${id}/`, count: frameCounts[id] },
-  poster: `/media/tour/frames/${id}/poster.webp`,
+  poster: `/media/tour/frames/${id}/d/poster.webp`,
+  posterPortrait: `/media/tour/frames/${id}/m/poster.webp`,
 });
 
 export const tourConfig = {
@@ -73,6 +76,6 @@ export const tourConfig = {
     skip: "Rundgang überspringen",
     finaleTitle: "Ihr Fest. Ihre Räume.",
     finaleText: "Wählen Sie auf der Karte, was Ihre Feier braucht – einen Raum, mehrere oder das ganze Haus.",
-    finaleCta: "Zur Karte",
+    finaleCta: "Verfügbarkeit prüfen",
   },
 };

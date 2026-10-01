@@ -25,7 +25,7 @@ export const legalNavigation: NavItem[] = [
 
 export const footerNavigation: NavItem[] = [
   { label: "Bereiche", href: "/bereiche" },
-  { label: "Grundstückskarte", href: "/#karte" },
+  { label: "Raumplaner", href: "/#karte" },
   { label: "Hotel", href: "/bereiche/hotel" },
   { label: "Galerie", href: "/galerie" },
   { label: "FAQ", href: "/faq" },

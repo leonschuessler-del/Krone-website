@@ -9,19 +9,19 @@
 
 export const siteConfig = {
   name: "Zur Krone",
-  legalName: null as string | null, // TODO: exact company / operator name (Impressum)
+  legalName: "Landhotel Gasthof „Zur Krone“, Inh. Boris Schüßler" as string | null, // Impressum krone-landhotel.de
   brandLine: "Landhotel · Gasthof",
   locality: "Leidersbach",
-  tagline: "Restaurant · Hotel · Events · Genuss",
+  tagline: "Eventlocation · Landhotel · Leidersbach",
   description:
-    "Landhotel und Gasthof „Zur Krone“ in Leidersbach: Restaurant, Eventräume, Biergarten und Hotel – einzeln oder kombiniert für Ihren Anlass buchbar.",
+    "Landhotel Gasthof „Zur Krone“ in Leidersbach: Eventlocation für Hochzeiten, Feiern und Firmenveranstaltungen bis 160 Personen – Säle, Wintergarten, Biergarten und Hotel, einzeln oder kombiniert buchbar.",
   locale: "de-DE",
   timeZone: "Europe/Berlin",
   currency: "EUR",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 
   address: {
-    street: "Hauptstraße 106" as string | null, // from the entrance sign (drone footage V01) – confirm
+    street: "Hauptstraße 106" as string | null, // Impressum krone-landhotel.de
     postalCode: "63849",
     city: "Leidersbach",
     country: "Deutschland",
@@ -35,11 +35,12 @@ export const siteConfig = {
   },
 
   contact: {
-    phone: null as string | null, // TODO
-    email: null as string | null, // TODO
-    contactPerson: null as string | null, // TODO
+    phone: "+49 6028 99967-0" as string | null,
+    fax: "+49 6028 99967-24" as string | null,
+    email: "info@krone-landhotel.de" as string | null,
+    contactPerson: "Boris Schüßler" as string | null,
     openingHoursNote: null as string | null, // TODO: office / reachability hours
-    needsVerification: true,
+    needsVerification: false,
   },
 
   /** Social links – configurable placeholders. Leave `url: null` to hide. */
@@ -49,9 +50,9 @@ export const siteConfig = {
   ],
 
   hero: {
-    eyebrow: "Landhotel & Gasthof · Leidersbach",
+    eyebrow: "Eventlocation · Landhotel · Leidersbach",
     title: "Willkommen in der Krone.",
-    subline: "Gaststube, Säle, Wintergarten, Biergarten und ein eigenes Hotel unter einem Dach. Für Hochzeiten, Familienfeste und Firmenabende im Spessart.",
+    subline: "Hochzeiten, Feiern und Firmenveranstaltungen bis 160 Personen. Säle, Wintergarten, Biergarten und ein eigenes Hotel unter einem Dach.",
     primaryCta: { label: "Location entdecken", href: "#location" },
     secondaryCta: { label: "Bereiche auswählen", href: "#karte" },
     video: {

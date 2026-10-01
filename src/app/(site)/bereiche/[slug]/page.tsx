@@ -90,7 +90,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
               <>
                 <SelectSpaceButton spaceId={space.id} name={space.name} size="lg" />
                 <ButtonLink href="/#karte" variant="dark" size="lg">
-                  Zum Konfigurator <ArrowRight className="h-4 w-4" />
+                  Zum Raumplaner <ArrowRight className="h-4 w-4" />
                 </ButtonLink>
               </>
             ) : (
@@ -206,7 +206,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             {space.bookable && (
               <div className="mt-6">
                 <ButtonLink href="/#karte" variant="secondary">
-                  Zum Konfigurator
+                  Zum Raumplaner
                 </ButtonLink>
               </div>
             )}

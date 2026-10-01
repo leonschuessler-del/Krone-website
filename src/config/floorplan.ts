@@ -111,13 +111,13 @@ export const spaceShapes: SpaceShape[] = [
     spaceId: "side-room",
     level: "ground-floor",
     polygon: [[863, 235], [971, 237], [971, 458], [863, 458]],
-    labelPosition: { x: 917, y: 347 },
+    labelPosition: { x: 917, y: 300 },
   },
   {
     spaceId: "stage",
     level: "ground-floor",
     polygon: [[971, 239], [1029, 245], [1055, 458], [971, 458]],
-    labelPosition: { x: 1008, y: 355 },
+    labelPosition: { x: 1010, y: 405 },
   },
   {
     spaceId: "old-tavern",
@@ -177,30 +177,19 @@ export const mapFeatures: MapFeature[] = [
     id: "parking",
     type: "parking",
     label: "Parkplatz",
-    note: "Schotterparkplatz hinter dem Haus (am Haus ausgeschildert: „Parkplätze im Hof“)",
+    note: "Hofeinfahrt (Schotter) und Stellplätze im Hof – am Haus ausgeschildert: „Parkplätze im Hof“",
     rentable: false,
-    polygon: [[1125, 267], [1305, 278], [1305, 429], [1351, 593], [1377, 731], [1369, 953], [1193, 948], [1193, 816], [1165, 704], [1213, 701], [1165, 482]],
-    labelPosition: { x: 1250, y: 498 },
-  },
-  {
-    id: "parking-yard",
-    type: "parking",
-    label: "Parkplatz Hof",
-    note: "Weitere Stellplätze im Hof vor dem Biergarten",
-    rentable: false,
-    polygon: [[916, 895], [994, 895], [996, 807], [1059, 786], [1057, 701], [1160, 699], [1193, 816], [1193, 948], [916, 953]],
-    labelPosition: { x: 1102, y: 869 },
-  },
-  {
-    id: "driveway",
-    type: "street",
-    label: "Hofeinfahrt",
-    note: "Zufahrt zu Hof und Parkplatz",
-    rentable: false,
-    polygon: [[1051, 238], [1125, 260], [1165, 482], [1213, 701], [1110, 694], [1065, 580], [1057, 318]],
-    labelPosition: { x: 1091, y: 445 },
+    polygon: [[1051, 238], [1121, 259], [1171, 481], [1227, 699], [1316, 695], [1329, 811], [1347, 937], [1193, 951], [919, 975], [916, 895], [994, 895], [996, 807], [1059, 786], [1057, 701], [1110, 694], [1065, 580], [1057, 318]],
+    labelPosition: { x: 1150, y: 860 },
   },
 ];
+
+/**
+ * The plot of the Krone as outlined by the owner on the drone photo (F054):
+ * building, courtyard, beer garden, driveway and parking. Shown in colour on
+ * the map; everything outside is muted in the base image.
+ */
+export const plotOutline: Point[] = [[462, 138], [503, 129], [681, 115], [789, 105], [949, 185], [1122, 259], [1171, 481], [1228, 699], [1317, 695], [1330, 812], [1348, 939], [994, 972], [640, 1028], [623, 825], [599, 625], [468, 617], [470, 368]];
 
 /** Legacy schematic boundary – only used by the old generated plan (/map/base.svg). */
 export const propertyBoundary: Point[] = [

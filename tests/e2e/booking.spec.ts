@@ -3,6 +3,10 @@ import { getDemoScenario } from "../../src/content/demo-scenario";
 
 const scenario = getDemoScenario();
 
+// With motion the planner lives at the end of the scroll film (see planner.spec.ts);
+// these tests drive the full configurator, which is the reduced-motion version.
+test.use({ contextOptions: { reducedMotion: "reduce" } });
+
 async function pickDate(page: Page, date: string) {
   for (let i = 0; i < 4 && (await page.locator(`[data-date="${date}"]`).count()) === 0; i++) {
     await page.getByLabel("Nächster Monat").click();
@@ -159,7 +163,7 @@ test("Detailseite: Bereich auswählen und zurück zur Karte – Auswahl bleibt e
   await page.goto("/bereiche/wintergarten");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Wintergarten");
   await page.getByRole("button", { name: "Wintergarten auswählen" }).click();
-  await page.getByRole("link", { name: /Zum Konfigurator/ }).first().click();
+  await page.getByRole("link", { name: /Zum Raumplaner/ }).first().click();
   await page.waitForURL(/#karte/);
   await expect(page.getByTestId("site-map").first().locator('[data-space="winter-garden"]')).toHaveAttribute("aria-checked", "true");
 });

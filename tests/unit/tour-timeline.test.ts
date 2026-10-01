@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
-import { packCount, progressiveOrder } from "@/features/home/tour-player";
+import { packCount, pickSet, posterUrl } from "@/features/home/tour-player";
 import { describe, expect, it } from "vitest";
 import { FINALE_START_CAMERA, tourConfig, WIDE_CAMERA } from "@/config/tour";
-import { cameraTransform, chapterSpans, computeFrame, overviewCamera, smoothstep, TAIL } from "@/features/home/tour-timeline";
+import { cameraTransform, chapterSpans, computeFrame, fitTransform, overviewCamera, plannerProgress, smoothstep, TAIL } from "@/features/home/tour-timeline";
 
 const chapters = tourConfig.chapters;
 const spans = chapterSpans(chapters);
@@ -18,14 +18,15 @@ describe("scroll film timeline", () => {
     ]);
     chapters.forEach((c) => {
       expect(c.frames.dir).toBe(`/media/tour/frames/${c.id}/`);
-      expect(c.poster).toBe(`${c.frames.dir}poster.webp`);
+      expect(c.poster).toBe(posterUrl(c.frames.dir, "d"));
       expect(c.frames.count).toBeGreaterThanOrEqual(40);
-      // every pack, the preview track and the poster exist in /public
-      for (let p = 0; p < packCount(c.frames.count); p++) {
-        expect(existsSync(`public${c.frames.dir}p${String(p).padStart(2, "0")}.webp`)).toBe(true);
+      // both frame sets (16:9 desktop, 9:16 phone): every pack and the poster exist in /public
+      for (const set of ["d", "m"] as const) {
+        for (let p = 0; p < packCount(c.frames.count); p++) {
+          expect(existsSync(`public${c.frames.dir}${set}/p${String(p).padStart(2, "0")}.webp`)).toBe(true);
+        }
+        expect(existsSync(`public${posterUrl(c.frames.dir, set)}`)).toBe(true);
       }
-      expect(existsSync(`public${c.frames.dir}preview.webp`)).toBe(true);
-      expect(existsSync(`public${c.frames.dir}poster.webp`)).toBe(true);
     });
   });
 
@@ -120,10 +121,42 @@ describe("cuts keep moving", () => {
   });
 });
 
-describe("progressive frame order", () => {
-  it("starts coarse and contains every frame exactly once", () => {
-    const order = progressiveOrder(36);
-    expect(order.slice(0, 3)).toEqual([0, 35, 18]);
-    expect([...order].sort((a, b) => a - b)).toEqual(Array.from({ length: 36 }, (_, i) => i));
+describe("frame sets", () => {
+  it("portrait screens get the 9:16 set, landscape the 16:9 set", () => {
+    expect(pickSet(390, 664)).toBe("m");
+    expect(pickSet(1440, 900)).toBe("d");
+    expect(pickSet(1024, 1366)).toBe("m");
+  });
+});
+
+describe("planner at the end of the film", () => {
+  it("map, areas and planner appear in order and stay (dwell)", () => {
+    const last = spans.at(-1)!;
+    const at = (t: number) => frame(last.start + (last.end - last.start) * t);
+    expect(at(0.2).mapOpacity).toBe(0);
+    expect(at(0.5).mapOpacity).toBe(1);
+    expect(at(0.5).plannerActive).toBe(false);
+    const p = plannerProgress(chapters, spans);
+    const f = frame(p);
+    expect(f.plannerActive).toBe(true);
+    expect(f.plannerMix).toBe(1);
+    expect(f.captionOpacity.at(-1)).toBe(1);
+    expect(frame(1).plannerMix).toBe(1);
+  });
+
+  it("the finale clip finishes before the map takes over", () => {
+    const last = spans.at(-1)!;
+    const f = frame(last.start + (last.end - last.start) * 0.5);
+    expect(f.layerProgress.at(-1)).toBeCloseTo(1);
+  });
+
+  it("fits the plot beside the panel", () => {
+    const box = { x0: 440, y0: 80, x1: 1370, y1: 1050 };
+    const free = { left: 32, top: 96, right: 1000, bottom: 860 };
+    const t = fitTransform(box, free);
+    expect(box.x0 * t.scale + t.tx).toBeGreaterThanOrEqual(free.left - 0.01);
+    expect(box.x1 * t.scale + t.tx).toBeLessThanOrEqual(free.right + 0.01);
+    expect(box.y0 * t.scale + t.ty).toBeGreaterThanOrEqual(free.top - 0.01);
+    expect(box.y1 * t.scale + t.ty).toBeLessThanOrEqual(free.bottom + 0.01);
   });
 });

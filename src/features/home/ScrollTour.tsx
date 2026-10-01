@@ -8,24 +8,15 @@ import { mapConfig } from "@/config/map";
 import { tourConfig } from "@/config/tour";
 import type { Point } from "@/domain/types";
 import { SelectSpaceButton } from "@/features/spaces/SelectSpaceButton";
+import type { SpaceView } from "@/features/spaces/types";
 import { cn } from "@/lib/cn";
+import { useBookingStore } from "@/store/booking-store";
+import { TourPlannerPanel } from "./TourPlanner";
 import { mountTourPlayer } from "./tour-player";
 import { totalWeight } from "./tour-timeline";
 
-export interface TourSpace {
-  id: string;
-  name: string;
-  code: string;
-  color: string;
-  href: string;
-  shortDescription: string | null;
-  bookable: boolean;
-  polygon: Point[] | null;
-  labelPosition: { x: number; y: number } | null;
-}
-
 interface Props {
-  spaces: TourSpace[];
+  spaces: SpaceView[];
   hero: { eyebrow: string; subline: string };
 }
 
@@ -43,6 +34,9 @@ export function ScrollTour({ spaces, hero }: Props) {
   const chapters = tourConfig.chapters;
   const byId = useMemo(() => new Map(spaces.map((s) => [s.id, s])), [spaces]);
   const roomChapters = chapters.filter((c) => c.spaceId);
+  const selected = useBookingStore((st) => st.selectedSpaceIds);
+  const toggleSpace = useBookingStore((st) => st.toggleSpace);
+  const onMap = spaces.filter((s) => s.shape && s.bookable && s.active);
 
   const sectionRef = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
@@ -56,7 +50,7 @@ export function ScrollTour({ spaces, hero }: Props) {
 
   // Screen-reader announcement once the chapter settled and only while pinned.
   const activeSpaceId = chapters[active]?.spaceId;
-  const activeLabel = activeSpaceId ? (byId.get(activeSpaceId)?.name ?? "") : active === 0 ? "Start" : "Grundriss";
+  const activeLabel = activeSpaceId ? (byId.get(activeSpaceId)?.name ?? "") : active === 0 ? "Start" : "Raumplaner";
   useEffect(() => {
     const id = window.setTimeout(() => {
       const r = sectionRef.current?.getBoundingClientRect();
@@ -84,15 +78,20 @@ export function ScrollTour({ spaces, hero }: Props) {
     >
       <div className="sticky top-0 h-[100svh] w-full overflow-hidden bg-anthracite text-paper">
         {/* IMAGE SEQUENCES (drawn by the tour player) */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img data-tour-poster src={chapters[0]!.poster} alt="" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" aria-hidden="true" />
+        <picture data-tour-poster>
+          <source media="(max-aspect-ratio: 1/1)" srcSet={chapters[0]!.posterPortrait} />
+          <img aria-hidden="true" src={chapters[0]!.poster} alt="" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
+        </picture>
         <canvas data-tour-canvas className="absolute inset-0 h-full w-full" aria-hidden="true" />
+        {/* blurred photo behind the planner, where the map no longer covers the screen */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img data-tour-backdrop src="/media/floorplan/aerial-1280.webp" alt="" aria-hidden="true" loading="lazy" className="tour-backdrop absolute inset-0 h-full w-full object-cover" style={{ opacity: 0, visibility: "hidden" }} />
 
         {/* FINALE: drone photo from above with the bookable areas */}
         <div
           data-tour-aerial
           data-k={k}
-          className="absolute left-0 top-0 origin-top-left will-change-transform"
+          className="tour-aerial absolute left-0 top-0 origin-top-left will-change-transform"
           style={{ width: MAP_W * k, height: MAP_H * k, opacity: 0, visibility: "hidden" }}
           aria-hidden="true"
         >
@@ -105,31 +104,60 @@ export function ScrollTour({ spaces, hero }: Props) {
                 .map((f) => (
                   <polygon key={f.id} points={pts(f.polygon)} fill="#1c1917" fillOpacity={0.45} stroke="#f4efe6" strokeOpacity={0.5} strokeWidth={1.5} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
                 ))}
-              {spaces
-                .filter((s) => s.polygon && s.bookable)
-                .map((s) => (
-                  <polygon key={s.id} points={pts(s.polygon!)} fill="#ffffff" fillOpacity={0.1} stroke="#f4efe6" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+              {mapFeatures
+                .filter((f) => f.type === "parking")
+                .map((f) => (
+                  <polygon key={f.id} points={pts(f.polygon)} fill="none" stroke="#f4efe6" strokeOpacity={0.45} strokeWidth={1.2} strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
                 ))}
-              {spaces
-                .filter((s) => s.polygon && s.bookable && s.labelPosition)
-                .map((s) => (
-                  <g key={`l-${s.id}`} transform={`translate(${s.labelPosition!.x} ${s.labelPosition!.y})`}>
-                    <circle r={22} fill="#1c1917" fillOpacity={0.88} stroke="#f4efe6" strokeOpacity={0.7} strokeWidth={1.5} />
-                    <text textAnchor="middle" dominantBaseline="central" fill="#fbf8f2" fontSize={s.code.length > 1 ? 17 : 21} fontFamily="Georgia, serif" fontWeight={600}>
-                      {s.code}
-                    </text>
-                  </g>
-                ))}
+              {onMap.map((s) => (
+                <g key={s.id} className="tour-area" data-space-id={s.id} data-selected={selected.includes(s.id)} onClick={() => toggleSpace(s.id)}>
+                  <polygon points={pts(s.shape!.polygon as Point[])} />
+                </g>
+              ))}
             </g>
           </svg>
         </div>
 
-        {/* legibility gradients */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-anthracite/85 via-anthracite/10 to-anthracite/40" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-anthracite/60 via-transparent to-transparent" />
+        {/* legibility gradients (faded out by the player in the planner) */}
+        <div data-tour-shade className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-t from-anthracite/85 via-anthracite/10 to-anthracite/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-anthracite/60 via-transparent to-transparent" />
+        </div>
 
-        {/* CAPTIONS */}
-        <div className="absolute inset-0">
+        {/* area buttons on the photo – constant size, positioned by the player */}
+        <div data-tour-labels className="tour-labels absolute inset-0 overflow-hidden" style={{ opacity: 0, visibility: "hidden" }}>
+          {onMap.map((s) => {
+            const on = selected.includes(s.id);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                data-x={s.shape!.labelPosition.x}
+                data-y={s.shape!.labelPosition.y}
+                data-toggle-space={s.id}
+                aria-pressed={on}
+                aria-label={`${s.name} ${on ? "abwählen" : "auswählen"}`}
+                tabIndex={-1}
+                onClick={() => toggleSpace(s.id)}
+                className="tour-label absolute left-0 top-0 inline-flex items-center gap-2 whitespace-nowrap rounded-full border py-0.5 pl-0.5 shadow-[0_8px_20px_-8px_rgb(0_0_0/0.8)] backdrop-blur-md transition-colors"
+              >
+                <span className="tour-label-code grid h-7 min-w-7 place-items-center rounded-full px-1 font-serif text-[0.78rem] font-semibold">{s.code}</span>
+                <span className="tour-label-name pr-3 font-serif text-[0.92rem] leading-none">{s.name}</span>
+              </button>
+            );
+          })}
+          {mapFeatures
+            .filter((f) => f.type === "parking")
+            .map((f) => (
+              <span key={f.id} data-x={f.labelPosition.x} data-y={f.labelPosition.y} className="tour-parking absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/60 py-0.5 pl-0.5 pr-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-paper/85 backdrop-blur-sm" aria-hidden="true">
+                <span className="grid h-5 w-5 place-items-center rounded-full border border-white/40 text-[0.62rem] font-bold">P</span>
+                {f.label}
+              </span>
+            ))}
+        </div>
+
+        {/* CAPTIONS (each caption takes clicks only while shown – set by the player) */}
+        <div className="pointer-events-none absolute inset-0">
           {chapters.map((c, i) => {
             const isActive = i === active;
             const common = {
@@ -149,28 +177,15 @@ export function ScrollTour({ spaces, hero }: Props) {
                       <button type="button" data-tour-start className="inline-flex h-13 items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#d4b06a] to-[#b8904a] px-7 font-semibold text-anthracite shadow-[0_8px_20px_-10px_rgb(138_106_47/0.9)]">
                         Rundgang starten <ArrowDown className="h-4 w-4" />
                       </button>
-                      <Link href="#grundriss" prefetch={false} className="inline-flex h-13 items-center justify-center rounded-full border border-white/20 bg-white/5 px-7 font-semibold backdrop-blur hover:bg-white/10">
-                        Direkt zur Karte
+                      <Link href="#karte" data-tour-jump="planner" prefetch={false} className="inline-flex h-13 items-center justify-center rounded-full border border-white/20 bg-white/5 px-7 font-semibold backdrop-blur hover:bg-white/10">
+                        Direkt zum Raumplaner
                       </Link>
                     </div>
                   </div>
                 </div>
               );
             }
-            if (c.id === "finale") {
-              return (
-                <div key={c.id} {...common} className={cn("container-page absolute inset-x-0 bottom-0 pb-20 md:pb-24 short:pb-12", !isActive && "pointer-events-none")}>
-                  <div className="max-w-xl rounded-[1.5rem] bg-anthracite/55 p-6 backdrop-blur-md md:p-8">
-                    <p className="eyebrow !text-gold-light">Grundriss</p>
-                    <h2 className="mt-3 text-4xl md:text-5xl short:text-3xl">{tourConfig.copy.finaleTitle}</h2>
-                    <p className="mt-4 max-w-xl text-lg text-paper/85 short:hidden">{tourConfig.copy.finaleText}</p>
-                    <Link href="#grundriss" prefetch={false} className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-gold px-6 font-semibold text-anthracite hover:bg-gold-light">
-                      {tourConfig.copy.finaleCta} <ArrowDown className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              );
-            }
+            if (c.id === "finale") return <TourPlannerPanel key={c.id} spaces={spaces} index={i} />;
             const s = c.spaceId ? byId.get(c.spaceId) : undefined;
             if (!s) return null;
             const n = roomChapters.findIndex((r) => r.id === c.id) + 1;
@@ -195,11 +210,11 @@ export function ScrollTour({ spaces, hero }: Props) {
         </div>
 
         {/* chapter rail (desktop) */}
-        <nav aria-label="Kapitel des Rundgangs" className="absolute right-5 top-1/2 hidden -translate-y-1/2 lg:block">
+        <nav aria-label="Kapitel des Rundgangs" className="tour-railnav absolute right-5 top-1/2 hidden -translate-y-1/2 lg:block">
           <ol className="flex flex-col items-end">
             {chapters.map((c, i) => {
               const s = c.spaceId ? byId.get(c.spaceId) : undefined;
-              const label = s?.name ?? (c.id === "intro" ? "Ankommen" : "Grundriss");
+              const label = s?.name ?? (c.id === "intro" ? "Ankommen" : "Raumplaner");
               const on = i === active;
               return (
                 <li key={c.id}>
@@ -223,7 +238,7 @@ export function ScrollTour({ spaces, hero }: Props) {
         <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10" aria-hidden="true">
           <div data-tour-progress className="h-full origin-left bg-gradient-to-r from-gold to-gold-light" style={{ transform: "scaleX(0)" }} />
         </div>
-        <Link data-tour-skip href="#grundriss" prefetch={false} className="absolute bottom-5 right-5 hidden items-center gap-1.5 rounded-full border border-white/15 bg-anthracite/50 px-3.5 py-1.5 text-xs font-semibold text-paper/85 backdrop-blur hover:text-paper sm:inline-flex">
+        <Link data-tour-skip data-tour-jump="planner" href="#karte" prefetch={false} className="absolute bottom-5 right-5 hidden items-center gap-1.5 rounded-full border border-white/15 bg-anthracite/50 px-3.5 py-1.5 text-xs font-semibold text-paper/85 backdrop-blur hover:text-paper sm:inline-flex">
           {tourConfig.copy.skip} <ArrowDown className="h-3.5 w-3.5" />
         </Link>
         <p className="sr-only" aria-live="polite">

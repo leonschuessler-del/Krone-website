@@ -3,7 +3,7 @@
  *
  * baseLayer: the visual underlay beneath the interactive SVG polygons – a real,
  * colour-graded drone photo (top-down) of the whole plot, cropped to 3:2;
- * neighbouring buildings are desaturated, darkened and hatched in the image.
+ * everything outside the plot (plotOutline) is desaturated and darkened in the image.
  * Replace by putting another image with the same crop into /public/media/floorplan/
  * and adjusting the polygons in src/config/floorplan.ts.
  */
@@ -16,5 +16,4 @@ export const mapConfig = {
   },
   /** Show full names next to code badges from this rendered map width (px). */
   showNamesFromWidth: 820,
-  disclaimer: "Drohnenaufnahme von oben · Raumgrenzen sinngemäß eingezeichnet, Nachbargebäude abgeblendet. Die Toiletten sind bei jeder Buchung inklusive.",
 } as const;

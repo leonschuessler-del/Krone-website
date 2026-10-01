@@ -33,6 +33,7 @@
     "@electric-sql/pglite": "^0.5.8",
     "@fontsource-variable/source-sans-3": "^5.3.0",
     "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/sorts-mill-goudy": "^5.3.0",
     "@fontsource/unifrakturmaguntia": "^5.3.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

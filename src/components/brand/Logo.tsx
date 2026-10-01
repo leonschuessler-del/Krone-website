@@ -1,72 +1,95 @@
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 
+/** Gold of the original logo (krone-landhotel.de). */
+export const BRAND_GOLD = "#bc8620";
+const LIGHT_GOLD = "#d8bb7e";
+
 /**
- * Brand mark of the Krone, redrawn after the lettering painted on the façade
- * (Hauptstraße 106): Fraktur "Zur Krone" with a royal crown above the "K".
- * Crown: three arches with pearls, orb with cross, jewelled band.
- * Replace with the official vector file once available.
+ * Crown of the original logo: orb with cross, five round lobes, band and ring.
+ * Fine cut lines are a mask, so the mark works on any background.
  */
-export function CrownMark({ className, title }: { className?: string; title?: string }) {
+function CrownShape({ maskId }: { maskId: string }) {
   return (
-    <svg viewBox="0 0 120 92" className={cn("h-7 w-auto", className)} fill="none" role={title ? "img" : undefined} aria-hidden={title ? undefined : true}>
+    <>
+      <defs>
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="90" y="50" width="120" height="110">
+          <rect x="90" y="50" width="120" height="110" fill="#fff" />
+          <g fill="none" stroke="#000" strokeWidth={2} strokeLinecap="round">
+            <path d="M114 134 Q150 126 186 134" />
+            <path d="M124.5 126 Q123 118 122 113" />
+            <path d="M175.5 126 Q177 118 178 113" />
+            <path d="M141 125 Q140.5 115 140.5 108" />
+            <path d="M159 125 Q159.5 115 159.5 108" />
+          </g>
+          <ellipse cx="150" cy="148.6" rx="23" ry="4" fill="#000" />
+        </mask>
+      </defs>
+      <g mask={`url(#${maskId})`}>
+        <path d="M148.3 62h3.4v5h4.4v3.2h-4.4v5.3h-3.4v-5.3h-4.4v-3.2h4.4z" />
+        <circle cx="150" cy="81" r="6" />
+        <ellipse cx="150" cy="99.5" rx="8.6" ry="12" />
+        <circle cx="133" cy="104" r="9" />
+        <circle cx="167" cy="104" r="9" />
+        <circle cx="116.5" cy="110" r="10.5" />
+        <circle cx="183.5" cy="110" r="10.5" />
+        <path d="M107 112 Q110 122 113 128 L187 128 Q190 122 193 112 Q170 116 150 116 Q130 116 107 112z" />
+        <path d="M111 127q39-7 78 0l-1.6 14.5q-37.4-6.5-74.8 0z" />
+        <ellipse cx="150" cy="148" rx="34.5" ry="8.2" />
+      </g>
+    </>
+  );
+}
+
+/** The crown alone (favicon-like contexts, admin). */
+export function CrownMark({ className, title }: { className?: string; title?: string }) {
+  const id = useId().replace(/:/g, "");
+  return (
+    <svg viewBox="100 58 100 100" className={cn("h-7 w-auto", className)} fill="currentColor" role={title ? "img" : undefined} aria-hidden={title ? undefined : true}>
       {title && <title>{title}</title>}
-      <g stroke="currentColor" strokeWidth={3.4} strokeLinejoin="round" strokeLinecap="round">
-        {/* orb with cross */}
-        <path d="M60 4v11M55 8.5h10" />
-        <circle cx="60" cy="21" r="6" fill="currentColor" fillOpacity={0.14} />
-        {/* outer arches */}
-        <path d="M21 66C11 48 11 30 25 27c13-3 24 8 35 4" />
-        <path d="M99 66c10-18 10-36-4-39-13-3-24 8-35 4" />
-        {/* inner arches */}
-        <path d="M40 63c-4-14-1-24 8-25 7-1 10 3 12-7" />
-        <path d="M80 63c4-14 1-24-8-25-7-1-10 3-12-7" />
-        <path d="M60 31v31" />
-        {/* jewelled band */}
-        <path d="M18 66c27-7 57-7 84 0l-2 12c-26-6-54-6-80 0z" fill="currentColor" fillOpacity={0.14} />
-        <path d="M23 87c24-6 50-6 74 0" />
-      </g>
-      <g fill="currentColor">
-        <circle cx="25" cy="27" r="3" />
-        <circle cx="48" cy="38" r="2.6" />
-        <circle cx="72" cy="38" r="2.6" />
-        <circle cx="95" cy="27" r="3" />
-        <ellipse cx="36" cy="71.5" rx="3" ry="2.2" />
-        <ellipse cx="48" cy="70" rx="2.4" ry="2" />
-        <ellipse cx="60" cy="69.5" rx="3.6" ry="2.6" />
-        <ellipse cx="72" cy="70" rx="2.4" ry="2" />
-        <ellipse cx="84" cy="71.5" rx="3" ry="2.2" />
-      </g>
+      <CrownShape maskId={`crown-${id}`} />
     </svg>
   );
 }
 
-export function Logo({
-  tone = "dark",
-  compact = false,
-  className,
-}: {
-  tone?: "dark" | "light";
-  compact?: boolean;
-  className?: string;
-}) {
-  const ink = tone === "light" ? "text-paper" : "text-[#5e2a2e]";
+/**
+ * Logo as on krone-landhotel.de: arched "Landhotel-Gasthof", the crown and the
+ * Fraktur "Zur Krone" – redrawn as a vector so it stays sharp at every size.
+ */
+export function Logo({ tone = "dark", className }: { tone?: "dark" | "light"; compact?: boolean; className?: string }) {
+  const id = useId().replace(/:/g, "");
   return (
-    <span className={cn("inline-flex flex-col items-start leading-none", className)} aria-label="Landhotel Gasthof Zur Krone">
-      <span aria-hidden="true" className={cn("relative whitespace-nowrap font-fraktur text-[1.9rem] leading-none tracking-[0.01em]", ink)} style={{ fontFamily: "var(--font-fraktur)" }}>
-        Zur{" "}
-        <span className="relative inline-block">
-          <CrownMark className={cn("absolute bottom-[84%] left-1/2 h-[0.54em] -translate-x-1/2", tone === "light" ? "text-gold-light" : "text-[#8a6a2f]")} />K
-        </span>
-        rone
-      </span>
-      {!compact && (
-        <span
-          aria-hidden="true"
-          className={cn("mt-1 pl-0.5 text-[0.52rem] font-semibold uppercase tracking-[0.42em]", tone === "light" ? "text-gold-light/90" : "text-gold-dark")}
-        >
-          Landhotel · Gasthof
-        </span>
-      )}
-    </span>
+    <svg
+      viewBox="0 0 300 214"
+      role="img"
+      aria-label="Landhotel-Gasthof Zur Krone"
+      className={cn("block h-[3.65rem] w-auto", className)}
+      style={{ color: tone === "light" ? LIGHT_GOLD : BRAND_GOLD }}
+      fill="currentColor"
+    >
+      <defs>
+        <path id={`arc-${id}`} d="M 14 58 Q 150 0 286 58" />
+      </defs>
+      <text fontSize={31} stroke="currentColor" strokeWidth={1.25} textAnchor="middle" style={{ fontFamily: "var(--font-goudy), Georgia, serif" }}>
+        <textPath href={`#arc-${id}`} startOffset="50%">
+          Landhotel-Gasthof
+        </textPath>
+      </text>
+      <g transform="translate(0 -9)">
+        <CrownShape maskId={`crown-${id}`} />
+      </g>
+      <text
+        x={150}
+        y={207}
+        fontSize={82}
+        textAnchor="middle"
+        stroke="currentColor"
+        strokeWidth={2}
+        transform="translate(150 0) scale(0.78 1) translate(-150 0)"
+        style={{ fontFamily: "var(--font-fraktur), Georgia, serif" }}
+      >
+        Zur Krone
+      </text>
+    </svg>
   );
 }

@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarDays, Check, ChevronUp, Info, List, Map as MapIcon, Maximize2, RotateCcw, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronUp, List, Map as MapIcon, Maximize2, RotateCcw, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { SpaceImage } from "@/components/media/SpaceImage";
-import { mapConfig } from "@/config/map";
 import { siteConfig } from "@/config/site";
 import { getFullVenueSpaceIds, isFullVenueSelection } from "@/domain/selection";
 import type { AvailabilityCheckResponse } from "@/features/availability/api-types";
@@ -344,9 +343,7 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
         )}
       </Dialog>
 
-      <p className="mt-3 flex items-start gap-1.5 text-xs text-muted">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {mapConfig.disclaimer}
-      </p>
+
     </div>
   );
 }

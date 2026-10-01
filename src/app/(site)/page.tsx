@@ -8,7 +8,7 @@ import { faqItems } from "@/content/faq";
 import { siteConfig } from "@/config/site";
 import { FaqList } from "@/features/home/FaqList";
 import { Hero } from "@/features/home/Hero";
-import { ScrollTour, type TourSpace } from "@/features/home/ScrollTour";
+import { ScrollTour } from "@/features/home/ScrollTour";
 import { StructuredData } from "@/features/home/StructuredData";
 import { MapConfigurator } from "@/features/map/MapConfigurator";
 import { SpaceCard } from "@/features/spaces/SpaceCard";
@@ -33,34 +33,24 @@ export default async function HomePage() {
     ...spaces.flatMap((s) => s.media.gallery.slice(0, 1).map((g) => ({ ...g, spaceId: s.id }))),
   ].slice(0, 7);
   const hotel = spaces.find((s) => s.id === "hotel");
-  const tourSpaces: TourSpace[] = spaces.map((s) => ({
-    id: s.id,
-    name: s.name,
-    code: s.code,
-    color: s.color,
-    href: s.href,
-    shortDescription: s.shortDescription,
-    bookable: s.bookable,
-    polygon: s.shape?.polygon ?? null,
-    labelPosition: s.shape?.labelPosition ?? null,
-  }));
   const eventSpaces = spaces.filter((s) => s.bookable);
 
   return (
     <>
       <StructuredData />
-      <ScrollTour spaces={tourSpaces} hero={{ eyebrow: siteConfig.hero.eyebrow, subline: siteConfig.hero.subline }} />
+      <ScrollTour spaces={spaces} hero={{ eyebrow: siteConfig.hero.eyebrow, subline: siteConfig.hero.subline }} />
       {/* Static hero for reduced motion and no-JS */}
       <div className="hero-static hidden motion-reduce:block" data-hero>
         <Hero />
       </div>
       <noscript>
-        <style>{".tour-section{display:none!important}.hero-static{display:block!important}"}</style>
+        <style>{".tour-section{display:none!important}.hero-static,.map-fallback{display:block!important}"}</style>
       </noscript>
 
-      {/* Interactive map */}
+      {/* Interactive map – with motion the planner lives at the end of the scroll film;
+          this section is the version for reduced motion and no-JS */}
       {/* -scroll-mt-22 cancels html's scroll-padding-top: /#karte lands flush under the fixed header */}
-      <section id="karte" className="relative -scroll-mt-22 bg-cream py-20 md:py-28" aria-labelledby="map-title">
+      <section id="karte" className="map-fallback relative hidden -scroll-mt-22 bg-cream py-20 motion-reduce:block md:py-28" aria-labelledby="map-title">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         <div className="container-page">
           <SectionHeading id="map-title" eyebrow={siteConfig.mapSection.eyebrow} title={siteConfig.mapSection.title} className="mb-10">
@@ -82,10 +72,10 @@ export default async function HomePage() {
           </SectionHeading>
           <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-sand bg-sand">
             {[
-              { k: "1.720 m²", v: "Anwesen", note: "Haus, Hof und Biergarten" },
+              { k: "160", v: "Gäste", note: "bis zu, im ganzen Haus" },
               { k: String(eventSpaces.filter((s) => s.type !== "hotel").length), v: "Räume und Bereiche", note: "einzeln oder kombiniert" },
-              { k: "10 + 1", v: "Hotelzimmer und Wohnung", note: "im Obergeschoss" },
-              { k: "P", v: "Parkplätze im Hof", note: "direkt am Haus" },
+              { k: "10 + 1", v: "Hotelzimmer und Wohnung", note: "Übernachtung mit Frühstück" },
+              { k: "1.720 m²", v: "Anwesen", note: "Haus, Hof, Biergarten, Parkplatz" },
             ].map((f) => (
               <div key={f.v} className="bg-white p-7 md:p-8">
                 <dt className="font-serif text-4xl font-medium tracking-tight text-ink md:text-5xl">{f.k}</dt>
@@ -120,15 +110,15 @@ export default async function HomePage() {
       <section id="ausstattung" className="panel-dark py-24 md:py-28" aria-labelledby="features-title">
         <div className="container-page">
           <SectionHeading id="features-title" tone="dark" eyebrow="Ausstattung" title="Was das Haus mitbringt.">
-            <p>Ein eingespielter Gasthof mit eigener Küche, eigenem Hotel und Platz unter freiem Himmel.</p>
+            <p>Eine Eventlocation mit Profiküche, eigenem Hotel und Platz unter freiem Himmel.</p>
           </SectionHeading>
           <ul className="mt-12 grid gap-px overflow-hidden rounded-3xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { icon: ChefHat, title: "Profiküche", text: "Herdblock, Kombidämpfer und Spülküche direkt hinter der Theke." },
               { icon: Theater, title: "Bühne", text: "Leicht erhöht und per Schiebetür zum Nebenzimmer zu öffnen." },
               { icon: TreeDeciduous, title: "Wintergarten & Biergarten", text: "Glasdach und Holz-Glastüren, davor der Hof mit Pergola und Sandsteinmauer." },
-              { icon: BedDouble, title: "Landhotel", text: "Zehn Zimmer und eine Wohnung im Obergeschoss, exklusiv für Ihre Gäste." },
-              { icon: Car, title: "Parken im Hof", text: "Eigene Parkplätze im Hof, direkt vor Biergarten und Eingang." },
+              { icon: BedDouble, title: "Landhotel", text: "Zehn Zimmer und eine Wohnung im Obergeschoss, Übernachtung mit Frühstück." },
+              { icon: Car, title: "Parken am Haus", text: "Stellplätze in der Hofeinfahrt und im Hof, direkt vor Biergarten und Eingang." },
               { icon: MapIcon, title: "Toiletten inklusive", text: "Zwei WC-Anlagen im Erdgeschoss gehören zu jeder Buchung." },
             ].map((f) => (
               <li key={f.title} className="bg-anthracite/80 p-7">

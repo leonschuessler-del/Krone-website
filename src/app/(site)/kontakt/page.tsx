@@ -33,7 +33,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
               </li>
               <li className="flex gap-4">
                 <Phone className="mt-1 h-5 w-5 text-gold-dark" />
-                <span>{contact.phone ?? <span className="text-muted">Telefonnummer folgt</span>}</span>
+                <span>{contact.phone ? <a href={`tel:${contact.phone.replace(/[\s-]/g, "")}`}>{contact.phone}</a> : <span className="text-muted">Telefonnummer folgt</span>}</span>
               </li>
               <li className="flex gap-4">
                 <Mail className="mt-1 h-5 w-5 text-gold-dark" />

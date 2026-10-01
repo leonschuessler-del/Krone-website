@@ -34,3 +34,11 @@ export const fraktur = localFont({
   src: [{ path: "../../node_modules/@fontsource/unifrakturmaguntia/files/unifrakturmaguntia-latin-400-normal.woff2", weight: "400", style: "normal" }],
   fallback: ["Georgia", "serif"],
 });
+
+/** Arched "Landhotel-Gasthof" of the logo: Goudy Old Style revival, as on the original logo. */
+export const goudy = localFont({
+  variable: "--font-goudy",
+  display: "swap",
+  src: [{ path: "../../node_modules/@fontsource/sorts-mill-goudy/files/sorts-mill-goudy-latin-400-normal.woff2", weight: "400", style: "normal" }],
+  fallback: ["Georgia", "serif"],
+});

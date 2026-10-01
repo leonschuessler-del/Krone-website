@@ -32,7 +32,9 @@ export interface ChapterSpan {
  */
 export function chapterWeight(c: Pick<TourChapter, "id"> & { frames?: { count: number } }): number {
   const n = c.frames?.count ?? 40;
-  return Math.min(2.6, Math.max(1, n / 60));
+  const film = Math.min(2.6, Math.max(1, n / 60));
+  // the finale plays its clip in the first half, then hands over to the planner
+  return c.id === "finale" ? film / FINALE_FILM_SHARE : film;
 }
 
 export function totalWeight(chapters: readonly (Pick<TourChapter, "id"> & { frames?: { count: number } })[]): number {
@@ -49,6 +51,9 @@ export function chapterSpans(chapters: readonly (Pick<TourChapter, "id"> & { fra
     return { start, end: i === chapters.length - 1 ? 1 : acc / total };
   });
 }
+
+/** Share of the finale chapter used by its clip; the rest belongs to the map and the planner. */
+export const FINALE_FILM_SHARE = 0.5;
 
 /** Share of a chapter used to crossfade from the previous clip. */
 export const CROSSFADE = 0.3;
@@ -73,6 +78,10 @@ export interface TourFrame {
   areasOpacity: number;
   /** finale camera on the photo */
   camera: TourCamera;
+  /** finale: 0 = wide camera, 1 = planner layout (photo beside the panel) */
+  plannerMix: number;
+  /** finale: the planner is fully shown and takes clicks */
+  plannerActive: boolean;
   scrollHint: number;
 }
 
@@ -98,11 +107,14 @@ export function computeFrame(
   // Each clip plays its first (1 - TAIL) during its own chapter and keeps moving
   // through its tail while the next clip fades in – no frozen frame at the cut.
   const head = (i: number) => (i === n - 1 ? 1 : 1 - TAIL);
-  const fadeIn = index === 0 ? 1 : smoothstep(0, CROSSFADE, t);
+  const isLast = index === n - 1 && chapters[index]!.spaceId === null;
+  // the finale clip runs in the first FINALE_FILM_SHARE of its (longer) chapter
+  const cut = isLast ? CROSSFADE * FINALE_FILM_SHARE : CROSSFADE;
+  const fadeIn = index === 0 ? 1 : smoothstep(0, cut, t);
   layerOpacity[index] = fadeIn;
-  layerProgress[index] = t * head(index);
+  layerProgress[index] = isLast ? clamp01(t / FINALE_FILM_SHARE) : t * head(index);
   if (index > 0 && fadeIn < 1) {
-    const k = clamp01(t / CROSSFADE);
+    const k = clamp01(t / cut);
     layerOpacity[index - 1] = 1;
     layerProgress[index - 1] = head(index - 1) + (1 - head(index - 1)) * k;
     layerScale[index - 1] = 1 + 0.05 * k;
@@ -114,16 +126,20 @@ export function computeFrame(
   let mapOpacity = 0;
   let areasOpacity = 0;
   let camera = finaleFrom;
-  const isFinale = index === n - 1 && chapters[index]!.spaceId === null;
+  let plannerMix = 0;
+  let plannerActive = false;
 
   if (index === 0) {
     captionOpacity[0] = 1 - smoothstep(0.5, 0.85, t);
-  } else if (isFinale) {
-    // drone rises above the roof, then the photo from straight above takes over
-    mapOpacity = smoothstep(0.42, 0.62, t);
-    areasOpacity = smoothstep(0.58, 0.78, t);
-    camera = lerpCamera(finaleFrom, finaleTo, smoothstep(0.42, 0.9, t));
-    captionOpacity[index] = smoothstep(0.66, 0.84, t);
+  } else if (isLast) {
+    // drone rises above the roof, the photo from straight above takes over,
+    // keeps climbing while the planner fades in, then stays (dwell)
+    mapOpacity = smoothstep(0.3, 0.44, t);
+    areasOpacity = smoothstep(0.42, 0.56, t);
+    camera = lerpCamera(finaleFrom, finaleTo, smoothstep(0.3, 0.56, t));
+    plannerMix = smoothstep(0.52, 0.76, t);
+    captionOpacity[index] = smoothstep(0.5, 0.64, t);
+    plannerActive = t >= 0.6;
   } else {
     captionOpacity[index] = smoothstep(CROSSFADE * 0.6, CROSSFADE + 0.12, t) * (1 - smoothstep(0.84, 0.97, t));
   }
@@ -138,6 +154,8 @@ export function computeFrame(
     mapOpacity,
     areasOpacity,
     camera,
+    plannerMix,
+    plannerActive,
     scrollHint: index === 0 ? 1 - smoothstep(0.05, 0.25, t) : 0,
   };
 }
@@ -178,4 +196,34 @@ export function overviewCamera(camera: TourCamera, vp: Viewport, map: { width: n
 /** Scroll position (px from the top of the tour) for jumping to a chapter. */
 export function chapterScrollTarget(span: ChapterSpan, scrollable: number, at = 0.5): number {
   return (span.start + (span.end - span.start) * at) * scrollable;
+}
+
+/** Screen box (px) the plot should occupy in the planner, beside/above the panel. */
+export interface FreeArea {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** Transform that fits `box` (map units) into the free screen area, centred. */
+export function fitTransform(box: { x0: number; y0: number; x1: number; y1: number }, free: FreeArea): { tx: number; ty: number; scale: number } {
+  const fw = Math.max(1, free.right - free.left);
+  const fh = Math.max(1, free.bottom - free.top);
+  const scale = Math.min(fw / (box.x1 - box.x0), fh / (box.y1 - box.y0));
+  const cx = (box.x0 + box.x1) / 2;
+  const cy = (box.y0 + box.y1) / 2;
+  return { tx: (free.left + free.right) / 2 - cx * scale, ty: (free.top + free.bottom) / 2 - cy * scale, scale };
+}
+
+/** Interpolates two screen transforms (scale geometrically, keeping motion straight). */
+export function lerpTransform(a: { tx: number; ty: number; scale: number }, b: { tx: number; ty: number; scale: number }, t: number) {
+  const e = clamp01(t);
+  return { tx: lerp(a.tx, b.tx, e), ty: lerp(a.ty, b.ty, e), scale: a.scale * Math.pow(b.scale / a.scale, e) };
+}
+
+/** Progress (0…1 of the tour) where the planner is fully shown – target of "Zur Karte" links. */
+export function plannerProgress(chapters: readonly TourChapter[], spans: readonly ChapterSpan[]): number {
+  const last = spans[chapters.length - 1]!;
+  return last.start + (last.end - last.start) * 0.8;
 }

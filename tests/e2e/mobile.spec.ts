@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+// With motion the planner lives at the end of the scroll film (see planner.spec.ts);
+// these tests drive the full configurator, which is the reduced-motion version.
+test.use({ contextOptions: { reducedMotion: "reduce" } });
+
 test("Mobile: Karte oben, Sticky-CTA zeigt Anzahl, Bottom Sheet mit Auswahl", async ({ page }) => {
   await page.goto("/#karte");
   const map = page.getByTestId("site-map").first();
