@@ -2,7 +2,7 @@ import { count, eq, sql } from "drizzle-orm";
 import { spaceSeeds } from "@/content/spaces";
 import { defaultSettings, demoSettings } from "@/content/settings";
 import { extraSeeds } from "@/content/extras";
-import { getDemoScenario } from "@/content/demo-scenario";
+import { demoBlockSpecs } from "@/content/demo-scenario";
 import { addDays, todayLocal, zonedToUtc, type LocalDate } from "@/domain/time";
 import { hashPassword } from "@/server/auth/password";
 import type { Database } from "./client";
@@ -221,34 +221,24 @@ async function seedDemo(db: Database, today: LocalDate): Promise<void> {
     ])
     .onConflictDoNothing();
 
-  // availability blocks – DEMO / SEED ONLY
-  const sc = getDemoScenario(today);
-  const block = (spaceId: string, date: LocalDate, from: number, to: number, type: "booked" | "reserved" | "blocked" | "maintenance", reason: string) => ({
-    spaceId,
-    startAt: new Date(zonedToUtc(date, from)),
-    endAt: new Date(zonedToUtc(date, to)),
-    type,
-    reason: `${reason} (DEMO)`,
-    isDemo: true,
-    createdBy: "seed",
-  });
-  const beerGardenDays = [0, 1, 2, 3, 4].map((i) => addDays(sc.beerGardenClosedFrom, i));
+  // availability blocks – DEMO / SEED ONLY (same specs as the static preview)
   // blocks have generated ids → guard against a second demo seed
   const [{ n: existingDemoBlocks }] = (await db
     .select({ n: count() })
     .from(t.availabilityBlocks)
     .where(eq(t.availabilityBlocks.isDemo, true))) as [{ n: number }];
   if (Number(existingDemoBlocks) > 0) return;
-  await db.insert(t.availabilityBlocks).values([
-    block("winter-garden", sc.winterGardenBookedDate, 0, 24 * 60 + 120, "booked", "Hochzeitsfeier"),
-    block("stage", sc.stageMaintenanceDate, 14 * 60, 20 * 60, "maintenance", "Wartung Bühnentechnik"),
-    block("restaurant", sc.restaurantEveningDate, 17 * 60, 24 * 60, "booked", "Firmenfeier"),
-    block("old-tavern", sc.oldTavernReservedDate, 11 * 60, 23 * 60, "reserved", "Reservierung in Klärung"),
-    block("beer-garden", beerGardenDays[0]!, 0, 5 * 24 * 60, "blocked", "Saisonpause Biergarten"),
-    block("restaurant", addDays(sc.winterGardenBookedDate, 7), 0, 13 * 60, "booked", "Mittagsgesellschaft"),
-    block("side-room", addDays(sc.winterGardenBookedDate, 7), 12 * 60, 18 * 60, "booked", "Geburtstag"),
-    block("kitchen", addDays(sc.restaurantEveningDate, 14), 6 * 60, 15 * 60, "maintenance", "Reinigung Küchentechnik"),
-  ]);
+  await db.insert(t.availabilityBlocks).values(
+    demoBlockSpecs(today).map((b) => ({
+      spaceId: b.spaceId,
+      startAt: new Date(zonedToUtc(b.date, b.from)),
+      endAt: new Date(zonedToUtc(b.date, b.to)),
+      type: b.type,
+      reason: `${b.reason} (DEMO)`,
+      isDemo: true,
+      createdBy: "seed",
+    })),
+  );
 }
 
 export async function seedDatabase(db: Database, options: { demo: boolean; today?: LocalDate }): Promise<void> {

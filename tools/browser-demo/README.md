@@ -1,5 +1,31 @@
 # Browser-Demo (Vorschau-Link ohne Server)
 
+Es gibt zwei Varianten:
+
+1. **Vorschau-Link (empfohlen, wird als Claude-Artifact geteilt)** – `snapshot/`:
+   eine Datei mit der echten Startseite als Schnappschuss plus `runtime.ts`.
+   Läuft in **jedem** Browser und in eingebetteten Viewern, auch wenn dort
+   WebAssembly oder Video-Spulen gesperrt sind:
+   - Scroll-Rundgang mit demselben Bildsequenz-Player wie die Website
+     (`src/features/home/tour-player.ts`)
+   - Raumdetails mit Galerie, Fläche/Plätzen (Richtwerte), Auswahl
+   - Karte, Gesamte Location, Übernachtung (Hotel), Listenansicht
+   - Verfügbarkeit & Anfrage: Kalender und Prüfung mit der echten
+     Domänenlogik (`src/domain/availability.ts`) auf dem Demo-Szenario,
+     Anfragenummer, Doppelbuchungsschutz; Anfragen bleiben im Browser
+     (localStorage)
+
+   ```bash
+   npm run build && PGLITE_IN_MEMORY=1 npx next start -p 3200 &
+   node tools/browser-demo/snapshot/build-snapshot.mjs http://localhost:3200
+   # → dist-snapshot/krone-vorschau.html (+ artifact/zur-krone-vorschau.html ohne <html>-Gerüst)
+   ```
+   Die Datei lädt Bilder relativ aus `media/…` – beim Teilen `public/media`
+   mit veröffentlichen.
+
+2. **Volle App im Browser** (unten): echte Seiten + PostgreSQL als WASM.
+   Braucht WebAssembly; in manchen eingebetteten Viewern blockiert.
+
 Baut die **komplette Website als statische Vorschau**, die ohne Server im Browser
 läuft. So kann sie z. B. als Claude-Artifact-Link oder auf jedem statischen
 Hosting geteilt werden:

@@ -17,6 +17,9 @@ import type { Space } from "@/domain/types";
 
 type SpaceSeed = Omit<Space, "images" | "videos"> & { mediaFolder: string };
 
+/** One neutral badge colour for every area (the map and lists stay calm; selection is shown by state, not hue). */
+const NEUTRAL = "#4a423b";
+
 const UNKNOWN_FACTS = [
   "areaSqm",
   "capacityStanding",
@@ -67,7 +70,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Restaurant",
     type: "indoor",
     level: "ground-floor",
-    color: "#9a3340",
+    color: NEUTRAL,
     mediaFolder: "restaurant",
     sortOrder: 10,
     shortDescription: "Die Gaststube mit Theke und Rezeption – das Herz des Hauses.",
@@ -82,7 +85,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Küche",
     type: "service",
     level: "ground-floor",
-    color: "#4f6d8a",
+    color: NEUTRAL,
     mediaFolder: "kitchen",
     sortOrder: 20,
     shortDescription: "Die Profiküche direkt hinter der Rezeption.",
@@ -97,7 +100,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Nebenzimmer",
     type: "indoor",
     level: "ground-floor",
-    color: "#c49a2c",
+    color: NEUTRAL,
     mediaFolder: "side-room",
     sortOrder: 30,
     shortDescription: "Der Saal mit Kachelofen – separat oder zum Restaurant geöffnet.",
@@ -112,7 +115,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Bühne",
     type: "indoor",
     level: "ground-floor",
-    color: "#6f5a92",
+    color: NEUTRAL,
     mediaFolder: "stage",
     sortOrder: 40,
     shortDescription: "Der leicht erhöhte Bereich hinter der Schiebetür – für Band, Reden und Auftritte.",
@@ -127,7 +130,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Alte Wirtschaft",
     type: "indoor",
     level: "ground-floor",
-    color: "#b0662b",
+    color: NEUTRAL,
     mediaFolder: "old-tavern",
     sortOrder: 50,
     shortDescription: "Die gemütliche Stube mit Holzboden und eigener Theke.",
@@ -142,7 +145,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Wintergarten",
     type: "indoor",
     level: "ground-floor",
-    color: "#6f9a68",
+    color: NEUTRAL,
     mediaFolder: "winter-garden",
     sortOrder: 60,
     shortDescription: "Hell, mit Glasdach – direkt am Biergarten.",
@@ -157,7 +160,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Biergarten",
     type: "outdoor",
     level: "outdoor",
-    color: "#3f6b3a",
+    color: NEUTRAL,
     mediaFolder: "beer-garden",
     sortOrder: 70,
     shortDescription: "Der Hof hinter dem Haus – mit Sandsteinmauer, Pergola und überdachter Terrasse.",
@@ -172,7 +175,7 @@ export const spaceSeeds: SpaceSeed[] = [
     name: "Hotel",
     type: "hotel",
     level: "first-floor",
-    color: "#7a6f66",
+    color: NEUTRAL,
     mediaFolder: "hotel",
     sortOrder: 80,
     // The whole upper floor is rented as one unit (owner: 10 Zimmer + Wohnung).
@@ -181,7 +184,7 @@ export const spaceSeeds: SpaceSeed[] = [
     includedInFullVenue: false,
     availableForStandaloneRental: true,
     bookingMode: "inquiry",
-    shortDescription: "Das komplette Hotel im Obergeschoss – 10 Zimmer und eine Wohnung, exklusiv für Ihre Gäste.",
+    shortDescription: "Übernachten im Haus: das Landhotel im Obergeschoss mit 10 Zimmern und einer Wohnung – exklusiv für Ihre Gäste.",
     longDescription:
       "Im Obergeschoss über Restaurant, Nebenzimmer und Bühne liegt das Landhotel: Doppel-, Dreibett- und Einzelzimmer mit eigenem Bad, " +
       "ein heller Flur, ein Aufenthaltsraum mit Balkon und eine Wohnung mit eigener Küche. Das Hotel wird als Ganzes vermietet – " +

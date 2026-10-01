@@ -85,8 +85,9 @@ export const mapLevels: MapLevel[] = [
 ];
 
 /*
- * Coordinates: viewBox 1536×1024 over the cropped drone photo
- * (/media/floorplan/aerial-2048.webp). Layout as marked by the owner:
+ * Coordinates: viewBox 1536×1024 over the drone photo of the whole plot incl.
+ * courtyard and parking (/media/floorplan/aerial-2048.webp; neighbouring
+ * buildings are muted in the image so the Krone stands out). Layout as marked by the owner:
  * Alte Wirtschaft (top left) · Küche below · Hauptrestaurant with the entrance
  * wing · Nebenzimmer · Bühne (right end, slightly raised) · Toiletten below the
  * Bühne and next to the Wintergarten · Wintergarten (glass roof) · Biergarten.
@@ -97,47 +98,44 @@ export const spaceShapes: SpaceShape[] = [
   {
     spaceId: "restaurant",
     level: "ground-floor",
-    polygon: [[575, 255], [697, 255], [697, 178], [805, 178], [805, 262], [833, 262], [833, 552], [575, 552]],
-    labelPosition: { x: 704, y: 410 },
+    polygon: [[667, 230], [760, 230], [760, 171], [842, 171], [842, 235], [863, 235], [863, 455], [667, 455]],
+    labelPosition: { x: 765, y: 347 },
   },
   {
     spaceId: "kitchen",
     level: "ground-floor",
-    polygon: [[348, 252], [575, 252], [575, 550], [352, 550]],
-    labelPosition: { x: 462, y: 401 },
+    polygon: [[495, 227], [667, 227], [667, 453], [498, 453]],
+    labelPosition: { x: 581, y: 340 },
   },
   {
     spaceId: "side-room",
     level: "ground-floor",
-    polygon: [[833, 262], [975, 265], [975, 556], [833, 556]],
-    labelPosition: { x: 904, y: 410 },
+    polygon: [[863, 235], [971, 237], [971, 458], [863, 458]],
+    labelPosition: { x: 917, y: 347 },
   },
   {
     spaceId: "stage",
     level: "ground-floor",
-    polygon: [[975, 268], [1052, 276], [1086, 556], [975, 556]],
-    labelPosition: { x: 1024, y: 420 },
+    polygon: [[971, 239], [1029, 245], [1055, 458], [971, 458]],
+    labelPosition: { x: 1008, y: 355 },
   },
   {
     spaceId: "old-tavern",
     level: "ground-floor",
-    polygon: [[338, 78], [562, 78], [562, 248], [338, 248]],
-    labelPosition: { x: 450, y: 163 },
+    polygon: [[487, 95], [657, 95], [657, 224], [487, 224]],
+    labelPosition: { x: 572, y: 160 },
   },
   {
     spaceId: "winter-garden",
     level: "ground-floor",
-    polygon: [[806, 566], [948, 566], [948, 730], [806, 730]],
-    labelPosition: { x: 877, y: 648 },
+    polygon: [[842, 465], [950, 465], [950, 590], [842, 590]],
+    labelPosition: { x: 896, y: 528 },
   },
   {
     spaceId: "beer-garden",
     level: "outdoor",
-    polygon: [
-      [806, 732], [948, 732], [951, 673], [1103, 677], [1084, 764], [1020, 764],
-      [1017, 878], [867, 892], [837, 869], [783, 878], [735, 859], [742, 764],
-    ],
-    labelPosition: { x: 905, y: 812 },
+    polygon: [[842, 591], [950, 591], [952, 547], [1068, 550], [1053, 616], [1005, 616], [1002, 702], [889, 713], [866, 695], [825, 702], [788, 688], [794, 616]],
+    labelPosition: { x: 918, y: 652 },
   },
   {
     // Upper floor (10 Zimmer + Wohnung) – booked as a whole via the hotel button.
@@ -155,8 +153,8 @@ export const mapFeatures: MapFeature[] = [
     label: "Toilettenanlage",
     note: "Bei jeder Buchung automatisch inklusive",
     rentable: false,
-    polygon: [[956, 560], [1090, 560], [1090, 665], [956, 665]],
-    labelPosition: { x: 1023, y: 612 },
+    polygon: [[956, 461], [1058, 461], [1058, 540], [956, 540]],
+    labelPosition: { x: 1007, y: 500 },
   },
   {
     id: "toilets-winter-garden",
@@ -164,16 +162,25 @@ export const mapFeatures: MapFeature[] = [
     label: "Toiletten",
     note: "Bei jeder Buchung automatisch inklusive",
     rentable: false,
-    polygon: [[727, 558], [804, 558], [804, 684], [727, 684]],
-    labelPosition: { x: 765, y: 621 },
+    polygon: [[782, 459], [841, 459], [841, 555], [782, 555]],
+    labelPosition: { x: 811, y: 507 },
   },
   {
     id: "entrance",
     type: "entrance",
     label: "Haupteingang",
     rentable: false,
-    polygon: [[697, 178], [805, 178], [805, 200], [697, 200]],
-    labelPosition: { x: 751, y: 150 },
+    polygon: [[760, 171], [842, 171], [842, 188], [760, 188]],
+    labelPosition: { x: 801, y: 150 },
+  },
+  {
+    id: "parking",
+    type: "parking",
+    label: "Parkplatz",
+    note: "Hofzufahrt und Stellplätze – Anzahl der Stellplätze folgt",
+    rentable: false,
+    polygon: [[1136, 263], [1347, 263], [1354, 941], [990, 941], [990, 805], [1136, 805]],
+    labelPosition: { x: 1239, y: 551 },
   },
 ];
 

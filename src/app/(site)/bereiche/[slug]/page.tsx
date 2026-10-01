@@ -13,7 +13,8 @@ import { SpaceAvailability } from "@/features/spaces/SpaceAvailability";
 import { SpaceMiniMap } from "@/features/spaces/SpaceMiniMap";
 import { formatPriceFrom } from "@/features/spaces/price-label";
 import { env } from "@/lib/env";
-import { formatArea, formatDuration, formatMoney } from "@/lib/format";
+import { displayFacts, ESTIMATE_NOTE } from "@/content/space-estimates";
+import { formatDuration, formatMoney } from "@/lib/format";
 import { listSpaceViews } from "@/server/services/space-service";
 
 export const dynamic = "force-dynamic";
@@ -45,9 +46,10 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
   const others = spaces.filter((s) => s.id !== space.id);
   const images = space.media.hero ? [space.media.hero, ...space.media.gallery.filter((g) => g.src !== space.media.hero!.src)] : space.media.gallery;
 
+  const est = displayFacts(space);
   const facts: Array<{ label: string; value: string; pending?: boolean }> = [
-    { label: "Fläche", value: formatArea(space.areaSqm), pending: space.areaSqm === null },
-    { label: "Sitzplätze", value: space.capacitySeated !== null ? String(space.capacitySeated) : "Angabe folgt", pending: space.capacitySeated === null },
+    { label: "Fläche", value: est.area, pending: space.areaSqm === null && est.area === "Angabe folgt" },
+    { label: space.type === "hotel" ? "Zimmer" : "Sitzplätze", value: est.seats, pending: space.capacitySeated === null && est.seats === "Angabe folgt" },
     { label: "Stehplätze", value: space.capacityStanding !== null ? String(space.capacityStanding) : "Angabe folgt", pending: space.capacityStanding === null },
     { label: "Preis", value: formatPriceFrom(space) + (demo && space.basePrice !== null ? " (Demo)" : ""), pending: space.basePrice === null },
     {
@@ -131,7 +133,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
               </dl>
               {space.needsVerification.length > 0 && (
                 <p className="mt-4 flex items-start gap-2 rounded-xl bg-cream p-3 text-xs text-ink-soft">
-                  <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Einige Angaben werden noch vom Betreiber bestätigt.
+                  <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {est.estimated ? `ca.-Werte: ${ESTIMATE_NOTE}` : "Einige Angaben werden noch vom Betreiber bestätigt."}
                 </p>
               )}
             </div>

@@ -4,6 +4,7 @@ import { Check, X as XIcon } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { floorplanMeta, mapFeatures } from "@/config/floorplan";
 import { mapConfig } from "@/config/map";
+import { displayFacts } from "@/content/space-estimates";
 import type { Point } from "@/domain/types";
 import type { MapSpaceStatus, SpaceView } from "@/features/spaces/types";
 import { cn } from "@/lib/cn";
@@ -157,6 +158,17 @@ export function SiteMap({
           </pattern>
         </defs>
 
+        {/* Parking / courtyard access (not bookable) */}
+        {showParking &&
+          mapFeatures
+            .filter((f) => f.type === "parking")
+            .map((f) => (
+              <g key={f.id} aria-hidden="true">
+                <title>{`${f.label} – ${f.note ?? "nicht buchbar"}`}</title>
+                <polygon points={toPoints(f.polygon)} fill="#f4efe6" fillOpacity={0.05} stroke="#f4efe6" strokeOpacity={0.6} strokeWidth={1.25} strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
+              </g>
+            ))}
+
         {/* Fixed facilities (not bookable) – always part of every booking */}
         {mapFeatures
           .filter((f) => f.type === "toilets")
@@ -230,9 +242,7 @@ export function SiteMap({
                   className={cn(
                     "relative grid place-items-center rounded-full border font-serif font-semibold shadow-[0_4px_12px_-4px_rgb(0_0_0/0.55)] transition-colors duration-200",
                     labelMode === "full" ? "h-9 min-w-9 px-1.5 text-[0.95rem]" : "h-7 min-w-7 px-1 text-[0.78rem]",
-                    selected
-                      ? "border-gold-light bg-gradient-to-b from-[#e0c386] to-[#b8904a] text-anthracite"
-                      : "border-gold/70 bg-anthracite/90 text-paper",
+                    selected ? "border-white bg-paper text-anthracite" : "border-white/45 bg-anthracite/85 text-paper",
                   )}
                 >
                   {space.code}
@@ -257,7 +267,7 @@ export function SiteMap({
                   <span
                     className={cn(
                       "whitespace-nowrap rounded-md px-2 py-0.5 font-serif text-[0.9rem] font-semibold leading-tight shadow-[0_3px_10px_-4px_rgb(0_0_0/0.45)] transition-colors duration-200",
-                      selected ? "bg-anthracite text-gold-light" : "bg-paper/92 text-ink",
+                      selected ? "bg-paper text-anthracite" : "bg-anthracite/80 text-paper",
                     )}
                   >
                     {space.name}
@@ -295,11 +305,12 @@ export function SiteMap({
               .map((f) => (
                 <span
                   key={f.id}
-                  className="absolute grid h-6 w-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-md border border-white/60 bg-[#40566e]/85 text-[0.75rem] font-bold text-white shadow"
+                  className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-md border border-white/50 bg-anthracite/80 py-0.5 pl-0.5 pr-2 text-[0.68rem] font-semibold text-paper shadow"
                   style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
-                  title="Parkplatz (nicht buchbar)"
+                  title={`${f.label} – ${f.note ?? "nicht buchbar"}`}
                 >
-                  P
+                  <span className="grid h-5 w-5 place-items-center rounded bg-paper text-[0.72rem] font-bold text-anthracite">P</span>
+                  {labelMode === "full" && f.label}
                 </span>
               ))}
         </div>
@@ -338,15 +349,9 @@ export function SiteMap({
           </p>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.8rem] text-paper/70">
             <dt>Fläche</dt>
-            <dd>{hovered.areaSqm !== null ? `${hovered.areaSqm} m²` : "Angabe folgt"}</dd>
-            <dt>Kapazität</dt>
-            <dd>
-              {hovered.capacitySeated !== null || hovered.capacityStanding !== null
-                ? [hovered.capacitySeated && `${hovered.capacitySeated} sitzend`, hovered.capacityStanding && `${hovered.capacityStanding} stehend`]
-                    .filter(Boolean)
-                    .join(" · ")
-                : "Angabe folgt"}
-            </dd>
+            <dd>{displayFacts(hovered).area}</dd>
+            <dt>Plätze</dt>
+            <dd>{displayFacts(hovered).seats}</dd>
           </dl>
           <p className="mt-2 border-t border-white/10 pt-2 text-[0.78rem] text-gold-light">
             {selectedIds.includes(hovered.id) ? "Anklicken zum Entfernen" : "Anklicken zum Auswählen"}

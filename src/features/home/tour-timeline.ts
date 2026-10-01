@@ -39,10 +39,10 @@ export interface TourFrame {
   index: number;
   /** progress inside the current chapter */
   t: number;
-  /** opacity of each chapter's clip layer */
-  videoOpacity: number[];
-  /** playback position (0…1) of each chapter's clip */
-  videoProgress: number[];
+  /** opacity of each chapter layer */
+  layerOpacity: number[];
+  /** position (0…1) inside each chapter.s image sequence */
+  layerProgress: number[];
   /** caption / text opacity per chapter */
   captionOpacity: number[];
   /** finale: drone photo with the area buttons (0…1) */
@@ -68,20 +68,20 @@ export function computeFrame(
   const span = spans[index]!;
   const t = clamp01((progress - span.start) / Math.max(1e-6, span.end - span.start));
 
-  const videoOpacity = new Array<number>(n).fill(0);
-  const videoProgress = new Array<number>(n).fill(0);
+  const layerOpacity = new Array<number>(n).fill(0);
+  const layerProgress = new Array<number>(n).fill(0);
   const captionOpacity = new Array<number>(n).fill(0);
 
   // current clip plays through the whole chapter; it fades in over the previous one
   const fadeIn = index === 0 ? 1 : smoothstep(0, CROSSFADE, t);
-  videoOpacity[index] = fadeIn;
-  videoProgress[index] = t;
+  layerOpacity[index] = fadeIn;
+  layerProgress[index] = t;
   if (index > 0 && fadeIn < 1) {
-    videoOpacity[index - 1] = 1;
-    videoProgress[index - 1] = 1;
+    layerOpacity[index - 1] = 1;
+    layerProgress[index - 1] = 1;
   }
   // previous clips keep their last frame (needed when scrolling back)
-  for (let i = 0; i < index - 1; i++) videoProgress[i] = 1;
+  for (let i = 0; i < index - 1; i++) layerProgress[i] = 1;
 
   let mapOpacity = 0;
   let areasOpacity = 0;
@@ -103,8 +103,8 @@ export function computeFrame(
   return {
     index,
     t,
-    videoOpacity,
-    videoProgress,
+    layerOpacity,
+    layerProgress,
     captionOpacity,
     mapOpacity,
     areasOpacity,
@@ -133,8 +133,8 @@ export function cameraTransform(camera: TourCamera, vp: Viewport, map: { width: 
   return { tx: place(vp.width, map.width, camera.x), ty: place(vp.height, map.height, camera.y), scale };
 }
 
-/** Map x-range holding every bookable area (Alte Wirtschaft x≈338 … Biergarten x≈1103). */
-const OVERVIEW_SPAN = { from: 300, to: 1140 } as const;
+/** Map x-range holding the whole plot (Alte Wirtschaft x≈487 … Parkplatz x≈1354). */
+const OVERVIEW_SPAN = { from: 460, to: 1370 } as const;
 
 /**
  * Finale camera for this viewport: unchanged on landscape; on portrait screens,

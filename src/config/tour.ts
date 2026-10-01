@@ -3,18 +3,16 @@
  *  SCROLL FILM – the opening of the homepage
  * ============================================================================
  *  Scrolling scrubs through real, colour-graded footage of the Krone – one
- *  short clip per chapter, crossfaded – and ends on the drone photo from above
+ *  short shot per chapter, crossfaded – and ends on the drone photo from above
  *  where the bookable areas appear as buttons (→ interactive map below).
  *
  *  Order: Anflug von außen → Biergarten → Wintergarten → Hauptrestaurant →
  *  Nebenzimmer → Bühne → Küche → Alte Wirtschaft → Hotel → Blick von oben.
  *
- *  Clips live in /public/media/tour/<id>.mp4 (+ <id>.jpg poster). They are
- *  encoded with a very short keyframe distance so scrubbing stays smooth:
- *    ffmpeg -i in.mov -an -vf "scale=1920:1080" -c:v libx264 -crf 22 \
- *           -g 5 -keyint_min 5 -bf 0 -movflags +faststart out.mp4
- *  The grading/encoding pipeline used for the current clips is documented in
- *  docs/MEDIA.md.
+ *  Each chapter is an image sequence (/public/media/tour/frames/<id>/00.webp …)
+ *  drawn on a canvas. Unlike video seeking this scrubs smoothly in every
+ *  browser (incl. iOS Safari and embedded viewers) and in both directions.
+ *  The grading/extraction pipeline is documented in docs/MEDIA.md.
  * ============================================================================
  */
 
@@ -30,19 +28,24 @@ export interface TourChapter {
   id: string;
   /** Linked space (room chapters). null for intro / finale. */
   spaceId: string | null;
-  /** Clip for this chapter (scrubbed by scroll). */
-  video: string;
+  /** Image sequence scrubbed by scroll: `${dir}00.webp` … */
+  frames: { dir: string; count: number };
+  /** First frame (instant first paint). */
   poster: string;
   /** Short line under the title (intro/finale use their own copy). */
   kicker?: string;
 }
 
 /** Bird's-eye framing of the finale (drone photo with all areas). */
-export const WIDE_CAMERA: TourCamera = { x: 768, y: 512, zoom: 1 };
+export const WIDE_CAMERA: TourCamera = { x: 900, y: 512, zoom: 1 };
 /** Where the finale camera starts before settling on WIDE_CAMERA. */
-export const FINALE_START_CAMERA: TourCamera = { x: 760, y: 470, zoom: 1.35 };
+export const FINALE_START_CAMERA: TourCamera = { x: 820, y: 420, zoom: 1.6 };
 
-const clip = (id: string) => ({ video: `/media/tour/${id}.mp4`, poster: `/media/tour/${id}.jpg` });
+export const TOUR_FRAME_COUNT = 36;
+const clip = (id: string) => ({
+  frames: { dir: `/media/tour/frames/${id}/`, count: TOUR_FRAME_COUNT },
+  poster: `/media/tour/frames/${id}/00.webp`,
+});
 
 export const tourConfig = {
   /** Scroll distance per chapter in viewport heights. Smaller = faster tour. */

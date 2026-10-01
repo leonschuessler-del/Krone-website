@@ -1,6 +1,6 @@
 // Builds a single self-contained HTML preview of the homepage (scroll tour,
 // floor plan, sections) from a running production server.
-// usage: node build-snapshot.mjs <baseUrl> [out.html] [liveUrl]
+// usage: node build-snapshot.mjs <baseUrl> [out.html]
 import { chromium } from "playwright";
 import { build } from "esbuild";
 import fs from "node:fs";
@@ -11,7 +11,6 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const BASE = process.argv[2] ?? "http://localhost:3200";
 const OUT = process.argv[3] ?? path.join(here, "..", "dist-snapshot", "krone-vorschau.html");
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
-const LIVE = process.argv[4] ?? null;
 const ROOT = path.resolve(here, "../../..");
 
 // 1) runtime bundle (real tour timeline + config)
@@ -39,13 +38,17 @@ const { spaces: apiSpaces } = await (await fetch(new URL("/api/spaces", BASE))).
 const spaces = [];
 for (const s of apiSpaces) {
   const srcs = [s.media?.hero?.src, ...(s.media?.gallery ?? []).map((g) => g.src)].filter(Boolean);
-  const unique = [...new Set(srcs)].slice(0, 4);
+  const unique = [...new Set(srcs)];
   spaces.push({
     id: s.id,
     slug: s.slug,
     code: s.code,
     name: s.name,
-    color: s.color,
+    type: s.type,
+    level: s.level,
+    features: s.features ?? [],
+    setupBufferMinutes: s.setupBufferMinutes ?? null,
+    cleanupBufferMinutes: s.cleanupBufferMinutes ?? null,
     shortDescription: s.shortDescription,
     longDescription: s.longDescription,
     areaSqm: s.areaSqm,
@@ -139,13 +142,11 @@ const result = await page.evaluate(
         else if (h.startsWith("/kontakt")) a.setAttribute("href", "#kontakt");
         else if (h.startsWith("/faq")) a.setAttribute("href", "#faq");
         else if (h.startsWith("/buchen")) {
-          a.setAttribute("href", "#buchen");
-          a.dataset.live = "Buchung & Kalender";
-          a.dataset.liveRoute = h;
+          a.setAttribute("href", "#karte");
+          a.dataset.flow = "";
         } else {
           a.setAttribute("href", "#");
-          a.dataset.live = a.textContent.trim() || "Diese Seite";
-          a.dataset.liveRoute = h;
+          a.dataset.page = a.textContent.trim() || "Diese Seite";
         }
       });
       root.querySelectorAll('button[aria-label="Menü öffnen"]').forEach((b) => b.setAttribute("data-pv-menu", ""));
@@ -176,8 +177,14 @@ const result = await page.evaluate(
         img.removeAttribute("fetchpriority");
       }
       for (const v of root.querySelectorAll("video")) {
-        v.querySelectorAll("source").forEach((s) => s.remove());
-        v.removeAttribute("src");
+        v.querySelectorAll("source").forEach((s) => {
+          const src = s.getAttribute("src") ?? "";
+          if (src.startsWith("/media/")) s.setAttribute("src", src.slice(1));
+          else s.remove();
+        });
+        const src = v.getAttribute("src");
+        if (src) v.setAttribute("src", src.startsWith("/media/") ? src.slice(1) : "");
+        v.setAttribute("preload", "metadata");
         const poster = v.getAttribute("poster");
         if (poster) v.setAttribute("poster", poster.startsWith("/media/") ? poster.slice(1) : await dataUrl(poster));
       }
@@ -200,12 +207,10 @@ const result = await page.evaluate(
     }
     doc.querySelectorAll("link[rel~=icon], link[rel=apple-touch-icon], link[rel=manifest]").forEach((el) => el.remove());
 
-    // --- tour
+    // --- tour: markup is driven by the shared tour player (runtime.ts); reset
+    // the state the snapshot captured at scroll position 0
     const section = doc.querySelector("#rundgang");
-    const sticky = section.firstElementChild;
-    // The scroll film is a client-side video timeline – the snapshot shows its
-    // first frame (poster) until the live app takes over.
-    section.querySelectorAll("video").forEach((v) => v.setAttribute("preload", "none"));
+    section.querySelectorAll("[data-tour-poster]").forEach((img) => (img.style.visibility = ""));
 
     // --- map / configurator
     const karte = doc.querySelector("#karte");
@@ -218,14 +223,15 @@ const result = await page.evaluate(
     karte.querySelectorAll("button").forEach((b) => {
       const text = b.textContent.trim();
       if (b.dataset.selectSpace) return;
-      if (text.startsWith("Gesamte Location")) b.setAttribute("data-full-venue", "");
-      else if (b.dataset.testid === "panel-primary") b.dataset.live = "Gemeinsame Verfügbarkeit prüfen";
-      else if (/^Datum (aus)?wählen$/.test(text)) {
-        b.dataset.live = "Kalender & Mietdauer";
-        b.dataset.liveClick = '[data-testid="open-schedule"]';
-      }
-      else if (text === "Liste") b.dataset.live = "Listenansicht";
-      else if (text === "Vergrößern") b.dataset.live = "Kartenzoom";
+      if (b.dataset.testid === "hotel-toggle") b.setAttribute("data-hotel-toggle", "");
+      else if (text.startsWith("Gesamte Location")) b.setAttribute("data-full-venue", "");
+      else if (b.dataset.testid === "panel-primary") b.setAttribute("data-flow", "");
+      else if (/^Datum (aus)?wählen$/.test(text) || text === "Termin wählen") {
+        b.setAttribute("data-flow", "");
+        b.dataset.flowAt = "date";
+      } else if (text === "Liste") b.setAttribute("data-area-list", "");
+      else if (text === "Vergrößern") b.setAttribute("data-map-zoom", "");
+      else if (text === "Zurücksetzen") b.setAttribute("data-pv-reset", "");
       else if (b.hasAttribute("aria-pressed")) {
         const s = spaces.find((x) => text.endsWith(x.name));
         if (s) b.dataset.toggleSpace = s.id;
@@ -239,7 +245,7 @@ const result = await page.evaluate(
       sheetBtn?.querySelector("span span")?.setAttribute("data-pv-mobile-count", "");
       if (cta) {
         cta.setAttribute("data-pv-mobile-cta", "");
-        cta.dataset.live = "Verfügbarkeit prüfen";
+        cta.setAttribute("data-flow", "");
       }
     }
     // gallery lightbox
@@ -280,7 +286,6 @@ const payload = {
   spaces: spaces.map(({ shape: _shape, ...s }) => s),
   headerTop: result.headers[0],
   headerScrolled: result.headers[1],
-  liveUrl: LIVE,
 };
 const title = "Zur Krone Vorschau";
 const pill = `<div class="pv-pill" aria-hidden="true">Vorschau · Demo-Inhalte</div>`;

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { SpaceImage } from "@/components/media/SpaceImage";
-import { formatArea, formatCapacity } from "@/lib/format";
+import { displayFacts } from "@/content/space-estimates";
 import type { SpaceView } from "./types";
 import { SelectSpaceButton } from "./SelectSpaceButton";
 import { formatPriceFrom } from "./price-label";
@@ -36,11 +36,11 @@ export function SpaceCard({ space, demo }: { space: SpaceView; demo: boolean }) 
         <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
           <div>
             <dt className="text-xs uppercase tracking-wider text-muted">Fläche</dt>
-            <dd className="font-semibold">{formatArea(space.areaSqm)}</dd>
+            <dd className="font-semibold">{displayFacts(space).area}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider text-muted">Kapazität</dt>
-            <dd className="font-semibold">{formatCapacity(space.capacitySeated, space.capacityStanding)}</dd>
+            <dt className="text-xs uppercase tracking-wider text-muted">Plätze</dt>
+            <dd className="font-semibold">{displayFacts(space).seats}</dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wider text-muted">Preis</dt>

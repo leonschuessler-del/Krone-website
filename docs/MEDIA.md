@@ -26,12 +26,12 @@ es bringt keine zusätzliche Schärfe, nur größere Dateien.
 
 | Ort | Inhalt |
 |---|---|
-| `public/media/tour/<kapitel>.mp4/.jpg` | Scroll-Film (1600×900, 24 fps, Keyframe alle 10 Bilder → flüssiges Scrubbing) |
+| `public/media/tour/frames/<kapitel>/00…35.webp` | Scroll-Film: 36 Einzelbilder je Kapitel (1280×720), auf einem Canvas gescrubbt – funktioniert in jedem Browser (auch iOS und eingebettete Viewer), vorwärts wie rückwärts |
 | `public/media/<bereich>/hero.webp`, `gallery-NN.webp` | Titel- und Galeriebilder je Bereich |
 | `public/media/<bereich>/tour.mp4`, `poster.webp` | Raumvideo auf der Detailseite (1920×1080) |
 | `public/media/property/gallery-NN.webp` | Außen-/Drohnenbilder |
 | `public/media/hero/krone-property-tour.mp4` | Anflug (Fallback für „reduzierte Bewegung“) |
-| `public/media/floorplan/aerial-*.webp` | Drohnenfoto senkrecht von oben (Karte) |
+| `public/media/floorplan/aerial-*.webp` | Drohnenfoto senkrecht von oben (Karte): ganzes Grundstück inkl. Hof und Parkplatz; Nachbargebäude entsättigt, abgedunkelt und schraffiert |
 | `public/media/hotel/grundriss-og.svg` | Grundriss Obergeschoss (nach Bauplan) |
 
 ## Zuordnung Kapitel → Quelle
@@ -48,6 +48,27 @@ es bringt keine zusätzliche Schärfe, nur größere Dateien.
 | Alte Wirtschaft | Fotos F028/F029 (2018, langsame Kamerafahrt) |
 | Hotel | V40 (iPhone) |
 | Blick von oben | V06 (Drohne, rückwärts) → Drohnenfoto F054 |
+
+Einzelbilder neu erzeugen: aus dem graded Kapitel-Clip 36 gleichmäßig verteilte
+Bilder ziehen (`ffmpeg -i kapitel.mp4 -vf scale=1280:720 …`) und als WebP (q≈70)
+unter `frames/<kapitel>/NN.webp` ablegen. Anzahl = `TOUR_FRAME_COUNT` in
+`src/config/tour.ts`.
+
+## Bildbereinigung
+
+Raumfotos (Titel- und Galeriebilder) wurden retuschiert: lose Gegenstände wie
+Mülleimer, Kisten, Verpackungen, Lebensmittel, Tücher, Aschenbecher und Kabel
+entfernt; Raum, Möbel, Geräte, Licht und Perspektive bleiben unverändert.
+Werkzeug: KI-Bildbearbeitung (Gemini 3 Pro Image über ElevenLabs), jedes
+Ergebnis im Vorher/Nachher-Vergleich geprüft. Die Originale bleiben beim
+Betreiber.
+
+## Raumgrößen (Richtwerte)
+
+`src/content/space-estimates.ts`: Grundfläche je Bereich aus der Drohnenaufnahme
+(DJI FC3170, 91 m Flughöhe, ≈3,1 cm/Pixel auf Traufhöhe), Außenmaß, auf 10 m²
+gerundet; Sitzplätze als Faustwert (≈1,5 m² je Gast auf ~85 % der Fläche).
+Echte Werte aus dem Admin (`areaSqm`, `capacitySeated`) haben Vorrang.
 
 Austausch: Datei gleichen Namens ersetzen, `npm run dev`/`build` neu starten
 (das Media-Manifest wird automatisch erzeugt).

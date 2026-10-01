@@ -1,164 +1,77 @@
 /**
- * Runtime for the standalone preview file (no Next.js, no server).
- * Re-uses the real tour timeline + config; everything else is a light
- * vanilla re-implementation of the homepage interactions.
+ * Runtime for the standalone preview (no Next.js, no server, no database engine).
+ *
+ * The page HTML is a snapshot of the real homepage. This script brings it to
+ * life with the same code the website uses where possible:
+ *  - scroll film: the real tour player (image sequences on a canvas)
+ *  - availability: the real domain logic (src/domain/availability) on the
+ *    demo scenario (src/content/demo-scenario) – incl. double-booking guard
+ *  - room facts: the same estimate helper as the website
+ * Requests made here stay in the viewer's browser (localStorage).
  */
-import { tourConfig, WIDE_CAMERA } from "@/config/tour";
+import { tourConfig } from "@/config/tour";
 import { floorplanMeta } from "@/config/floorplan";
-import { cameraTransform, chapterScrollTarget, chapterSpans, computeFrame, overviewCamera } from "@/features/home/tour-timeline";
+import { demoBlockSpecs } from "@/content/demo-scenario";
+import { eventTypes } from "@/content/event-types";
+import { demoSettings } from "@/content/settings";
+import { displayFacts, ESTIMATE_NOTE } from "@/content/space-estimates";
+import { checkSelection, selectionDayStatus, type AvailabilityContext, type SpaceAvailabilityProfile } from "@/domain/availability";
+import { generateBookingNumber } from "@/domain/booking";
+import type { AvailabilityBlock } from "@/domain/types";
+import { addDays, isoWeekday, todayLocal, zonedDateTimeToUtc, zonedToUtc } from "@/domain/time";
+import { mountTourPlayer } from "@/features/home/tour-player";
 
 interface PreviewSpace {
   id: string;
   slug: string;
   code: string;
   name: string;
-  color: string;
+  type: string;
+  level: string;
   shortDescription: string | null;
   longDescription: string | null;
+  features: string[];
   areaSqm: number | null;
   capacitySeated: number | null;
   capacityStanding: number | null;
   bookable: boolean;
   includedInFullVenue: boolean;
+  setupBufferMinutes: number | null;
+  cleanupBufferMinutes: number | null;
   images: string[];
 }
 
 declare global {
   interface Window {
-    __PREVIEW__: { spaces: PreviewSpace[]; headerTop: string; headerScrolled: string; liveUrl: string | null };
+    __PREVIEW__: { spaces: PreviewSpace[]; headerTop: string; headerScrolled: string };
   }
 }
 
 const data = window.__PREVIEW__;
-/** set by the full browser demo once it has taken over the page */
-const off = () => (window as unknown as { __PREVIEW_OFF__?: boolean }).__PREVIEW_OFF__ === true;
-type DemoWindow = { __DEMO_STATE__?: "booting" | "ready" | "failed"; __demoNavigate?: (href: string) => void };
-const demo = () => window as unknown as DemoWindow;
 const spaces = data.spaces;
 const byId = new Map(spaces.map((s) => [s.id, s]));
 const bySlug = new Map(spaces.map((s) => [s.slug, s]));
+const bookable = spaces.filter((s) => s.bookable);
 const selected = new Set<string>();
+const rel = (src: string) => (src.startsWith("/") ? src.slice(1) : src);
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const LEVEL: Record<string, string> = { "ground-floor": "Erdgeschoss", "first-floor": "1. Obergeschoss", outdoor: "Außenbereich", site: "Gelände" };
 
 /* ------------------------------------------------------------------ tour */
 function initTour() {
   const section = document.getElementById("rundgang");
-  // the video scroll film runs only in the live app; the snapshot shows its first frame
-  if (!section || !section.querySelector("[data-tl]")) return;
-  const chapters = tourConfig.chapters;
-  const spans = chapterSpans(chapters, null);
-  const { width: MAP_W, height: MAP_H } = floorplanMeta.viewBox;
-  const aerial = section.querySelector<HTMLElement>("[data-k]");
-  const layers = new Map<number, HTMLElement>();
-  section.querySelectorAll<HTMLElement>("[data-tl]").forEach((el) => layers.set(Number(el.dataset.tl), el));
-  const secondaries = new Map<number, HTMLElement>();
-  section.querySelectorAll<HTMLElement>("[data-ts]").forEach((el) => secondaries.set(Number(el.dataset.ts), el));
-  const captions = new Map<number, HTMLElement>();
-  section.querySelectorAll<HTMLElement>("[data-tc]").forEach((el) => captions.set(Number(el.dataset.tc), el));
-  const polygons = new Map<number, SVGElement>();
-  section.querySelectorAll<SVGElement>("[data-tp]").forEach((el) => polygons.set(Number(el.dataset.tp), el));
-  const all = section.querySelector<SVGElement>("[data-tall]");
-  const hint = section.querySelector<HTMLElement>("[data-thint]");
-  const skip = section.querySelector<HTMLElement>("[data-tskip]");
-  const progress = section.querySelector<HTMLElement>("[data-tprogress]");
-  const rail = new Map<number, HTMLElement>();
-  section.querySelectorAll<HTMLElement>("[data-rail]").forEach((el) => rail.set(Number(el.dataset.rail), el));
-  let active = -1;
-
-  const setActive = (index: number) => {
-    if (index === active) return;
-    active = index;
-    captions.forEach((el, i) => (el.style.pointerEvents = i === index ? "auto" : "none"));
-    rail.forEach((btn, i) => {
-      const on = i === index;
-      const [label, dot] = [btn.children[0] as HTMLElement, btn.children[1] as HTMLElement];
-      if (label) {
-        label.style.opacity = on ? "1" : "";
-        label.style.color = on ? "var(--color-paper)" : "";
-      }
-      if (dot) {
-        dot.style.width = dot.style.height = on ? "0.75rem" : "0.5rem";
-        dot.style.background = on ? "var(--color-gold-light)" : "rgb(255 255 255 / 0.45)";
-        const s = chapters[i]?.spaceId ? byId.get(chapters[i]!.spaceId!) : undefined;
-        dot.style.boxShadow = on && s ? `0 0 0 3px ${s.color}` : "none";
-      }
-    });
-  };
-
-  let raf = 0;
-  let current = -1;
-  const measure = () => {
-    const rect = section.getBoundingClientRect();
-    const scrollable = Math.max(1, rect.height - window.innerHeight);
-    return Math.min(1, Math.max(0, -rect.top / scrollable));
-  };
-  const tick = () => {
-    raf = 0;
-    const target = measure();
-    current = current < 0 ? target : current + (target - current) * 0.2;
-    if (Math.abs(target - current) < 0.0004) current = target;
-    const vp = { width: window.innerWidth, height: window.innerHeight };
-    const frame = computeFrame(current, chapters, spans, WIDE_CAMERA, overviewCamera(WIDE_CAMERA, vp, { width: MAP_W, height: MAP_H }));
-    if (aerial) {
-      const k = Number(aerial.dataset.k ?? 1);
-      const { tx, ty, scale } = cameraTransform(frame.camera, vp, { width: MAP_W, height: MAP_H });
-      aerial.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) scale(${(scale / k).toFixed(5)})`;
-    }
-    chapters.forEach((_, i) => {
-      const layer = layers.get(i);
-      if (layer) {
-        layer.style.opacity = frame.roomOpacity[i]!.toFixed(3);
-        layer.style.visibility = frame.roomOpacity[i]! > 0.001 ? "visible" : "hidden";
-        const inner = layer.firstElementChild as HTMLElement | null;
-        if (inner) inner.style.transform = `scale(${frame.roomScale[i]!.toFixed(4)})`;
-      }
-      const sec = secondaries.get(i);
-      if (sec) sec.style.opacity = frame.roomSecondary[i]!.toFixed(3);
-      const cap = captions.get(i);
-      if (cap) {
-        const o = frame.captionOpacity[i]!;
-        cap.style.opacity = o.toFixed(3);
-        cap.style.transform = `translate3d(0, ${((1 - o) * 18).toFixed(1)}px, 0)`;
-        cap.style.visibility = o > 0.01 ? "visible" : "hidden";
-      }
-      const poly = polygons.get(i);
-      if (poly) poly.style.opacity = frame.polygonOpacity[i]!.toFixed(3);
-    });
-    if (all) all.style.opacity = frame.allPolygons.toFixed(3);
-    if (hint) {
-      hint.style.opacity = frame.scrollHint.toFixed(3);
-      hint.style.display = frame.scrollHint > 0.001 ? "" : "none";
-    }
-    if (skip) {
-      const o = 1 - frame.allPolygons;
-      skip.style.opacity = o.toFixed(3);
-      skip.style.visibility = o > 0.01 ? "visible" : "hidden";
-    }
-    if (progress) progress.style.transform = `scaleX(${current.toFixed(4)})`;
-    setActive(frame.index);
-    if (current !== target) raf = requestAnimationFrame(tick);
-  };
-  const schedule = () => {
-    if (off()) return;
-    if (!raf) raf = requestAnimationFrame(tick);
-  };
-  schedule();
-  window.addEventListener("scroll", schedule, { passive: true });
-  window.addEventListener("resize", schedule);
-
-  const jumpTo = (index: number) => {
-    const scrollable = section.offsetHeight - window.innerHeight;
-    const top = section.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: top + chapterScrollTarget(spans[index]!, scrollable, index === 0 ? 0 : 0.55), behavior: "smooth" });
-  };
-  rail.forEach((btn, i) => btn.addEventListener("click", () => jumpTo(i)));
-  section.querySelector<HTMLElement>("[data-tstart]")?.addEventListener("click", () => jumpTo(1));
+  if (!section) return;
+  mountTourPlayer(section, {
+    chapters: tourConfig.chapters,
+    map: floorplanMeta.viewBox,
+    resolveUrl: rel,
+  });
 }
 
 /* ---------------------------------------------------------------- header */
 function initHeader() {
   let scrolled: boolean | null = null;
   const update = () => {
-    if (off()) return;
     const tour = document.getElementById("rundgang");
     const heroEnd = tour && tour.offsetHeight > 0 ? tour.offsetHeight : 0;
     const next = window.scrollY > (heroEnd > 0 ? heroEnd - 80 : 24);
@@ -180,8 +93,6 @@ function toggle(id: string, force?: boolean) {
   updateSelectionUi();
 }
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
 function updateSelectionUi() {
   const n = selected.size;
   document.querySelectorAll<SVGGElement>("#karte [data-space-id]").forEach((g) => g.setAttribute("data-selected", String(selected.has(g.dataset.spaceId!))));
@@ -195,7 +106,7 @@ function updateSelectionUi() {
       .map((id) => byId.get(id))
       .filter(Boolean)
       .map(
-        (s) => `<li class="pv-sel"><span class="pv-badge" style="background:${s!.color}">${esc(s!.code)}</span><span class="pv-sel-name">${esc(s!.name)}</span>
+        (s) => `<li class="pv-sel"><span class="pv-badge">${esc(s!.code)}</span><span class="pv-sel-name">${esc(s!.type === "hotel" ? "Übernachtung (Hotel)" : s!.name)}</span>
           <button type="button" data-room="${s!.slug}" class="pv-sel-link">Details</button>
           <button type="button" data-remove="${s!.id}" class="pv-sel-x" aria-label="${esc(s!.name)} entfernen">×</button></li>`,
       )
@@ -212,113 +123,410 @@ function updateSelectionUi() {
   const full = spaces.filter((s) => s.includedInFullVenue && s.bookable);
   const fullOn = full.length > 0 && full.every((s) => selected.has(s.id));
   document.querySelectorAll<HTMLElement>("[data-full-venue]").forEach((b) => b.setAttribute("aria-pressed", String(fullOn)));
+  const hotelOn = selected.has("hotel");
+  document.querySelectorAll<HTMLElement>("[data-hotel-toggle]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(hotelOn));
+    b.textContent = hotelOn ? "✓ Übernachtung ist dabei" : "Übernachtung hinzufügen";
+    b.classList.toggle("pv-on", hotelOn);
+  });
+  document.querySelectorAll<HTMLElement>("[data-testid=hotel-card]").forEach((c) => c.classList.toggle("pv-card-on", hotelOn));
 }
 
-/* ------------------------------------------------------------------ modal */
-function openDialog(html: string) {
-  closeDialog();
+/* ------------------------------------------------------------------ dialog */
+let lastFocus: HTMLElement | null = null;
+function openDialog(html: string, opts: { wide?: boolean; label?: string } = {}) {
+  const existing = document.querySelector<HTMLElement>(".pv-dialog .pv-card");
+  if (existing) {
+    // re-render in place (keeps scroll position stable for multi-step flows)
+    existing.innerHTML = `<button type="button" class="pv-close" data-close aria-label="Schließen">×</button>${html}`;
+    existing.classList.toggle("pv-card-wide", !!opts.wide);
+    return existing;
+  }
+  lastFocus = document.activeElement as HTMLElement | null;
   const wrap = document.createElement("div");
   wrap.className = "pv-dialog";
-  wrap.innerHTML = `<div class="pv-backdrop" data-close></div><div class="pv-card" role="dialog" aria-modal="true"><button type="button" class="pv-close" data-close aria-label="Schließen">×</button>${html}</div>`;
+  wrap.innerHTML = `<div class="pv-backdrop" data-close></div><div class="pv-card${opts.wide ? " pv-card-wide" : ""}" role="dialog" aria-modal="true" aria-label="${esc(opts.label ?? "Dialog")}" tabindex="-1"><button type="button" class="pv-close" data-close aria-label="Schließen">×</button>${html}</div>`;
   document.body.appendChild(wrap);
   document.documentElement.style.overflow = "hidden";
+  const card = wrap.querySelector<HTMLElement>(".pv-card")!;
+  card.focus();
+  return card;
 }
 function closeDialog() {
   document.querySelectorAll(".pv-dialog").forEach((d) => d.remove());
   document.documentElement.style.overflow = "";
+  flowOpen = false;
+  lastFocus?.focus?.();
 }
 
-const fact = (v: number | null, unit: string) => (v === null ? '<span class="pv-muted">Angabe folgt</span>' : `${v} ${unit}`);
+/* ------------------------------------------------------------ room details */
+let room: { slug: string; index: number } | null = null;
 
-function openRoom(slug: string) {
+function roomHtml(s: PreviewSpace, index: number) {
+  const imgs = s.images;
+  const facts = displayFacts(s);
+  const on = selected.has(s.id);
+  const order = spaces.filter((x) => x.images.length > 0);
+  const pos = order.findIndex((x) => x.id === s.id);
+  const prev = order[(pos - 1 + order.length) % order.length]!;
+  const next = order[(pos + 1) % order.length]!;
+  const isHotel = s.type === "hotel";
+  const selectLabel = isHotel ? (on ? "✓ Übernachtung ist dabei" : "Übernachtung hinzufügen") : on ? "✓ Ausgewählt – entfernen" : "Zur Auswahl hinzufügen";
+  return `
+    <div class="pv-gallery">
+      <div class="pv-stage">
+        ${imgs.length ? `<img src="${esc(imgs[index]!)}" alt="${esc(s.name)} – Bild ${index + 1} von ${imgs.length}" class="pv-stage-img">` : ""}
+        ${imgs.length > 1 ? `<button type="button" class="pv-nav pv-nav-l" data-img="${(index - 1 + imgs.length) % imgs.length}" aria-label="Vorheriges Bild">‹</button><button type="button" class="pv-nav pv-nav-r" data-img="${(index + 1) % imgs.length}" aria-label="Nächstes Bild">›</button>` : ""}
+        <span class="pv-count">${index + 1} / ${imgs.length}</span>
+      </div>
+      <div class="pv-thumbs" role="list">
+        ${imgs.map((src, i) => `<button type="button" role="listitem" data-img="${i}" class="pv-thumb${i === index ? " is-on" : ""}" aria-label="Bild ${i + 1}"><img src="${esc(src)}" alt="" loading="lazy"></button>`).join("")}
+      </div>
+    </div>
+    <div class="pv-room">
+      <div>
+        <p class="pv-eyebrow">${esc(LEVEL[s.level] ?? "")}${isHotel ? " · Übernachten im Haus" : ""}</p>
+        <div class="pv-head"><span class="pv-badge pv-badge-lg">${esc(s.code)}</span><h2>${esc(s.name)}</h2></div>
+        ${s.shortDescription ? `<p class="pv-lead">${esc(s.shortDescription)}</p>` : ""}
+        ${s.longDescription ? `<p class="pv-text">${esc(s.longDescription)}</p>` : ""}
+        ${s.features.length ? `<ul class="pv-feat">${s.features.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
+      </div>
+      <aside>
+        <dl class="pv-facts">
+          <div><dt>Fläche</dt><dd>${esc(facts.area)}</dd></div>
+          <div><dt>${isHotel ? "Zimmer" : "Sitzplätze"}</dt><dd>${esc(facts.seats)}</dd></div>
+          <div><dt>Lage</dt><dd>${esc(LEVEL[s.level] ?? "–")}</dd></div>
+          <div><dt>Buchung</dt><dd>${!s.bookable ? "nicht einzeln" : isHotel ? "nur komplett, auf Anfrage" : "einzeln oder kombiniert"}</dd></div>
+        </dl>
+        ${facts.estimated ? `<p class="pv-small">ca.-Werte: ${esc(ESTIMATE_NOTE)}</p>` : ""}
+        <p class="pv-small">Toiletten sind bei jeder Buchung inklusive.</p>
+        <div class="pv-actions">
+          ${s.bookable ? `<button type="button" class="pv-btn ${on ? "pv-btn-dark" : "pv-btn-gold"}" data-room-select="${s.id}">${selectLabel}</button>` : ""}
+          ${s.bookable ? `<button type="button" class="pv-btn" data-flow data-flow-with="${s.id}">Verfügbarkeit prüfen</button>` : ""}
+        </div>
+      </aside>
+    </div>
+    <nav class="pv-roomnav" aria-label="Weitere Räume">
+      <button type="button" data-room="${prev.slug}">‹ ${esc(prev.name)}</button>
+      <button type="button" data-room="${next.slug}">${esc(next.name)} ›</button>
+    </nav>`;
+}
+
+function openRoom(slug: string, index = 0) {
   const s = bySlug.get(slug);
   if (!s) return;
-  const imgs = s.images.map((src, i) => `<img src="${src}" alt="${esc(s.name)} – Beispielbild ${i + 1}" class="${i === 0 ? "pv-img-main" : "pv-img-thumb"}">`).join("");
-  const on = selected.has(s.id);
-  openDialog(`
-    <div class="pv-imgs">${imgs}</div>
-    <p class="pv-note">Beispielbilder (Illustration) – echte Aufnahmen folgen</p>
-    <div class="pv-head"><span class="pv-badge pv-badge-lg" style="background:${s.color}">${esc(s.code)}</span><h2>${esc(s.name)}</h2></div>
-    ${s.shortDescription ? `<p class="pv-lead">${esc(s.shortDescription)}</p>` : ""}
-    ${s.longDescription ? `<p class="pv-text">${esc(s.longDescription)}</p>` : ""}
-    <dl class="pv-facts">
-      <div><dt>Fläche</dt><dd>${fact(s.areaSqm, "m²")}</dd></div>
-      <div><dt>Sitzplätze</dt><dd>${fact(s.capacitySeated, "Personen")}</dd></div>
-      <div><dt>Stehplätze</dt><dd>${fact(s.capacityStanding, "Personen")}</dd></div>
-      <div><dt>Buchbar</dt><dd>${s.bookable ? "Ja – einzeln oder kombiniert" : "Nicht über den Location-Kalender"}</dd></div>
-    </dl>
-    <div class="pv-actions">
-      ${s.bookable ? `<button type="button" class="pv-btn pv-btn-gold" data-room-select="${s.id}">${on ? "Ausgewählt ✓ – entfernen" : "Zur Auswahl hinzufügen"}</button>` : ""}
-      <button type="button" class="pv-btn" data-live="Verfügbarkeit &amp; Buchung" data-live-route="/buchen?spaces=${s.id}">Verfügbarkeit prüfen</button>
-    </div>`);
+  room = { slug, index };
+  const card = openDialog(roomHtml(s, index), { wide: true, label: `${s.name} – Details` });
+  card.scrollTop = 0;
+}
+function showImage(i: number) {
+  if (!room) return;
+  room.index = i;
+  const s = bySlug.get(room.slug)!;
+  const card = document.querySelector<HTMLElement>(".pv-dialog .pv-card");
+  const top = card?.scrollTop ?? 0;
+  openDialog(roomHtml(s, i), { wide: true });
+  if (card) card.scrollTop = top;
 }
 
-function openSelection() {
-  const items = [...selected].map((id) => byId.get(id)!).filter(Boolean);
-  openDialog(`
-    <p class="pv-eyebrow">Ihre Auswahl</p>
-    <h2 class="pv-h2">${items.length ? `${items.length} ${items.length === 1 ? "Bereich" : "Bereiche"} ausgewählt` : "Noch keine Auswahl"}</h2>
-    ${items.length ? `<ul class="pv-list">${items.map((s) => `<li class="pv-sel"><span class="pv-badge" style="background:${s.color}">${esc(s.code)}</span><span class="pv-sel-name">${esc(s.name)}</span><button type="button" data-room="${s.slug}" class="pv-sel-link">Details</button></li>`).join("")}</ul>` : `<p class="pv-text">Tippen Sie auf der Karte auf einen oder mehrere Bereiche.</p>`}
-    <div class="pv-actions">${items.length ? `<button type="button" class="pv-btn pv-btn-gold" data-live="Gemeinsame Verfügbarkeit prüfen">Verfügbarkeit prüfen</button>` : ""}<button type="button" class="pv-btn" data-close>Schließen</button></div>`);
+/* ------------------------------------------------------- availability core */
+const today = todayLocal();
+const STORE_KEY = "krone-preview-requests-v1";
+interface StoredRequest {
+  ref: string;
+  spaceIds: string[];
+  date: string;
+  from: string;
+  to: string;
+  name: string;
+  guests: string;
+  event: string;
 }
-
-function openLive(feature: string, route: string | null = null, click: string | null = null) {
-  const state = demo().__DEMO_STATE__;
-  const continueLive = () => {
-    if (route) demo().__demoNavigate?.(route);
-    else if (click) setTimeout(() => document.querySelector<HTMLElement>(click)?.click(), 400);
-  };
-  if (state === "ready" && (route || click)) return continueLive();
-  if (state === "booting") {
-    openDialog(`
-      <p class="pv-eyebrow">Einen Moment bitte</p>
-      <h2 class="pv-h2">${esc(feature)}</h2>
-      <p class="pv-text">Kalender, Verfügbarkeit und Buchung werden gerade im Hintergrund vorbereitet. Es geht gleich automatisch weiter.</p>
-      <div class="pv-loading"><span></span></div>`);
-    const go = () => {
-      closeDialog();
-      continueLive();
-    };
-    window.addEventListener("demo-ready", go, { once: true });
-    window.addEventListener("demo-failed", () => openLive(feature, route, click), { once: true });
-    return;
+function loadRequests(): StoredRequest[] {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw ? (JSON.parse(raw) as StoredRequest[]) : [];
+  } catch {
+    return [];
   }
-  const link = data.liveUrl
-    ? `<a class="pv-btn pv-btn-gold" href="${data.liveUrl}" target="_blank" rel="noopener">Live-Version öffnen</a>`
-    : "";
-  openDialog(`
-    <p class="pv-eyebrow">Vorschau</p>
-    <h2 class="pv-h2">${esc(feature)}</h2>
-    <p class="pv-text">In dieser Ansicht sind Startseite, Scroll-Rundgang und Grundriss zu sehen.
-    Kalender, Verfügbarkeitsprüfung, Mietdauer, Preisberechnung und Buchung konnten in diesem Browser nicht gestartet werden – sie funktionieren in der Live-Version der Website.</p>
-    <div class="pv-actions">${link}<button type="button" class="pv-btn" data-close>Zurück zur Vorschau</button></div>`);
+}
+function saveRequests(list: StoredRequest[]) {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(list));
+  } catch {
+    /* private mode – keep in memory */
+  }
+}
+let requests = loadRequests();
+
+function context(): AvailabilityContext {
+  const profiles: Record<string, SpaceAvailabilityProfile> = {};
+  for (const s of bookable) {
+    profiles[s.id] = {
+      spaceId: s.id,
+      name: s.name,
+      weeklyHours: demoSettings.bookableHours.weeklyHours,
+      setupBufferMinutes: s.setupBufferMinutes ?? 0,
+      cleanupBufferMinutes: s.cleanupBufferMinutes ?? 0,
+      advanceBookingMinHours: null,
+      advanceBookingMaxDays: null,
+      minimumDurationMinutes: null,
+      maximumDurationMinutes: null,
+    };
+  }
+  const blocks: AvailabilityBlock[] = demoBlockSpecs(today).map((b, i) => ({
+    id: `demo-${i}`,
+    spaceId: b.spaceId,
+    start: zonedToUtc(b.date, b.from),
+    end: zonedToUtc(b.date, b.to),
+    type: b.type,
+    reason: b.reason,
+    bookingId: null,
+    expiresAt: null,
+    isDemo: true,
+  }));
+  requests.forEach((r, i) => {
+    const iv = interval(r.date, r.from, r.to);
+    for (const id of r.spaceIds) blocks.push({ id: `req-${i}-${id}`, spaceId: id, start: iv.start, end: iv.end, type: "reserved", reason: `Anfrage ${r.ref}`, bookingId: r.ref, expiresAt: null, isDemo: true });
+  });
+  return { profiles, blocks, now: Date.now() };
+}
+
+/** end time ≤ start time means "until the next day" (e.g. 18:00 – 01:00) */
+function interval(date: string, from: string, to: string) {
+  const endDate = to <= from ? addDays(date, 1) : date;
+  return { start: zonedDateTimeToUtc(date, from), end: zonedDateTimeToUtc(endDate, to) };
+}
+
+/* ------------------------------------------------------------ request flow */
+type Step = 1 | 2 | 3 | 4;
+const flow = {
+  step: 1 as Step,
+  spaces: new Set<string>(),
+  date: null as string | null,
+  from: "18:00",
+  to: "23:00",
+  month: today.slice(0, 7),
+  form: { event: "", guests: "", name: "", email: "", phone: "", message: "" },
+  error: "",
+  ref: "",
+};
+let flowOpen = false;
+
+const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const nameOf = (id: string) => (id === "hotel" ? "Übernachtung (Hotel)" : (byId.get(id)?.name ?? id));
+
+function openFlow(opts: { with?: string; step?: Step } = {}) {
+  flow.spaces = new Set(selected);
+  if (opts.with) flow.spaces.add(opts.with);
+  flow.error = "";
+  flow.ref = "";
+  flow.step = opts.step ?? (flow.spaces.size ? 2 : 1);
+  flowOpen = true;
+  renderFlow();
+}
+
+function stepper() {
+  const labels = ["Bereiche", "Termin", "Ihre Angaben", "Bestätigung"];
+  return `<ol class="pv-steps">${labels.map((l, i) => `<li class="${i + 1 === flow.step ? "is-on" : i + 1 < flow.step ? "is-done" : ""}"><span>${i + 1}</span>${l}</li>`).join("")}</ol>`;
+}
+
+function calendarHtml(ctx: AvailabilityContext) {
+  const [y, m] = flow.month.split("-").map(Number) as [number, number];
+  const first = `${flow.month}-01`;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const lead = isoWeekday(first) - 1;
+  const ids = [...flow.spaces];
+  const cells: string[] = [];
+  for (let i = 0; i < lead; i++) cells.push('<span class="pv-day pv-day-empty"></span>');
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = `${flow.month}-${String(d).padStart(2, "0")}`;
+    const past = date < today;
+    const st = past ? "past" : selectionDayStatus(ids, date, ctx).status;
+    const cls = past ? "past" : st === "available" ? "free" : st === "partially_available" ? "partial" : "busy";
+    const title = past ? "vergangen" : cls === "free" ? "frei" : cls === "partial" ? "teilweise frei" : "belegt";
+    cells.push(
+      `<button type="button" class="pv-day is-${cls}${flow.date === date ? " is-sel" : ""}" data-date="${date}" ${past || cls === "busy" ? "disabled" : ""} aria-label="${fmtDate(date)}: ${title}" aria-pressed="${flow.date === date}">${d}</button>`,
+    );
+  }
+  const monthName = new Date(y, m - 1, 15).toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  const canPrev = flow.month > today.slice(0, 7);
+  return `<div class="pv-cal">
+    <div class="pv-cal-head"><button type="button" data-month="-1" ${canPrev ? "" : "disabled"} aria-label="Vorheriger Monat">‹</button><strong>${monthName}</strong><button type="button" data-month="1" aria-label="Nächster Monat">›</button></div>
+    <div class="pv-cal-grid">${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => `<span class="pv-wd">${w}</span>`).join("")}${cells.join("")}</div>
+    <p class="pv-legend"><span class="is-free"></span>frei <span class="is-partial"></span>teilweise frei <span class="is-busy"></span>belegt</p>
+  </div>`;
+}
+
+function renderFlow() {
+  if (!flowOpen) return;
+  const ctx = context();
+  let body = "";
+  if (flow.step === 1) {
+    body = `<h2 class="pv-h2">Welche Bereiche möchten Sie nutzen?</h2>
+      <p class="pv-text">Mehrfachauswahl möglich. Toiletten sind immer inklusive.</p>
+      <div class="pv-choices">${bookable
+        .map(
+          (s) => `<label class="pv-choice"><input type="checkbox" data-flow-space="${s.id}" ${flow.spaces.has(s.id) ? "checked" : ""}>
+          ${s.images[0] ? `<img src="${esc(s.images[0])}" alt="" loading="lazy">` : ""}<span><strong>${esc(nameOf(s.id))}</strong><small>${esc(displayFacts(s).area)} · ${esc(displayFacts(s).seats)}</small></span></label>`,
+        )
+        .join("")}</div>
+      <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${flow.spaces.size ? "" : "disabled"}>Weiter zum Termin</button></div>`;
+  } else if (flow.step === 2) {
+    const ids = [...flow.spaces];
+    let check = "";
+    let ok = false;
+    if (flow.date) {
+      const day = selectionDayStatus(ids, flow.date, ctx);
+      const res = checkSelection(ids, interval(flow.date, flow.from, flow.to), ctx, { enforceBookableHours: true });
+      ok = res.bookingAllowed;
+      const windows = day.common
+        .map((w) => `${new Date(w.start).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" })}–${new Date(w.end).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" })}`)
+        .join(", ");
+      check = `<div class="pv-check ${ok ? "is-ok" : "is-no"}" role="status">
+        ${ok ? `<strong>✓ Frei.</strong> ${esc(ids.map(nameOf).join(", "))} am ${fmtDate(flow.date)}, ${flow.from}–${flow.to} Uhr.` : `<strong>Nicht möglich.</strong> ${esc(res.results.filter((r) => !r.available).map((r) => `${nameOf(r.spaceId)}: ${r.reason ?? "belegt"}`).join(" · "))}`}
+        ${windows ? `<br><small>Gemeinsam frei an diesem Tag: ${windows} Uhr</small>` : ""}
+      </div>`;
+    }
+    body = `<h2 class="pv-h2">Wann möchten Sie feiern?</h2>
+      <p class="pv-text">Gewählt: ${esc(ids.map(nameOf).join(", "))} · <button type="button" class="pv-link" data-flow-step="1">ändern</button></p>
+      <div class="pv-flow-grid">
+        ${calendarHtml(ctx)}
+        <div class="pv-time">
+          <p class="pv-label">${flow.date ? esc(fmtDate(flow.date)) : "Bitte einen Tag im Kalender wählen"}</p>
+          <div class="pv-row">
+            <label>Von<select data-time="from">${TIMES.map((t) => `<option ${t === flow.from ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+            <label>Bis<select data-time="to">${TIMES.map((t) => `<option ${t === flow.to ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+          </div>
+          <p class="pv-small">Ende vor Beginn = bis in die Nacht (z. B. 18:00–01:00).</p>
+          ${check}
+        </div>
+      </div>
+      <div class="pv-actions"><button type="button" class="pv-btn" data-flow-step="1">Zurück</button><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${ok ? "" : "disabled"}>Weiter zu Ihren Angaben</button></div>`;
+  } else if (flow.step === 3) {
+    const f = flow.form;
+    body = `<h2 class="pv-h2">Ihre Angaben</h2>
+      <p class="pv-text">${esc([...flow.spaces].map(nameOf).join(", "))} · ${flow.date ? esc(fmtDate(flow.date)) : ""}, ${flow.from}–${flow.to} Uhr</p>
+      <form class="pv-form" data-flow-form novalidate>
+        <label>Anlass<select name="event"><option value="">Bitte wählen</option>${eventTypes.map((e) => `<option value="${e.id}" ${f.event === e.id ? "selected" : ""}>${e.label}</option>`).join("")}</select></label>
+        <label>Gäste (ca.)<input name="guests" type="number" min="1" inputmode="numeric" value="${esc(f.guests)}"></label>
+        <label class="pv-span">Name *<input name="name" required autocomplete="name" value="${esc(f.name)}"></label>
+        <label>E-Mail *<input name="email" type="email" required autocomplete="email" value="${esc(f.email)}"></label>
+        <label>Telefon<input name="phone" type="tel" autocomplete="tel" value="${esc(f.phone)}"></label>
+        <label class="pv-span">Nachricht<textarea name="message" rows="3">${esc(f.message)}</textarea></label>
+        ${flow.error ? `<p class="pv-error pv-span" role="alert">${esc(flow.error)}</p>` : ""}
+        <div class="pv-actions pv-span"><button type="button" class="pv-btn" data-flow-step="2">Zurück</button><button type="submit" class="pv-btn pv-btn-gold">Unverbindlich anfragen</button></div>
+      </form>`;
+  } else {
+    body = `<div class="pv-done">
+      <p class="pv-eyebrow">Anfrage eingegangen</p>
+      <h2 class="pv-h2">Vielen Dank, ${esc(flow.form.name.split(" ")[0] ?? "")}!</h2>
+      <p class="pv-ref">Ihre Anfragenummer <strong>${esc(flow.ref)}</strong></p>
+      <dl class="pv-facts">
+        <div><dt>Bereiche</dt><dd>${esc([...flow.spaces].map(nameOf).join(", "))}</dd></div>
+        <div><dt>Termin</dt><dd>${flow.date ? esc(fmtDate(flow.date)) : ""}<br>${flow.from}–${flow.to} Uhr</dd></div>
+        <div><dt>Anlass</dt><dd>${esc(eventTypes.find((e) => e.id === flow.form.event)?.label ?? "–")}</dd></div>
+        <div><dt>Gäste</dt><dd>${esc(flow.form.guests || "–")}</dd></div>
+      </dl>
+      <p class="pv-text">Der Zeitraum ist jetzt für Sie vorgemerkt – eine zweite Anfrage für dieselben Bereiche zur selben Zeit wird abgelehnt (probieren Sie es aus).</p>
+      <p class="pv-small">Vorschau: Es wurde keine E-Mail versendet. Die Anfrage ist nur in diesem Browser gespeichert.</p>
+      <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Fertig</button><button type="button" class="pv-btn" data-flow-new>Weitere Anfrage</button></div>
+    </div>`;
+  }
+  openDialog(`<p class="pv-eyebrow">Verfügbarkeit &amp; Anfrage</p>${stepper()}${body}`, { wide: true, label: "Verfügbarkeit und Anfrage" });
+}
+
+function submitFlow(form: HTMLFormElement) {
+  const fd = new FormData(form);
+  for (const k of Object.keys(flow.form) as Array<keyof typeof flow.form>) flow.form[k] = String(fd.get(k) ?? "").trim();
+  if (!flow.form.name) flow.error = "Bitte geben Sie Ihren Namen an.";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(flow.form.email)) flow.error = "Bitte geben Sie eine gültige E-Mail-Adresse an.";
+  else flow.error = "";
+  if (flow.error || !flow.date) return renderFlow();
+  // final check right before saving (another request could have taken the slot)
+  const ids = [...flow.spaces];
+  const res = checkSelection(ids, interval(flow.date, flow.from, flow.to), context(), { enforceBookableHours: true });
+  if (!res.bookingAllowed) {
+    flow.step = 2;
+    return renderFlow();
+  }
+  flow.ref = generateBookingNumber("inquiry", Number(flow.date.slice(0, 4)));
+  requests = [...requests, { ref: flow.ref, spaceIds: ids, date: flow.date, from: flow.from, to: flow.to, name: flow.form.name, guests: flow.form.guests, event: flow.form.event }];
+  saveRequests(requests);
+  flow.step = 4;
+  renderFlow();
+}
+
+/* ------------------------------------------------------------ misc dialogs */
+function openAreaList() {
+  openDialog(
+    `<p class="pv-eyebrow">Listenansicht</p><h2 class="pv-h2">Alle Bereiche</h2>
+    <div class="pv-choices">${bookable
+      .map(
+        (s) => `<div class="pv-choice"><input type="checkbox" data-toggle-list="${s.id}" ${selected.has(s.id) ? "checked" : ""} aria-label="${esc(s.name)} auswählen">
+        ${s.images[0] ? `<img src="${esc(s.images[0])}" alt="" loading="lazy">` : ""}<span><strong>${esc(nameOf(s.id))}</strong><small>${esc(displayFacts(s).area)} · ${esc(displayFacts(s).seats)}</small></span><button type="button" class="pv-link" data-room="${s.slug}">Details</button></div>`,
+      )
+      .join("")}</div>
+    <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-flow>Verfügbarkeit prüfen</button><button type="button" class="pv-btn" data-close>Schließen</button></div>`,
+    { wide: true, label: "Alle Bereiche" },
+  );
+}
+
+function openInfo(title: string, text: string) {
+  openDialog(`<p class="pv-eyebrow">Vorschau</p><h2 class="pv-h2">${esc(title)}</h2><p class="pv-text">${esc(text)}</p><div class="pv-actions"><button type="button" class="pv-btn" data-close>Schließen</button></div>`, { label: title });
 }
 
 /* ---------------------------------------------------------------- events */
 function initEvents() {
   document.addEventListener("click", (e) => {
-    if (off()) return;
     const el = e.target as Element;
     const t = (sel: string) => el.closest<HTMLElement>(sel);
     let hit: HTMLElement | null;
     if ((hit = t("[data-close]"))) return closeDialog();
+    if ((hit = t("[data-img]"))) return showImage(Number(hit.dataset.img));
     if ((hit = t("[data-room-select]"))) {
       toggle(hit.dataset.roomSelect!);
-      return closeDialog();
+      return room && openRoom(room.slug, room.index);
     }
     if ((hit = t("[data-remove]"))) return toggle(hit.dataset.remove!, false);
     if ((hit = t("[data-room]"))) {
       e.preventDefault();
       return openRoom(hit.dataset.room!);
     }
-    if ((hit = t("[data-live]"))) {
-      e.preventDefault();
-      let route = hit.dataset.liveRoute ?? null;
-      if (hit.dataset.live === "Gemeinsame Verfügbarkeit prüfen" || hit.dataset.live === "Verfügbarkeit prüfen") {
-        route = selected.size ? `/buchen?spaces=${[...selected].join(",")}` : "/buchen";
-      }
-      return openLive(hit.dataset.live!, route, hit.dataset.liveClick ?? null);
+    if ((hit = t("[data-flow-next]"))) {
+      flow.step = (flow.step + 1) as Step;
+      return renderFlow();
     }
+    if ((hit = t("[data-flow-step]"))) {
+      flow.step = Number(hit.dataset.flowStep) as Step;
+      return renderFlow();
+    }
+    if ((hit = t("[data-flow-new]"))) {
+      flow.date = null;
+      return openFlow({ step: 2 });
+    }
+    if ((hit = t("[data-date]"))) {
+      flow.date = hit.dataset.date!;
+      return renderFlow();
+    }
+    if ((hit = t("[data-month]"))) {
+      const [y, m] = flow.month.split("-").map(Number) as [number, number];
+      const d = new Date(y, m - 1 + Number(hit.dataset.month), 1);
+      flow.month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return renderFlow();
+    }
+    if ((hit = t("[data-flow]"))) {
+      e.preventDefault();
+      return openFlow({ with: hit.dataset.flowWith, step: hit.dataset.flowAt === "date" && selected.size ? 2 : undefined });
+    }
+    if ((hit = t("[data-area-list]"))) return openAreaList();
+    if ((hit = t("[data-map-zoom]"))) return openDialog(`<img src="media/floorplan/aerial-2900.webp" alt="Drohnenaufnahme der Krone von oben" class="pv-img-full">`, { wide: true, label: "Karte groß" });
+    if ((hit = t("[data-page]"))) {
+      e.preventDefault();
+      return openInfo(hit.dataset.page!, "Diese Seite ist in der Vorschau nicht enthalten. Rechtstexte und weitere Unterseiten werden vor dem Start vom Betreiber ergänzt.");
+    }
+    if ((hit = t("[data-hotel-toggle]"))) return toggle("hotel");
     if ((hit = t("[data-select-space]"))) return toggle(hit.dataset.selectSpace!);
     if ((hit = t("[data-toggle-space]"))) return toggle(hit.dataset.toggleSpace!);
     if ((hit = t("[data-full-venue]"))) {
@@ -327,16 +535,34 @@ function initEvents() {
       full.forEach((s) => (allOn ? selected.delete(s.id) : selected.add(s.id)));
       return updateSelectionUi();
     }
+    if ((hit = t("[data-pv-reset]"))) {
+      selected.clear();
+      return updateSelectionUi();
+    }
     if ((hit = t("#karte [data-space-id]"))) return toggle(hit.dataset.spaceId!);
     if ((hit = t("[data-pv-menu]"))) return toggleMenu();
-    if ((hit = t("[data-pv-sheet]"))) return openSelection();
-    if ((hit = t("[data-lightbox]"))) return openDialog(`<img src="${hit.dataset.lightbox}" alt="" class="pv-img-main pv-img-full">`);
+    if ((hit = t("[data-pv-sheet]"))) return openAreaList();
+    if ((hit = t("[data-lightbox]"))) return openDialog(`<img src="${hit.dataset.lightbox}" alt="" class="pv-img-full">`, { wide: true, label: "Bild" });
     if ((hit = t("a[href^='#']")) && document.querySelector(".pv-menu")) closeMenu();
   });
+  document.addEventListener("change", (e) => {
+    const el = e.target as HTMLInputElement | HTMLSelectElement;
+    if (el.dataset.flowSpace) {
+      if ((el as HTMLInputElement).checked) flow.spaces.add(el.dataset.flowSpace);
+      else flow.spaces.delete(el.dataset.flowSpace);
+      return renderFlow();
+    }
+    if (el.dataset.toggleList) return toggle(el.dataset.toggleList, (el as HTMLInputElement).checked);
+    if (el.dataset.time === "from" || el.dataset.time === "to") {
+      flow[el.dataset.time] = el.value;
+      return renderFlow();
+    }
+  });
   document.addEventListener("submit", (e) => {
-    if (off()) return;
     e.preventDefault();
-    openLive("Kontaktformular");
+    const form = e.target as HTMLFormElement;
+    if (form.matches("[data-flow-form]")) return submitFlow(form);
+    openDialog(`<p class="pv-eyebrow">Kontakt</p><h2 class="pv-h2">Danke für Ihre Nachricht!</h2><p class="pv-text">In der fertigen Website geht sie direkt an die Krone. In dieser Vorschau wird nichts versendet.</p><div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Schließen</button></div>`, { label: "Kontakt" });
   });
   // mobile bottom bar only while the map is on screen (as on the website)
   const karte = document.getElementById("karte");
@@ -348,10 +574,13 @@ function initEvents() {
     }, { threshold: 0.05 }).observe(karte);
   }
   document.addEventListener("keydown", (e) => {
-    if (off()) return;
     if (e.key === "Escape") {
       closeDialog();
       closeMenu();
+    }
+    if (room && document.querySelector(".pv-dialog .pv-stage") && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      const n = bySlug.get(room.slug)!.images.length;
+      showImage((room.index + (e.key === "ArrowRight" ? 1 : n - 1)) % n);
     }
     const g = (e.target as Element).closest?.<SVGGElement>("#karte [data-space-id]");
     if (g && (e.key === "Enter" || e.key === " ")) {

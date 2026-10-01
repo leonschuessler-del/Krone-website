@@ -34,3 +34,28 @@ export function getDemoScenario(today: LocalDate = todayLocal()): DemoScenario {
     oldTavernReservedDate: nextWeekday(addDays(today, 10), 3),
   };
 }
+
+export interface DemoBlockSpec {
+  spaceId: string;
+  date: LocalDate;
+  /** minutes from local midnight of `date` (may exceed 24 h) */
+  from: number;
+  to: number;
+  type: "booked" | "reserved" | "blocked" | "maintenance";
+  reason: string;
+}
+
+/** DEMO / SEED ONLY – the availability blocks of the demo scenario. */
+export function demoBlockSpecs(today: LocalDate = todayLocal()): DemoBlockSpec[] {
+  const sc = getDemoScenario(today);
+  return [
+    { spaceId: "winter-garden", date: sc.winterGardenBookedDate, from: 0, to: 24 * 60 + 120, type: "booked", reason: "Hochzeitsfeier" },
+    { spaceId: "stage", date: sc.stageMaintenanceDate, from: 14 * 60, to: 20 * 60, type: "maintenance", reason: "Wartung Bühnentechnik" },
+    { spaceId: "restaurant", date: sc.restaurantEveningDate, from: 17 * 60, to: 24 * 60, type: "booked", reason: "Firmenfeier" },
+    { spaceId: "old-tavern", date: sc.oldTavernReservedDate, from: 11 * 60, to: 23 * 60, type: "reserved", reason: "Reservierung in Klärung" },
+    { spaceId: "beer-garden", date: sc.beerGardenClosedFrom, from: 0, to: 5 * 24 * 60, type: "blocked", reason: "Saisonpause Biergarten" },
+    { spaceId: "restaurant", date: addDays(sc.winterGardenBookedDate, 7), from: 0, to: 13 * 60, type: "booked", reason: "Mittagsgesellschaft" },
+    { spaceId: "side-room", date: addDays(sc.winterGardenBookedDate, 7), from: 12 * 60, to: 18 * 60, type: "booked", reason: "Geburtstag" },
+    { spaceId: "kitchen", date: addDays(sc.restaurantEveningDate, 14), from: 6 * 60, to: 15 * 60, type: "maintenance", reason: "Reinigung Küchentechnik" },
+  ];
+}

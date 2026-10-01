@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { progressiveOrder } from "@/features/home/tour-player";
 import { describe, expect, it } from "vitest";
 import { FINALE_START_CAMERA, tourConfig, WIDE_CAMERA } from "@/config/tour";
 import { cameraTransform, chapterSpans, computeFrame, overviewCamera, smoothstep } from "@/features/home/tour-timeline";
@@ -14,7 +16,14 @@ describe("scroll film timeline", () => {
     expect(chapters.filter((c) => c.spaceId).map((c) => c.spaceId)).toEqual([
       "beer-garden", "winter-garden", "restaurant", "side-room", "stage", "kitchen", "old-tavern", "hotel",
     ]);
-    chapters.forEach((c) => expect(c.video).toMatch(/^\/media\/tour\/.+\.mp4$/));
+    chapters.forEach((c) => {
+      expect(c.frames.dir).toBe(`/media/tour/frames/${c.id}/`);
+      expect(c.poster).toBe(`${c.frames.dir}00.webp`);
+      // every frame of the sequence exists in /public
+      for (let f = 0; f < c.frames.count; f++) {
+        expect(existsSync(`public${c.frames.dir}${String(f).padStart(2, "0")}.webp`)).toBe(true);
+      }
+    });
   });
 
   it("spans are contiguous and cover 0…1", () => {
@@ -28,10 +37,10 @@ describe("scroll film timeline", () => {
       if (!c.spaceId) return;
       const f = frame((spans[i]!.start + spans[i]!.end) / 2);
       expect(f.index).toBe(i);
-      expect(f.videoOpacity[i]).toBe(1);
-      expect(f.videoProgress[i]).toBeCloseTo(0.5, 5);
+      expect(f.layerOpacity[i]).toBe(1);
+      expect(f.layerProgress[i]).toBeCloseTo(0.5, 5);
       expect(f.captionOpacity[i]).toBeGreaterThan(0.95);
-      f.videoOpacity.forEach((o, j) => j !== i && expect(o).toBe(0));
+      f.layerOpacity.forEach((o, j) => j !== i && expect(o).toBe(0));
       expect(f.mapOpacity).toBe(0);
     });
   });
@@ -39,7 +48,7 @@ describe("scroll film timeline", () => {
   it("crossfades without a black gap", () => {
     for (let i = 1; i < chapters.length; i++) {
       const f = frame(spans[i]!.start + 0.001);
-      expect(f.videoOpacity[i - 1]! + f.videoOpacity[i]!).toBeGreaterThanOrEqual(1);
+      expect(f.layerOpacity[i - 1]! + f.layerOpacity[i]!).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -59,8 +68,8 @@ describe("scroll film timeline", () => {
     for (let k = 0; k <= 100; k++) {
       const p = spans[3]!.start + ((spans[3]!.end - spans[3]!.start) * k) / 100 - 1e-9;
       const f = frame(Math.max(spans[3]!.start, p));
-      expect(f.videoProgress[3]!).toBeGreaterThanOrEqual(prev);
-      prev = f.videoProgress[3]!;
+      expect(f.layerProgress[3]!).toBeGreaterThanOrEqual(prev);
+      prev = f.layerProgress[3]!;
     }
   });
 
@@ -79,13 +88,21 @@ describe("scroll film timeline", () => {
   it("portrait overview keeps all areas in frame; landscape unchanged", () => {
     const vp = { width: 390, height: 664 };
     const { tx, scale } = cameraTransform(overviewCamera(WIDE_CAMERA, vp, MAP), vp, MAP);
-    expect(tx + 338 * scale).toBeGreaterThanOrEqual(0);
-    expect(tx + 1103 * scale).toBeLessThanOrEqual(vp.width);
+    expect(tx + 487 * scale).toBeGreaterThanOrEqual(0);
+    expect(tx + 1354 * scale).toBeLessThanOrEqual(vp.width);
     expect(overviewCamera(WIDE_CAMERA, { width: 1440, height: 900 }, MAP)).toEqual(WIDE_CAMERA);
   });
 
   it("smoothstep is clamped", () => {
     expect(smoothstep(0.2, 0.4, 0)).toBe(0);
     expect(smoothstep(0.2, 0.4, 1)).toBe(1);
+  });
+});
+
+describe("progressive frame order", () => {
+  it("starts coarse and contains every frame exactly once", () => {
+    const order = progressiveOrder(36);
+    expect(order.slice(0, 3)).toEqual([0, 35, 18]);
+    expect([...order].sort((a, b) => a - b)).toEqual(Array.from({ length: 36 }, (_, i) => i));
   });
 });

@@ -18,7 +18,8 @@ import { SchedulePicker } from "@/features/booking/SchedulePicker";
 import type { MapSpaceStatus, SpaceView } from "@/features/spaces/types";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { formatArea, formatCapacity, formatDateMedium, formatMoney, formatTime, pluralize } from "@/lib/format";
+import { displayFacts } from "@/content/space-estimates";
+import { formatDateMedium, formatMoney, formatTime, pluralize } from "@/lib/format";
 import { useBookingStore, type ScheduleDraft } from "@/store/booking-store";
 import { SiteMap } from "./SiteMap";
 
@@ -461,8 +462,7 @@ function MapLegend({ spaces, selected, onToggle, hasStatus }: { spaces: SpaceVie
           <li key={s.id}>
             <button type="button" onClick={() => onToggle(s.id)} aria-pressed={selected.includes(s.id)} className="inline-flex items-center gap-1.5 hover:text-ink">
               <span
-                className={cn("h-3 w-3 rounded-sm ring-2 transition-shadow", selected.includes(s.id) ? "ring-gold" : "ring-transparent")}
-                style={{ background: s.color }}
+                className={cn("h-3 w-3 rounded-sm border transition-colors", selected.includes(s.id) ? "border-white bg-[#d9d3c8] shadow-[0_0_0_1px_rgb(0_0_0/0.35)]" : "border-ink/30 bg-transparent")}
               />
               <span className="font-semibold">{s.code}</span> <span className="text-ink-soft">{s.name}</span>
             </button>
@@ -472,7 +472,7 @@ function MapLegend({ spaces, selected, onToggle, hasStatus }: { spaces: SpaceVie
           <li key={s.id} className="inline-flex items-center gap-1.5 text-muted">
             <span className="h-3 w-3 rounded-sm border border-dashed border-taupe" />
             <Link href={s.href} className="underline-offset-4 hover:underline">
-              {s.type === "hotel" ? `${s.name} (1. OG) – eigener Button unter der Karte` : `${s.name} – genaue Abgrenzung folgt`}
+              {s.type === "hotel" ? "Übernachtung im Hotel (1. OG) – unter der Karte hinzufügen" : `${s.name} – genaue Abgrenzung folgt`}
             </Link>
           </li>
         ))}
@@ -482,7 +482,7 @@ function MapLegend({ spaces, selected, onToggle, hasStatus }: { spaces: SpaceVie
       </ul>
       <ul className="flex shrink-0 flex-wrap gap-x-4 gap-y-2 text-xs text-muted" aria-label="Legende Status">
         <li className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm border-2 border-gold-light bg-gold/40" /> Ausgewählt
+          <span className="h-3 w-3 rounded-sm border-2 border-white bg-[#d9d3c8] shadow-[0_0_0_1px_rgb(0_0_0/0.25)]" /> Ausgewählt
         </li>
         {hasStatus && (
           <>
@@ -532,7 +532,7 @@ function SpaceList({
                 <span className="min-w-0">
                   <span className="block font-semibold">{s.name}</span>
                   <span id={`st-${s.id}`} className="block text-xs text-muted">
-                    {detail[s.id] ?? "Datum wählen für Verfügbarkeit"} · Fläche {formatArea(s.areaSqm)} · Kapazität {formatCapacity(s.capacitySeated, s.capacityStanding)}
+                    {detail[s.id] ?? "Datum wählen für Verfügbarkeit"} · {displayFacts(s).area} · {displayFacts(s).seats}
                   </span>
                 </span>
               </label>
@@ -695,38 +695,56 @@ function SelectionPanelContent({
 }
 
 /** The upper floor is rented as a whole – shown as its own button next to the map. */
+/** Overnight stay: the whole upper floor, booked as one add-on for the guests of the event. */
 function HotelCard({ hotel, selected, status, onToggle }: { hotel: SpaceView; selected: boolean; status?: MapSpaceStatus; onToggle: () => void }) {
+  const thumbs = hotel.media.gallery.slice(0, 3);
   return (
     <div
       className={cn(
-        "mt-5 grid overflow-hidden rounded-[1.25rem] border bg-white shadow-soft transition-colors sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
-        selected ? "border-gold ring-2 ring-gold/40" : "border-sand",
+        "mt-5 grid overflow-hidden rounded-[1.25rem] bg-anthracite text-paper shadow-soft transition-shadow md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]",
+        selected && "ring-2 ring-paper/70",
       )}
       data-testid="hotel-card"
     >
-      <div className="relative min-h-44">
-        <SpaceImage space={hotel} className="absolute inset-0" sizes="(min-width: 640px) 30vw, 100vw" />
-        <span className="absolute left-3 top-3 rounded-full bg-anthracite/80 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-paper">1. Obergeschoss</span>
+      <div className="relative min-h-52">
+        <SpaceImage space={hotel} className="absolute inset-0" sizes="(min-width: 768px) 40vw, 100vw" />
+        <div className="absolute inset-0 bg-gradient-to-t from-anthracite/70 via-transparent to-transparent" />
+        {thumbs.length > 0 && (
+          <div className="absolute inset-x-3 bottom-3 flex gap-2" aria-hidden="true">
+            {thumbs.map((t) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={t.src} src={t.src} alt="" className="h-12 w-16 rounded-md border border-white/40 object-cover shadow" loading="lazy" />
+            ))}
+          </div>
+        )}
       </div>
-      <div className="flex flex-col gap-3 p-5">
+      <div className="flex flex-col gap-4 p-5 md:p-6">
         <div>
-          <p className="eyebrow">Übernachtung für Ihre Gäste</p>
-          <h3 className="mt-1 text-2xl">Hotel komplett mieten</h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{hotel.shortDescription}</p>
+          <p className="eyebrow !text-gold-light">Übernachten im Haus · 1. Obergeschoss</p>
+          <h3 className="mt-2 text-2xl md:text-[1.7rem]">Ihre Gäste schlafen direkt über der Feier</h3>
+          <p className="mt-2 text-sm leading-relaxed text-paper/75">
+            Das Landhotel gehört während Ihres Fests ganz Ihrer Gesellschaft – kein Heimweg, keine Fremden auf dem Flur.
+          </p>
         </div>
+        <ul className="flex flex-wrap gap-2 text-[0.8rem] font-semibold" aria-label="Ausstattung Hotel">
+          <li className="rounded-full border border-white/20 px-3 py-1">10 Zimmer</li>
+          <li className="rounded-full border border-white/20 px-3 py-1">1 Wohnung mit Küche</li>
+          <li className="rounded-full border border-white/20 px-3 py-1">Zimmer mit eigenem Bad</li>
+        </ul>
         {status && status !== "unknown" && (
-          <p className={cn("text-sm font-semibold", status === "available" ? "text-success" : status === "unavailable" ? "text-danger" : "text-warning")}>
+          <p className={cn("text-sm font-semibold", status === "available" ? "text-[#a9cf9f]" : status === "unavailable" ? "text-[#f0a79c]" : "text-gold-light")}>
             {status === "available" ? "✓ Im gewählten Zeitraum frei" : status === "unavailable" ? "Im gewählten Zeitraum belegt" : "Teilweise frei"}
           </p>
         )}
-        <div className="mt-auto flex flex-wrap gap-2">
-          <Button variant={selected ? "primary" : "gold"} size="sm" onClick={onToggle} aria-pressed={selected} data-testid="hotel-toggle">
+        <div className="mt-auto flex flex-wrap items-center gap-2">
+          <Button variant={selected ? "light" : "gold"} size="sm" onClick={onToggle} aria-pressed={selected} data-testid="hotel-toggle">
             {selected ? <Check className="h-4 w-4" /> : null}
-            {selected ? "Hotel ausgewählt" : "Hotel zur Auswahl hinzufügen"}
+            {selected ? "Übernachtung ist dabei" : "Übernachtung hinzufügen"}
           </Button>
-          <Link href={hotel.href} className="inline-flex h-9 items-center rounded-full border border-ink/15 px-4 text-sm font-semibold hover:border-ink/40">
-            Zimmer & Grundriss ansehen
+          <Link href={hotel.href} className="inline-flex h-9 items-center rounded-full border border-white/25 px-4 text-sm font-semibold hover:border-white/60">
+            Zimmer ansehen
           </Link>
+          <span className="w-full text-xs text-paper/55">Exklusiv für Ihre Gesellschaft · Preis auf Anfrage</span>
         </div>
       </div>
     </div>
