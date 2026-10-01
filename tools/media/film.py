@@ -18,16 +18,16 @@ LOOK = ("eq=contrast=1.07:saturation=1.10:gamma=0.97,"
 
 # chapter → source + segment (seconds) + options
 PLAN = {
-    "intro":         dict(vid="V01", start=23, end=52, n=48, smoothing=60),
-    "restaurant":    dict(vid="V04", start=6, end=30, n=40, smoothing=45),
-    "side-room":     dict(vid="V27", start=0, end=6, n=40, smoothing=30),
-    "stage":         dict(vid="V22", start=33, end=41, n=40, smoothing=30),
-    "winter-garden": dict(vid="V18", start=0, end=6, n=40, smoothing=30),
-    "hotel":         dict(vid="V40", start=6.5, end=16, n=40, smoothing=40),
+    "intro":         dict(vid="V01", start=40, end=52, n=48, smoothing=90),
+    "restaurant":    dict(vid="V04", start=9.2, end=15.6, n=40, smoothing=80),
+    "side-room":     dict(vid="V27", start=0, end=6, n=40, smoothing=60),
+    "stage":         dict(vid="V15", start=33, end=36.3, n=40, smoothing=60),
+    "winter-garden": dict(vid="V04", start=49, end=60, n=40, smoothing=80),
+    "hotel":         dict(vid="V40", start=11.5, end=15, n=40, smoothing=60),
     "beer-garden":   dict(kb="F122", n=40, z=(1.0, 1.22), c0=(0.5, 0.55), c1=(0.47, 0.62)),
     "old-tavern":    dict(kb="F028", n=40, z=(1.0, 1.16), c0=(0.5, 0.5), c1=(0.56, 0.54)),
     "kitchen":       dict(kb="@" + os.environ.get("KRONE_KITCHEN_CLEAN", "k_clean1.png"), graded=True, n=40, z=(1.0, 1.14), c0=(0.5, 0.52), c1=(0.53, 0.52)),
-    "finale":        dict(vid="V06", start=60, end=97, n=48, smoothing=60, reverse=True),
+    "finale":        dict(vid="V06", start=34, end=79, n=48, smoothing=90, reverse=True),
 }
 
 def run(cmd):
@@ -35,6 +35,45 @@ def run(cmd):
     if r.returncode:
         print(r.stderr[-1500:]); raise SystemExit(1)
     return r
+
+def _gauss(x, sigma):
+    r = int(3 * sigma) + 1
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2); k /= k.sum()
+    pad = np.pad(x, ((r, r), (0, 0)), mode="edge")
+    return np.stack([np.convolve(pad[:, j], k, mode="valid") for j in range(x.shape[1])], axis=1)
+
+
+def smooth_path(paths, sigma=2.2, zoom=1.04):
+    """Second stabilisation on the chosen frames: estimate the camera path between
+    consecutive frames (translation, rotation, scale), low-pass it and warp each
+    frame onto the smoothed path – removes the residual step-to-step jitter."""
+    imgs = [cv2.imread(p) for p in paths]
+    h, w = imgs[0].shape[:2]
+    f = 800 / w
+    g = [cv2.cvtColor(cv2.resize(i, (800, int(h * f))), cv2.COLOR_BGR2GRAY) for i in imgs]
+    steps = [[0.0, 0.0, 0.0, 0.0]]
+    for a, b in zip(g, g[1:]):
+        pts = cv2.goodFeaturesToTrack(a, 500, 0.01, 8)
+        m = None
+        if pts is not None and len(pts) > 20:
+            nxt, st, _ = cv2.calcOpticalFlowPyrLK(a, b, pts, None)
+            ok = st.reshape(-1) == 1
+            if ok.sum() > 20:
+                m, _ = cv2.estimateAffinePartial2D(pts[ok], nxt[ok], method=cv2.RANSAC, ransacReprojThreshold=2.0)
+        if m is None:
+            steps.append([0.0, 0.0, 0.0, 0.0]); continue
+        steps.append([m[0, 2] / f, m[1, 2] / f, float(np.arctan2(m[1, 0], m[0, 0])), float(np.log(np.hypot(m[0, 0], m[1, 0])))])
+    traj = np.cumsum(np.array(steps), axis=0)
+    diff = _gauss(traj, sigma) - traj
+    lim = np.array([0.03 * w, 0.03 * h, np.radians(1.5), 0.03])
+    diff = np.clip(diff, -lim, lim)
+    out = []
+    for im, (dx, dy, da, ds) in zip(imgs, diff):
+        M = cv2.getRotationMatrix2D((w / 2, h / 2), np.degrees(da), float(np.exp(ds)) * zoom)
+        M[0, 2] += dx; M[1, 2] += dy
+        out.append(cv2.warpAffine(im, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT))
+    return out
+
 
 def is_hlg(path):
     return "arib-std-b67" in subprocess.run([FF, "-hide_banner", "-i", path], capture_output=True, text=True).stderr
@@ -77,6 +116,8 @@ def build(cid, p):
         return kenburns(cid, p)
     src = IC + "originals/" + cat[p["vid"]]["file"]
     tmp = f"{HERE}/tmp-{cid}"
+    if os.environ.get("REUSE") and glob.glob(f"{tmp}/*.jpg"):
+        return select(cid, p, sorted(glob.glob(f"{tmp}/*.jpg")))
     shutil.rmtree(tmp, ignore_errors=True); os.makedirs(tmp)
     base = (HLG + "," if is_hlg(src) else "") + "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=1920:1080"
     seg = ["-ss", str(p["start"]), "-t", str(p["end"] - p["start"]), "-i", src]
@@ -85,29 +126,51 @@ def build(cid, p):
     vf = (f"{base},vidstabtransform=input={trf}:smoothing={p['smoothing']}:optzoom=1:zoomspeed=0.15:interpol=bicubic:crop=black,"
           f"hqdn3d=1.5:1.5:3:3,{LOOK},scale={W}:{H}:flags=lanczos,unsharp=5:5:0.7:5:5:0,vignette=angle=PI/7:mode=forward")
     run([FF, "-loglevel", "error", *seg, "-an", "-vf", vf, "-q:v", "2", f"{tmp}/%05d.jpg"])
-    frames = sorted(glob.glob(f"{tmp}/*.jpg"))
+    return select(cid, p, sorted(glob.glob(f"{tmp}/*.jpg")))
+
+
+def affine_steps(paths, width=480):
+    g = []
+    for f in paths:
+        im = cv2.imread(f, cv2.IMREAD_REDUCED_COLOR_2)
+        h, w = im.shape[:2]
+        g.append(cv2.cvtColor(cv2.resize(im, (width, int(width * h / w))), cv2.COLOR_BGR2GRAY))
+    out = [[0.0, 0.0, 0.0, 0.0]]
+    for a, b in zip(g, g[1:]):
+        m = None
+        pts = cv2.goodFeaturesToTrack(a, 400, 0.01, 6)
+        if pts is not None and len(pts) > 20:
+            nxt, st, _ = cv2.calcOpticalFlowPyrLK(a, b, pts, None)
+            ok = st.reshape(-1) == 1
+            if ok.sum() > 20:
+                m, _ = cv2.estimateAffinePartial2D(pts[ok], nxt[ok], method=cv2.RANSAC, ransacReprojThreshold=1.5)
+        if m is None:
+            out.append(out[-1]); continue
+        out.append([m[0, 2], m[1, 2], float(np.arctan2(m[1, 0], m[0, 0])), float(np.log(np.hypot(m[0, 0], m[1, 0])))])
+    return np.array(out), width
+
+
+def select(cid, p, frames):
     if p.get("reverse"):
         frames = frames[::-1]
-    # motion-equalised selection: equal visual motion per scroll step
-    prev = None; motion = [0.0]
-    for f in frames:
-        g = cv2.cvtColor(cv2.resize(cv2.imread(f), (320, 180)), cv2.COLOR_BGR2GRAY).astype(np.float32)
-        if prev is not None:
-            flow = cv2.calcOpticalFlowFarneback(prev, g, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-            motion.append(float(np.median(np.linalg.norm(flow, axis=2))) + 0.02)
-        prev = g
-    cum = np.cumsum(motion); cum = cum / cum[-1]
-    t = np.linspace(0, 1, len(frames))
-    mix = 0.75 * cum + 0.25 * t                     # mostly motion, a bit of time
+    steps, wpx = affine_steps(frames)
+    # perceived motion per step: translation (px) + rotation and zoom expressed as
+    # the displacement they cause at the image edge
+    half = wpx / 2
+    mag = np.sqrt(steps[:, 0] ** 2 + steps[:, 1] ** 2 + (steps[:, 2] * half) ** 2 + (steps[:, 3] * half) ** 2)
+    mag = _gauss(mag[:, None], float(os.environ.get("MAGSIGMA", 3.0)))[:, 0] + 1e-3
+    cum = np.cumsum(mag); cum = (cum - cum[0]) / (cum[-1] - cum[0])
     n = p["n"]
-    picks = [int(np.argmin(np.abs(mix - k / (n - 1)))) for k in range(n)]
+    picks = [int(np.argmin(np.abs(cum - k / (n - 1)))) for k in range(n)]
     d = f"{OUT}/{cid}"; os.makedirs(d, exist_ok=True)
     for f in glob.glob(d + "/*.webp"): os.remove(f)
-    for k, i in enumerate(picks):
-        Image.open(frames[i]).convert("RGB").save(f"{d}/{k:02d}.webp", quality=72, method=6)
+    chosen = [frames[i] for i in picks]
+    imgs = smooth_path(chosen) if os.environ.get("STAGE2") else [cv2.imread(x) for x in chosen]
+    for k, im in enumerate(imgs):
+        Image.fromarray(cv2.cvtColor(im, cv2.COLOR_BGR2RGB)).save(f"{d}/{k:02d}.webp", quality=72, method=6)
     size = sum(os.path.getsize(x) for x in glob.glob(d + "/*.webp"))
-    shutil.rmtree(tmp, ignore_errors=True)
     print(cid, len(frames), "→", n, f"{size/1e6:.1f} MB", flush=True)
+
 
 if __name__ == "__main__":
     for cid in sys.argv[1:]:

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { progressiveOrder } from "@/features/home/tour-player";
 import { describe, expect, it } from "vitest";
 import { FINALE_START_CAMERA, tourConfig, WIDE_CAMERA } from "@/config/tour";
-import { cameraTransform, chapterSpans, computeFrame, overviewCamera, smoothstep } from "@/features/home/tour-timeline";
+import { cameraTransform, chapterSpans, computeFrame, overviewCamera, smoothstep, TAIL } from "@/features/home/tour-timeline";
 
 const chapters = tourConfig.chapters;
 const spans = chapterSpans(chapters);
@@ -38,7 +38,7 @@ describe("scroll film timeline", () => {
       const f = frame((spans[i]!.start + spans[i]!.end) / 2);
       expect(f.index).toBe(i);
       expect(f.layerOpacity[i]).toBe(1);
-      expect(f.layerProgress[i]).toBeCloseTo(0.5, 5);
+      expect(f.layerProgress[i]).toBeCloseTo(0.5 * (1 - TAIL), 5);
       expect(f.captionOpacity[i]).toBeGreaterThan(0.95);
       f.layerOpacity.forEach((o, j) => j !== i && expect(o).toBe(0));
       expect(f.mapOpacity).toBe(0);
@@ -89,13 +89,24 @@ describe("scroll film timeline", () => {
     const vp = { width: 390, height: 664 };
     const { tx, scale } = cameraTransform(overviewCamera(WIDE_CAMERA, vp, MAP), vp, MAP);
     expect(tx + 487 * scale).toBeGreaterThanOrEqual(0);
-    expect(tx + 1193 * scale).toBeLessThanOrEqual(vp.width);
+    expect(tx + 1377 * scale).toBeLessThanOrEqual(vp.width);
     expect(overviewCamera(WIDE_CAMERA, { width: 1440, height: 900 }, MAP)).toEqual(WIDE_CAMERA);
   });
 
   it("smoothstep is clamped", () => {
     expect(smoothstep(0.2, 0.4, 0)).toBe(0);
     expect(smoothstep(0.2, 0.4, 1)).toBe(1);
+  });
+});
+
+describe("cuts keep moving", () => {
+  it("the outgoing clip plays its tail while the next one fades in", () => {
+    const i = 2;
+    const a = frame(spans[i]!.start + 0.001);
+    const b = frame(spans[i]!.start + (spans[i]!.end - spans[i]!.start) * 0.2);
+    expect(a.layerOpacity[i - 1]).toBe(1);
+    expect(b.layerProgress[i - 1]!).toBeGreaterThan(a.layerProgress[i - 1]!);
+    expect(b.layerProgress[i - 1]!).toBeLessThanOrEqual(1);
   });
 });
 

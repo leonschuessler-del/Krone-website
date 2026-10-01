@@ -3,7 +3,7 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 import { renderBaseMapSvg } from "@/features/map/render-base-map";
 
-export const alt = "Zur Krone Leidersbach – Ein Ort. Viele Möglichkeiten.";
+export const alt = "Landhotel Gasthof Zur Krone, Leidersbach";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -11,9 +11,10 @@ export const contentType = "image/png";
 const fontDir = path.join(process.cwd(), "node_modules/@fontsource/cormorant-garamond/files");
 
 export default async function OpengraphImage() {
-  const [serif, serifItalic] = await Promise.all([
+  const [serif, serifItalic, fraktur] = await Promise.all([
     readFile(path.join(fontDir, "cormorant-garamond-latin-600-normal.woff")),
     readFile(path.join(fontDir, "cormorant-garamond-latin-500-italic.woff")),
+    readFile(path.join(process.cwd(), "node_modules/@fontsource/unifrakturmaguntia/files/unifrakturmaguntia-latin-400-normal.woff")),
   ]);
   const map = `data:image/svg+xml;base64,${Buffer.from(renderBaseMapSvg()).toString("base64")}`;
   return new ImageResponse(
@@ -33,12 +34,12 @@ export default async function OpengraphImage() {
         />
         <div style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 80px", color: "#fbf8f2", fontFamily: "Cormorant", fontWeight: 600, fontStyle: "normal" }}>
           <div style={{ display: "flex", fontSize: 22, letterSpacing: 8, color: "#d8bb7e" }}>LANDHOTEL · GASTHOF · LEIDERSBACH</div>
-          <div style={{ display: "flex", fontSize: 96, letterSpacing: 10, marginTop: 18, fontFamily: "Cormorant" }}>ZUR KRONE</div>
+          <div style={{ display: "flex", fontSize: 120, marginTop: 10, fontFamily: "Fraktur", fontWeight: 400 }}>Zur Krone</div>
           <div style={{ display: "flex", width: 120, height: 2, background: "#b8904a", marginTop: 26 }} />
           <div style={{ display: "flex", fontSize: 52, marginTop: 28, fontFamily: "Cormorant" }}>
-            Ein Ort.&nbsp;<span style={{ color: "#d8bb7e", fontStyle: "italic" }}>Viele Möglichkeiten.</span>
+            Willkommen&nbsp;<span style={{ color: "#d8bb7e", fontStyle: "italic" }}>in der Krone.</span>
           </div>
-          <div style={{ display: "flex", fontSize: 26, marginTop: 18, color: "rgba(251,248,242,0.75)" }}>Restaurant · Eventräume · Biergarten · Hotel</div>
+          <div style={{ display: "flex", fontSize: 26, marginTop: 18, color: "rgba(251,248,242,0.75)" }}>Gaststube · Säle · Wintergarten · Biergarten · Hotel</div>
         </div>
       </div>
     ),
@@ -47,6 +48,7 @@ export default async function OpengraphImage() {
       fonts: [
         { name: "Cormorant", data: serif, weight: 600, style: "normal" },
         { name: "Cormorant", data: serifItalic, weight: 500, style: "italic" },
+        { name: "Fraktur", data: fraktur, weight: 400, style: "normal" },
       ],
     },
   );

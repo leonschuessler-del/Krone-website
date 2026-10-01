@@ -163,7 +163,7 @@ export function SiteMap({
         {/* Parking / courtyard access (not bookable) */}
         {showParking &&
           mapFeatures
-            .filter((f) => f.type === "parking")
+            .filter((f) => f.type === "parking" || f.type === "street")
             .map((f) => (
               <g key={f.id} aria-hidden="true">
                 <title>{`${f.label} – ${f.note ?? "nicht buchbar"}`}</title>
@@ -305,7 +305,7 @@ export function SiteMap({
                   title={`${f.label} – ${f.note ?? "nicht buchbar"}`}
                 >
                   <span className="grid h-5 w-5 place-items-center rounded-full border border-white/40 text-[0.62rem] font-bold text-paper">P</span>
-                  {labelMode === "full" && f.label}
+                  {f.id === "parking" && f.label}
                 </span>
               ))}
         </div>

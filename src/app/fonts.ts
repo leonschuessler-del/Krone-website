@@ -26,3 +26,11 @@ export const sans = localFont({
   ],
   fallback: ["system-ui", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
 });
+
+/** Brand word mark: Fraktur lettering as painted on the façade ("Zur Krone"). */
+export const fraktur = localFont({
+  variable: "--font-fraktur",
+  display: "swap",
+  src: [{ path: "../../node_modules/@fontsource/unifrakturmaguntia/files/unifrakturmaguntia-latin-400-normal.woff2", weight: "400", style: "normal" }],
+  fallback: ["Georgia", "serif"],
+});

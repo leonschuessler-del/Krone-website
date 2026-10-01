@@ -1,5 +1,5 @@
 import { FINALE_START_CAMERA, WIDE_CAMERA, type TourChapter } from "@/config/tour";
-import { cameraTransform, chapterScrollTarget, chapterSpans, computeFrame, overviewCamera, type TourFrame } from "./tour-timeline";
+import { cameraTransform, chapterScrollTarget, chapterSpans, computeFrame, overviewCamera, smoothstep, type TourFrame } from "./tour-timeline";
 
 /**
  * DOM driver of the scroll film, framework-agnostic: the React component and
@@ -116,6 +116,10 @@ class FrameStore {
     img.src = this.url(`${dir}${String(f).padStart(2, "0")}.webp`);
   }
 
+  hasExact(c: number, f: number) {
+    return !!this.ready[c]?.[f];
+  }
+
   /** nearest loaded frame to f (prefers the exact one) */
   get(c: number, f: number): HTMLImageElement | null {
     const ready = this.ready[c];
@@ -194,11 +198,18 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     chapters.forEach((c, i) => {
       const o = f.layerOpacity[i]!;
       if (o <= 0.001) return;
-      // nearest frame, no in-between blending (blends ghost on fast camera moves)
-      const img = store.get(i, Math.round(f.layerProgress[i]! * (c.frames.count - 1)));
+      // frame A plus a short, eased dissolve into frame B around the midpoint:
+      // softens the step between frames without ghosting on fast moves
+      const pos = f.layerProgress[i]! * (c.frames.count - 1);
+      const a = Math.floor(pos);
+      const frac = pos - a;
+      const img = store.get(i, a);
       if (!img) return;
-      drawCover(ctx, img, w, h, o, f.layerScale[i] ?? 1);
+      const zoom = f.layerScale[i] ?? 1;
+      drawCover(ctx, img, w, h, o, zoom);
       drew = true;
+      const blend = smoothstep(0.3, 0.7, frac);
+      if (blend > 0.01 && a + 1 < c.frames.count && store.hasExact(i, a + 1)) drawCover(ctx, store.get(i, a + 1)!, w, h, o * blend, zoom);
     });
     ctx.globalAlpha = 1;
     if (drew && !drewOnce && poster) {

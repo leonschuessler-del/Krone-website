@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { sans, serif } from "./fonts";
+import { fraktur, sans, serif } from "./fonts";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={`${serif.variable} ${sans.variable}`}>
+    <html lang="de" className={`${serif.variable} ${sans.variable} ${fraktur.variable}`}>
       <body className="min-h-dvh bg-paper antialiased">{children}</body>
     </html>
   );

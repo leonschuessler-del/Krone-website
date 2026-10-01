@@ -33,7 +33,9 @@ export function chapterSpans(chapters: readonly Pick<TourChapter, "id">[]): Chap
 }
 
 /** Share of a chapter used to crossfade from the previous clip. */
-export const CROSSFADE = 0.28;
+export const CROSSFADE = 0.3;
+/** Share of each clip reserved to keep moving underneath the next chapter's fade-in. */
+export const TAIL = 0.14;
 
 export interface TourFrame {
   index: number;
@@ -75,16 +77,18 @@ export function computeFrame(
   const captionOpacity = new Array<number>(n).fill(0);
   const layerScale = new Array<number>(n).fill(1);
 
-  // current clip plays through the whole chapter; it fades in over the previous one
+  // Each clip plays its first (1 - TAIL) during its own chapter and keeps moving
+  // through its tail while the next clip fades in – no frozen frame at the cut.
+  const head = (i: number) => (i === n - 1 ? 1 : 1 - TAIL);
   const fadeIn = index === 0 ? 1 : smoothstep(0, CROSSFADE, t);
   layerOpacity[index] = fadeIn;
-  layerProgress[index] = t;
+  layerProgress[index] = t * head(index);
   if (index > 0 && fadeIn < 1) {
-    layerOpacity[index - 1] = 1;
-    layerProgress[index - 1] = 1;
     const k = clamp01(t / CROSSFADE);
-    layerScale[index - 1] = 1 + 0.07 * k;
-    layerScale[index] = 1.05 - 0.05 * smoothstep(0, 1, k);
+    layerOpacity[index - 1] = 1;
+    layerProgress[index - 1] = head(index - 1) + (1 - head(index - 1)) * k;
+    layerScale[index - 1] = 1 + 0.05 * k;
+    layerScale[index] = 1.04 - 0.04 * smoothstep(0, 1, k);
   }
   // previous clips keep their last frame (needed when scrolling back)
   for (let i = 0; i < index - 1; i++) layerProgress[i] = 1;
@@ -140,8 +144,8 @@ export function cameraTransform(camera: TourCamera, vp: Viewport, map: { width: 
   return { tx: place(vp.width, map.width, camera.x), ty: place(vp.height, map.height, camera.y), scale };
 }
 
-/** Map x-range holding the whole plot (Alte Wirtschaft x≈487 … Parkplatz x≈1193). */
-const OVERVIEW_SPAN = { from: 470, to: 1220 } as const;
+/** Map x-range holding the whole plot (Alte Wirtschaft x≈487 … Parkplatz x≈1377). */
+const OVERVIEW_SPAN = { from: 470, to: 1390 } as const;
 
 /**
  * Finale camera for this viewport: unchanged on landscape; on portrait screens,

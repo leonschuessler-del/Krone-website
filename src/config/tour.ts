@@ -37,7 +37,7 @@ export interface TourChapter {
 }
 
 /** Bird's-eye framing of the finale (drone photo with all areas). */
-export const WIDE_CAMERA: TourCamera = { x: 845, y: 520, zoom: 1 };
+export const WIDE_CAMERA: TourCamera = { x: 920, y: 520, zoom: 1 };
 /** Where the finale camera starts before settling on WIDE_CAMERA. */
 export const FINALE_START_CAMERA: TourCamera = { x: 820, y: 420, zoom: 1.6 };
 
