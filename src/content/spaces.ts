@@ -75,7 +75,7 @@ export const spaceSeeds: SpaceSeed[] = [
     sortOrder: 10,
     shortDescription: "Die Gaststube mit Theke und Rezeption – das Herz des Hauses.",
     longDescription:
-      "Das Hauptrestaurant liegt im Erdgeschoss zwischen Küche und Nebenzimmer: helles Holz, Polsterbänke, Steinsäulen und die große Theke mit Rezeption. Über eine mobile Trennwand lässt es sich mit dem Nebenzimmer zu einem großen Raum verbinden. Der Haupteingang mit Vorraum liegt direkt davor. Bestuhlung und Kapazität werden vom Betreiber ergänzt.",
+      "Das Hauptrestaurant liegt im Erdgeschoss zwischen Küche und Nebenzimmer: helles Holz, Polsterbänke, Steinsäulen und die große Theke mit Rezeption. Über eine mobile Trennwand lässt es sich mit dem Nebenzimmer zu einem großen Raum verbinden. Der Haupteingang mit Vorraum liegt direkt davor.",
   },
   {
     ...defaults,
@@ -90,7 +90,7 @@ export const spaceSeeds: SpaceSeed[] = [
     sortOrder: 20,
     shortDescription: "Die Profiküche direkt hinter der Rezeption.",
     longDescription:
-      "Die Küche erreicht man durch die Tür hinter der Rezeption. Sie ist voll ausgestattet mit Herdblock, Kombidämpfern und Spülküche. Ob und in welchem Umfang eine Küchennutzung (z. B. durch Caterer) möglich ist, wird noch festgelegt. [Nutzungsbedingungen durch Betreiber zu bestätigen]",
+      "Die Küche erreicht man durch die Tür hinter der Rezeption. Sie ist voll ausgestattet mit Herdblock, Kombidämpfern und Spülküche. Ob die Küche bei Ihrer Feier mitgenutzt werden kann, etwa durch einen Caterer, stimmen wir individuell mit Ihnen ab.",
   },
   {
     ...defaults,
@@ -120,7 +120,7 @@ export const spaceSeeds: SpaceSeed[] = [
     sortOrder: 40,
     shortDescription: "Der leicht erhöhte Bereich hinter der Schiebetür – für Band, Reden und Auftritte.",
     longDescription:
-      "Die Bühne liegt am Ende des Gebäudes, hinter einer großen Schiebetür neben dem Nebenzimmer, und ist leicht erhöht. Geschlossen dient sie als gemütlicher Bereich mit Sesseln, geöffnet als Bühne für Musik, Reden oder Programm. Technische Ausstattung (Licht, Ton) folgt.",
+      "Die Bühne liegt am Ende des Gebäudes, hinter einer großen Schiebetür neben dem Nebenzimmer, und ist leicht erhöht. Geschlossen dient sie als gemütlicher Bereich mit Sesseln, geöffnet als Bühne für Musik, Reden oder Programm. Licht- und Tontechnik auf Anfrage.",
   },
   {
     ...defaults,
@@ -135,7 +135,7 @@ export const spaceSeeds: SpaceSeed[] = [
     sortOrder: 50,
     shortDescription: "Die gemütliche Stube mit Holzboden und eigener Theke.",
     longDescription:
-      "Die Alte Wirtschaft ist der traditionsreiche Teil des Hauses: Holzboden, Bänke und eine eigene kleine Theke – ideal für kleinere Runden und gesellige Abende. Aktuelle Fotos, Ausstattung und Kapazität werden ergänzt.",
+      "Die Alte Wirtschaft ist der traditionsreiche Teil des Hauses: Holzboden, Bänke und eine eigene kleine Theke – ideal für kleinere Runden und gesellige Abende.",
   },
   {
     ...defaults,
@@ -165,7 +165,7 @@ export const spaceSeeds: SpaceSeed[] = [
     sortOrder: 70,
     shortDescription: "Der Hof hinter dem Haus – mit Sandsteinmauer, Pergola und überdachter Terrasse.",
     longDescription:
-      "Der Biergarten liegt vor dem Wintergarten im Hof: eine überdachte Terrasse, Holztische mit grünen Polstern, eine historische Sandsteinmauer und Bäume als Schattenspender. Saisonale Nutzbarkeit und Kapazität werden vom Betreiber ergänzt.",
+      "Der Biergarten liegt vor dem Wintergarten im Hof: eine überdachte Terrasse, Holztische mit grünen Polstern, eine historische Sandsteinmauer und Bäume als Schattenspender.",
   },
   {
     ...defaults,
@@ -189,7 +189,7 @@ export const spaceSeeds: SpaceSeed[] = [
       "Im Obergeschoss über Restaurant, Nebenzimmer und Bühne liegt das Landhotel: Doppel-, Dreibett- und Einzelzimmer mit eigenem Bad, " +
       "ein heller Flur, ein Aufenthaltsraum mit Balkon und eine Wohnung mit eigener Küche. Das Hotel wird als Ganzes vermietet – " +
       "ideal für Hochzeiten, Familienfeiern und Firmenevents, bei denen die Gäste direkt im Haus übernachten. " +
-      "Zimmeranzahl laut Betreiber; Bettenanzahl und Preise auf Anfrage.",
+      "Preise auf Anfrage.",
     needsVerification: [...UNKNOWN_FACTS, "roomTypes", "bedCount"],
   },
 ];

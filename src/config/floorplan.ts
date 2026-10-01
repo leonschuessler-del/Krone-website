@@ -177,10 +177,10 @@ export const mapFeatures: MapFeature[] = [
     id: "parking",
     type: "parking",
     label: "Parkplatz",
-    note: "Hofzufahrt und Stellplätze – Anzahl der Stellplätze folgt",
+    note: "Parkplätze im Hof (so auch am Haus ausgeschildert)",
     rentable: false,
-    polygon: [[1136, 263], [1347, 263], [1354, 941], [990, 941], [990, 805], [1136, 805]],
-    labelPosition: { x: 1239, y: 551 },
+    polygon: [[916, 895], [994, 895], [996, 807], [1059, 786], [1057, 701], [1160, 699], [1193, 816], [1193, 948], [916, 953]],
+    labelPosition: { x: 1102, y: 869 },
   },
 ];
 

@@ -33,7 +33,7 @@ export function chapterSpans(chapters: readonly Pick<TourChapter, "id">[]): Chap
 }
 
 /** Share of a chapter used to crossfade from the previous clip. */
-export const CROSSFADE = 0.16;
+export const CROSSFADE = 0.28;
 
 export interface TourFrame {
   index: number;
@@ -43,6 +43,8 @@ export interface TourFrame {
   layerOpacity: number[];
   /** position (0…1) inside each chapter.s image sequence */
   layerProgress: number[];
+  /** extra zoom per layer: the outgoing shot keeps pushing in while the next one settles (continuous motion across the cut) */
+  layerScale: number[];
   /** caption / text opacity per chapter */
   captionOpacity: number[];
   /** finale: drone photo with the area buttons (0…1) */
@@ -71,6 +73,7 @@ export function computeFrame(
   const layerOpacity = new Array<number>(n).fill(0);
   const layerProgress = new Array<number>(n).fill(0);
   const captionOpacity = new Array<number>(n).fill(0);
+  const layerScale = new Array<number>(n).fill(1);
 
   // current clip plays through the whole chapter; it fades in over the previous one
   const fadeIn = index === 0 ? 1 : smoothstep(0, CROSSFADE, t);
@@ -79,6 +82,9 @@ export function computeFrame(
   if (index > 0 && fadeIn < 1) {
     layerOpacity[index - 1] = 1;
     layerProgress[index - 1] = 1;
+    const k = clamp01(t / CROSSFADE);
+    layerScale[index - 1] = 1 + 0.07 * k;
+    layerScale[index] = 1.05 - 0.05 * smoothstep(0, 1, k);
   }
   // previous clips keep their last frame (needed when scrolling back)
   for (let i = 0; i < index - 1; i++) layerProgress[i] = 1;
@@ -105,6 +111,7 @@ export function computeFrame(
     t,
     layerOpacity,
     layerProgress,
+    layerScale,
     captionOpacity,
     mapOpacity,
     areasOpacity,
@@ -133,8 +140,8 @@ export function cameraTransform(camera: TourCamera, vp: Viewport, map: { width: 
   return { tx: place(vp.width, map.width, camera.x), ty: place(vp.height, map.height, camera.y), scale };
 }
 
-/** Map x-range holding the whole plot (Alte Wirtschaft x≈487 … Parkplatz x≈1354). */
-const OVERVIEW_SPAN = { from: 460, to: 1370 } as const;
+/** Map x-range holding the whole plot (Alte Wirtschaft x≈487 … Parkplatz x≈1193). */
+const OVERVIEW_SPAN = { from: 470, to: 1220 } as const;
 
 /**
  * Finale camera for this viewport: unchanged on landscape; on portrait screens,

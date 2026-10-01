@@ -38,21 +38,27 @@ es bringt keine zusätzliche Schärfe, nur größere Dateien.
 
 | Kapitel | Quelle (Sortierungs-Nr.) |
 |---|---|
-| Anflug | V01 (Drohne, 0:10–0:52) |
-| Biergarten | V07 (Drohne, 1:03–1:39) |
-| Wintergarten | V18 (iPhone) |
+| Anflug | V01 (Drohne, 0:23–0:52) |
 | Hauptrestaurant | V04 (Drohne, 0:06–0:30) |
 | Nebenzimmer | V27 (iPhone) |
-| Bühne | V22 (iPhone, 0:31–0:40) |
-| Küche | V35 (iPhone) |
-| Alte Wirtschaft | Fotos F028/F029 (2018, langsame Kamerafahrt) |
-| Hotel | V40 (iPhone) |
+| Bühne | V22 (iPhone, 0:33–0:41) |
+| Wintergarten | V18 (iPhone) |
+| Biergarten | Drohnenfoto F122 (Kamerafahrt) |
+| Küche | retuschiertes Küchenbild (Kamerafahrt) |
+| Alte Wirtschaft | Foto F028 (Kamerafahrt) |
+| Hotel | V40 (iPhone, 0:06–0:16) |
 | Blick von oben | V06 (Drohne, rückwärts) → Drohnenfoto F054 |
 
-Einzelbilder neu erzeugen: aus dem graded Kapitel-Clip 36 gleichmäßig verteilte
-Bilder ziehen (`ffmpeg -i kapitel.mp4 -vf scale=1280:720 …`) und als WebP (q≈70)
-unter `frames/<kapitel>/NN.webp` ablegen. Anzahl = `TOUR_FRAME_COUNT` in
-`src/config/tour.ts`.
+Einzelbilder neu erzeugen: `tools/media/film.py <kapitel>` (Originale nicht im
+Repo; Ordner per `KRONE_ORIGINALS`). Ablauf je Kapitel:
+1. Ausschnitt direkt aus dem 4K-Original (iPhone-HLG → BT.709 tonemapped)
+2. Stabilisierung in zwei Durchgängen (vidstab, starke Glättung, Auto-Zoom)
+3. Einheitlicher Look, 1600×900, leichte Schärfung
+4. Bildauswahl nach gleichmäßiger Bewegung (optischer Fluss): jeder Scroll-Schritt
+   zeigt gleich viel Kamerabewegung – kein Ruckeln durch unregelmäßiges Fliegen
+5. WebP q≈72; Anzahl je Kapitel in `src/config/tour.ts` (40, Drohne 48)
+Biergarten, Küche und Alte Wirtschaft sind ruhige Kamerafahrten über Fotos
+(F122, retuschiertes Küchenbild, F028).
 
 ## Bildbereinigung
 

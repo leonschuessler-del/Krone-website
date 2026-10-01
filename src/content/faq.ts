@@ -33,21 +33,21 @@ export const faqItems: FaqItem[] = [
     id: "hotel",
     question: "Kann ich Hotelzimmer dazu buchen?",
     answer:
-      "Zimmer für Ihre Gäste können Sie im Buchungsprozess als Zusatzwunsch angeben. Zimmerkategorien, Anzahl und Preise werden noch ergänzt – bis dahin werden Zimmeranfragen individuell beantwortet.",
+      "Ja. Die Übernachtung im Landhotel fügen Sie bei Ihrer Anfrage einfach hinzu. Das Hotel mit zehn Zimmern und einer Wohnung wird für Ihre Gesellschaft exklusiv vermietet; den Preis erhalten Sie mit unserem Angebot.",
     needsVerification: true,
   },
   {
     id: "deposit",
     question: "Wie funktioniert die Kaution?",
     answer:
-      "Die Kaution wird getrennt von der Miete ausgewiesen und ist kein Teil des Mietpreises. Höhe, Zahlungszeitpunkt und Rückerstattung regeln die Kautionsbedingungen, die derzeit noch erstellt werden.",
+      "Die Kaution wird getrennt von der Miete ausgewiesen und ist kein Teil des Mietpreises. Höhe, Zahlungszeitpunkt und Rückzahlung stehen in Ihrem Angebot.",
     needsVerification: true,
   },
   {
     id: "handover",
     question: "Wann erfolgt die Übergabe?",
     answer:
-      "Übergabe- und Rückgabezeit wählen Sie im Buchungsprozess aus den angebotenen Zeitfenstern. Die genauen Übergaberegeln werden noch veröffentlicht.",
+      "Übergabe und Rückgabe wählen Sie bei der Anfrage aus festen Zeitfenstern. Alles Weitere besprechen wir vorab persönlich mit Ihnen.",
     needsVerification: true,
   },
   {

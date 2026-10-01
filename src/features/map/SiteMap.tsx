@@ -96,7 +96,9 @@ export function SiteMap({
     return () => io.disconnect();
   }, [reveal, revealed]);
 
-  const labelMode = labels === "auto" ? (width >= mapConfig.showNamesFromWidth ? "full" : "code") : labels;
+  // Neighbouring rooms are narrow on the photo, so the map shows refined code
+  // badges; full names live in the hover card, the legend and the selection panel.
+  const labelMode = labels === "auto" ? "code" : labels;
 
   const focusSibling = useCallback((currentId: string, dir: 1 | -1) => {
     const ids = drawn.map((s) => s.id);
@@ -165,7 +167,7 @@ export function SiteMap({
             .map((f) => (
               <g key={f.id} aria-hidden="true">
                 <title>{`${f.label} – ${f.note ?? "nicht buchbar"}`}</title>
-                <polygon points={toPoints(f.polygon)} fill="#f4efe6" fillOpacity={0.05} stroke="#f4efe6" strokeOpacity={0.6} strokeWidth={1.25} strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
+                <polygon points={toPoints(f.polygon)} fill="none" stroke="#ffffff" strokeOpacity={0.4} strokeWidth={1} strokeDasharray="2 5" vectorEffect="non-scaling-stroke" />
               </g>
             ))}
 
@@ -175,7 +177,7 @@ export function SiteMap({
           .map((f) => (
             <g key={f.id} className="site-map-facility" aria-hidden="true">
               <title>{`${f.label} – ${f.note ?? "nicht einzeln buchbar"}`}</title>
-              <polygon points={toPoints(f.polygon)} fill="#1c1917" fillOpacity={0.42} stroke="#f4efe6" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
+              <polygon points={toPoints(f.polygon)} fill="#15120f" fillOpacity={0.35} stroke="#ffffff" strokeOpacity={0.35} strokeWidth={1} strokeDasharray="2 4" vectorEffect="non-scaling-stroke" />
             </g>
           ))}
 
@@ -235,44 +237,37 @@ export function SiteMap({
             return (
               <div
                 key={space.id}
-                className="site-map-label absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+                className="site-map-label absolute -translate-x-1/2 -translate-y-1/2"
                 style={{ left: pct(pos.x, W), top: pct(pos.y, H), ["--reveal-index" as string]: i, opacity: dimmed ? 0.55 : undefined }}
               >
                 <span
                   className={cn(
-                    "relative grid place-items-center rounded-full border font-serif font-semibold shadow-[0_4px_12px_-4px_rgb(0_0_0/0.55)] transition-colors duration-200",
-                    labelMode === "full" ? "h-9 min-w-9 px-1.5 text-[0.95rem]" : "h-7 min-w-7 px-1 text-[0.78rem]",
-                    selected ? "border-white bg-paper text-anthracite" : "border-white/45 bg-anthracite/85 text-paper",
+                    "relative inline-flex items-center gap-2 whitespace-nowrap rounded-full border shadow-[0_6px_18px_-8px_rgb(0_0_0/0.7)] backdrop-blur-md transition-colors duration-300",
+                    labelMode === "full" ? "py-1 pl-1 pr-3" : "p-0.5",
+                    selected ? "border-white bg-paper text-anthracite" : "border-white/25 bg-[#15120f]/70 text-paper",
                   )}
                 >
-                  {space.code}
+                  <span
+                    className={cn(
+                      "grid place-items-center rounded-full font-sans font-semibold tracking-[0.06em]",
+                      labelMode === "full" ? "h-6 min-w-6 px-1 text-[0.62rem]" : width >= 700 ? "h-8 min-w-8 px-1.5 font-serif text-[0.85rem] tracking-[0.04em]" : "h-6 min-w-6 px-1 text-[0.6rem]",
+                      selected ? "bg-anthracite text-paper" : "border border-white/35 text-paper/90",
+                    )}
+                  >
+                    {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : space.code}
+                  </span>
+                  {labelMode === "full" && <span className="font-serif text-[0.95rem] font-medium leading-none tracking-[0.01em]">{space.name}</span>}
                   {status !== "unknown" && (
                     <span
                       className={cn(
-                        "absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-white/80",
+                        "absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-[#15120f]",
                         status === "available" && "bg-success",
                         status === "unavailable" && "bg-danger",
                         status === "partial" && "bg-warning",
                       )}
-                    >
-                      {status === "available" ? (
-                        <Check className="h-2.5 w-2.5 text-white" strokeWidth={3.5} />
-                      ) : status === "unavailable" ? (
-                        <XIcon className="h-2.5 w-2.5 text-white" strokeWidth={3.5} />
-                      ) : null}
-                    </span>
+                    />
                   )}
                 </span>
-                {labelMode === "full" && (
-                  <span
-                    className={cn(
-                      "whitespace-nowrap rounded-md px-2 py-0.5 font-serif text-[0.9rem] font-semibold leading-tight shadow-[0_3px_10px_-4px_rgb(0_0_0/0.45)] transition-colors duration-200",
-                      selected ? "bg-paper text-anthracite" : "bg-anthracite/80 text-paper",
-                    )}
-                  >
-                    {space.name}
-                  </span>
-                )}
               </div>
             );
           })}
@@ -283,7 +278,7 @@ export function SiteMap({
               f.type === "toilets" ? (
                 <span
                   key={f.id}
-                  className="absolute grid h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-md border border-white/50 bg-anthracite/80 px-1 text-[0.62rem] font-bold tracking-wide text-paper shadow"
+                  className="absolute grid h-5 min-w-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-[#15120f]/60 px-1 text-[0.55rem] font-semibold tracking-[0.08em] text-paper/80 backdrop-blur-sm"
                   style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
                   title={`${f.label} – ${f.note}`}
                 >
@@ -292,7 +287,7 @@ export function SiteMap({
               ) : (
                 <span
                   key={f.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-paper/90 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wider text-ink shadow"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/60 px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-paper/85 backdrop-blur-sm"
                   style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
                 >
                   ↓ {f.label}
@@ -305,11 +300,11 @@ export function SiteMap({
               .map((f) => (
                 <span
                   key={f.id}
-                  className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-md border border-white/50 bg-anthracite/80 py-0.5 pl-0.5 pr-2 text-[0.68rem] font-semibold text-paper shadow"
+                  className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/60 py-0.5 pl-0.5 pr-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-paper/85 backdrop-blur-sm"
                   style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
                   title={`${f.label} – ${f.note ?? "nicht buchbar"}`}
                 >
-                  <span className="grid h-5 w-5 place-items-center rounded bg-paper text-[0.72rem] font-bold text-anthracite">P</span>
+                  <span className="grid h-5 w-5 place-items-center rounded-full border border-white/40 text-[0.62rem] font-bold text-paper">P</span>
                   {labelMode === "full" && f.label}
                 </span>
               ))}

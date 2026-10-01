@@ -14,7 +14,7 @@ describe("scroll film timeline", () => {
     expect(chapters[0]!.id).toBe("intro");
     expect(chapters.at(-1)!.id).toBe("finale");
     expect(chapters.filter((c) => c.spaceId).map((c) => c.spaceId)).toEqual([
-      "beer-garden", "winter-garden", "restaurant", "side-room", "stage", "kitchen", "old-tavern", "hotel",
+      "restaurant", "side-room", "stage", "winter-garden", "beer-garden", "kitchen", "old-tavern", "hotel",
     ]);
     chapters.forEach((c) => {
       expect(c.frames.dir).toBe(`/media/tour/frames/${c.id}/`);
@@ -89,7 +89,7 @@ describe("scroll film timeline", () => {
     const vp = { width: 390, height: 664 };
     const { tx, scale } = cameraTransform(overviewCamera(WIDE_CAMERA, vp, MAP), vp, MAP);
     expect(tx + 487 * scale).toBeGreaterThanOrEqual(0);
-    expect(tx + 1354 * scale).toBeLessThanOrEqual(vp.width);
+    expect(tx + 1193 * scale).toBeLessThanOrEqual(vp.width);
     expect(overviewCamera(WIDE_CAMERA, { width: 1440, height: 900 }, MAP)).toEqual(WIDE_CAMERA);
   });
 

@@ -141,7 +141,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                   <div className="max-w-3xl">
                     <p className="eyebrow !text-gold-light">{hero.eyebrow}</p>
                     <h1 className="mt-5 text-[2.9rem] leading-[1.02] sm:text-6xl lg:text-[5.4rem] short:mt-3 short:text-[2.25rem]">
-                      Ein Ort. <em className="font-medium text-gold-light">Viele Möglichkeiten.</em>
+                      Willkommen <em className="font-medium text-gold-light">in der Krone.</em>
                     </h1>
                     <p className="mt-6 max-w-xl text-lg leading-relaxed text-paper/85 md:text-xl short:hidden">{hero.subline}</p>
                     <div className="mt-8 flex flex-col gap-3 sm:flex-row short:mt-5">
@@ -149,7 +149,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                         Rundgang starten <ArrowDown className="h-4 w-4" />
                       </button>
                       <Link href="#grundriss" prefetch={false} className="inline-flex h-13 items-center justify-center rounded-full border border-white/20 bg-white/5 px-7 font-semibold backdrop-blur hover:bg-white/10">
-                        Direkt zum Grundriss
+                        Direkt zur Karte
                       </Link>
                     </div>
                   </div>

@@ -25,10 +25,10 @@ export function SectionHeading({
           <span className="gold-rule" aria-hidden /> {eyebrow}
         </p>
       )}
-      <h2 id={id} className={cn("mt-4 text-4xl leading-[1.08] md:text-5xl", tone === "dark" ? "text-paper" : "text-ink")}>
+      <h2 id={id} className={cn("mt-5 text-[2.5rem] leading-[1.04] md:text-[3.5rem]", tone === "dark" ? "text-paper" : "text-ink")}>
         {title}
       </h2>
-      {children && <div className={cn("mt-5 text-lg leading-relaxed", tone === "dark" ? "text-paper/75" : "text-ink-soft")}>{children}</div>}
+      {children && <div className={cn("mt-6 max-w-2xl text-[1.0625rem] leading-[1.75]", tone === "dark" ? "text-paper/70" : "text-ink-soft")}>{children}</div>}
     </div>
   );
 }

@@ -86,6 +86,8 @@ class FrameStore {
   private nextMissing(): [number, number] | null {
     // first frame of every wanted chapter, then the rest progressively
     for (const c of this.wanted) if (!this.images[c]![0]) return [c, 0];
+    const active = this.wanted[0] ?? 0;
+    for (const f of progressiveOrder(this.chapters[active]!.frames.count).slice(0, 12)) if (!this.images[active]![f]) return [active, f];
     for (const c of this.wanted) {
       for (const f of progressiveOrder(this.chapters[c]!.frames.count)) if (!this.images[c]![f]) return [c, f];
     }
@@ -105,8 +107,12 @@ class FrameStore {
       this.onLoad();
       this.pump();
     };
-    img.onload = () => done(true);
     img.onerror = () => done(false);
+    img.onload = () => {
+      // decode off the main thread before the frame is used, so drawing never stalls
+      if (typeof img.decode === "function") img.decode().then(() => done(true), () => done(true));
+      else done(true);
+    };
     img.src = this.url(`${dir}${String(f).padStart(2, "0")}.webp`);
   }
 
@@ -123,11 +129,11 @@ class FrameStore {
 
 }
 
-function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number, alpha: number) {
+function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number, alpha: number, zoom = 1) {
   const iw = img.naturalWidth;
   const ih = img.naturalHeight;
   if (!iw || !ih || alpha <= 0) return;
-  const s = Math.max(w / iw, h / ih);
+  const s = Math.max(w / iw, h / ih) * zoom;
   const dw = iw * s;
   const dh = ih * s;
   ctx.globalAlpha = Math.min(1, alpha);
@@ -153,6 +159,7 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
   section.querySelectorAll<HTMLElement>("[data-tour-rail]").forEach((el) => rail.set(Number(el.dataset.tourRail), el));
 
   let raf = 0;
+  let lastTime = 0;
   let current = -1;
   let lastTarget = -1;
   let active = -1;
@@ -178,6 +185,8 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
 
   const draw = (f: TourFrame) => {
     if (!ctx || !w || !h) return;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.globalAlpha = 1;
     ctx.fillStyle = "#1c1917";
     ctx.fillRect(0, 0, w, h);
@@ -188,7 +197,7 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
       // nearest frame, no in-between blending (blends ghost on fast camera moves)
       const img = store.get(i, Math.round(f.layerProgress[i]! * (c.frames.count - 1)));
       if (!img) return;
-      drawCover(ctx, img, w, h, o);
+      drawCover(ctx, img, w, h, o, f.layerScale[i] ?? 1);
       drew = true;
     });
     ctx.globalAlpha = 1;
@@ -226,8 +235,12 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     // an instant jump (skip link, history restore) snaps instead of fast-forwarding
     const jumped = lastTarget >= 0 && Math.abs(target - lastTarget) > 0.2;
     lastTarget = target;
-    current = current < 0 || jumped ? target : current + (target - current) * 0.2;
-    if (Math.abs(target - current) < 0.0004) current = target;
+    // frame-rate independent easing (τ ≈ 110 ms): silky on 60 Hz and 120 Hz alike
+    const now = performance.now();
+    const dt = lastTime ? Math.min(64, now - lastTime) : 16;
+    lastTime = now;
+    current = current < 0 || jumped ? target : current + (target - current) * (1 - Math.exp(-dt / 110));
+    if (Math.abs(target - current) < 0.0002) current = target;
     const vp = { width: window.innerWidth, height: window.innerHeight };
     const finaleTo = overviewCamera(WIDE_CAMERA, vp, map);
     frame = computeFrame(current, chapters, spans, FINALE_START_CAMERA, finaleTo);
@@ -259,6 +272,7 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     if (progressBar) progressBar.style.transform = `scaleX(${current.toFixed(4)})`;
     setActive(frame.index);
     if (current !== target) raf = requestAnimationFrame(tick);
+    else lastTime = 0;
   };
 
   function schedule(redrawOnly = false) {

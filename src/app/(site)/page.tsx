@@ -19,10 +19,10 @@ import { listSpaceViews } from "@/server/services/space-service";
 export const dynamic = "force-dynamic";
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Bereiche wählen", text: "Auf der Karte einen oder mehrere Bereiche anklicken – oder die gesamte Location." },
-  { icon: CalendarCheck, title: "Termin prüfen", text: "Gemeinsame freie Zeiten aller gewählten Bereiche im Kalender sehen." },
-  { icon: Sparkles, title: "Wünsche ergänzen", text: "Zusatzleistungen, Veranstaltungsdetails, Übergabe und Rückgabe festlegen." },
-  { icon: Wallet, title: "Buchen oder anfragen", text: "Direkt buchen oder unverbindlich anfragen – mit transparenter Zusammenfassung." },
+  { icon: MousePointerClick, title: "Räume wählen", text: "Auf der Karte einzelne Räume auswählen oder das ganze Haus." },
+  { icon: CalendarCheck, title: "Termin prüfen", text: "Der Kalender zeigt, wann alle gewählten Räume frei sind." },
+  { icon: Sparkles, title: "Details ergänzen", text: "Anlass, Gästezahl und Wünsche wie Übernachtung oder Technik." },
+  { icon: Wallet, title: "Anfrage senden", text: "Unverbindlich oder verbindlich. Sie erhalten sofort eine Bestätigung mit Vorgangsnummer." },
 ];
 
 export default async function HomePage() {
@@ -82,15 +82,15 @@ export default async function HomePage() {
           </SectionHeading>
           <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-sand bg-sand">
             {[
-              { k: "ca. 1.720 m²", v: "Gesamtfläche der Immobilie", note: "laut Immobilienangebot" },
-              { k: String(eventSpaces.length), v: "kombinierbare Bereiche", note: "einzeln oder zusammen" },
-              { k: "Hotel", v: "Übernachten vor Ort", note: "Zimmerdetails folgen" },
-              { k: "Biergarten", v: "Außenbereich im Grünen", note: "unter Bäumen" },
+              { k: "1.720 m²", v: "Anwesen", note: "Haus, Hof und Biergarten" },
+              { k: String(eventSpaces.filter((s) => s.type !== "hotel").length), v: "Räume und Bereiche", note: "einzeln oder kombiniert" },
+              { k: "10 + 1", v: "Hotelzimmer und Wohnung", note: "im Obergeschoss" },
+              { k: "P", v: "Parkplätze im Hof", note: "direkt am Haus" },
             ].map((f) => (
-              <div key={f.v} className="bg-white p-6">
-                <dt className="font-serif text-3xl font-semibold text-ink md:text-4xl">{f.k}</dt>
-                <dd className="mt-1 text-sm font-semibold text-ink-soft">{f.v}</dd>
-                <dd className="text-xs text-muted">{f.note}</dd>
+              <div key={f.v} className="bg-white p-7 md:p-8">
+                <dt className="font-serif text-4xl font-medium tracking-tight text-ink md:text-5xl">{f.k}</dt>
+                <dd className="mt-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-ink-soft">{f.v}</dd>
+                <dd className="mt-1 text-sm text-muted">{f.note}</dd>
               </div>
             ))}
           </dl>
@@ -101,11 +101,11 @@ export default async function HomePage() {
       <section id="bereiche" className="bg-paper py-24 md:py-32" aria-labelledby="spaces-title">
         <div className="container-page">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <SectionHeading id="spaces-title" eyebrow="Bereiche entdecken" title="Jeder Raum mit eigenem Charakter.">
-              <p>Vom Restaurant bis zum Biergarten – entdecken Sie die einzelnen Bereiche und stellen Sie Ihre Kombination zusammen.</p>
+            <SectionHeading id="spaces-title" eyebrow="Die Räume" title="Jeder Raum mit eigenem Charakter.">
+              <p>Von der holzvertäfelten Gaststube bis zum Biergarten unter Bäumen. Jeder Raum ist einzeln buchbar und lässt sich mit den anderen verbinden.</p>
             </SectionHeading>
             <ButtonLink href="/bereiche" variant="secondary">
-              Alle Bereiche <ArrowRight className="h-4 w-4" />
+              Alle Räume <ArrowRight className="h-4 w-4" />
             </ButtonLink>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -119,17 +119,17 @@ export default async function HomePage() {
       {/* Features */}
       <section id="ausstattung" className="panel-dark py-24 md:py-28" aria-labelledby="features-title">
         <div className="container-page">
-          <SectionHeading id="features-title" tone="dark" eyebrow="Ausstattung & Möglichkeiten" title="Alles an einem Ort.">
-            <p>Die detaillierte Ausstattung je Bereich (Technik, Bestuhlung, Barrierefreiheit) wird aktuell zusammengestellt.</p>
+          <SectionHeading id="features-title" tone="dark" eyebrow="Ausstattung" title="Was das Haus mitbringt.">
+            <p>Ein eingespielter Gasthof mit eigener Küche, eigenem Hotel und Platz unter freiem Himmel.</p>
           </SectionHeading>
           <ul className="mt-12 grid gap-px overflow-hidden rounded-3xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { icon: ChefHat, title: "Restaurant & Küche", text: "Zentraler Gastraum mit angeschlossener Küche." },
-              { icon: Theater, title: "Bühne & Eventräume", text: "Bühne, Nebenzimmer und Alte Wirtschaft – einzeln oder kombiniert." },
-              { icon: TreeDeciduous, title: "Wintergarten & Biergarten", text: "Helle Räume und ein Außenbereich im Grünen." },
-              { icon: BedDouble, title: "Landhotel", text: "Übernachtungsmöglichkeiten direkt vor Ort – Details folgen." },
-              { icon: Car, title: "Parken auf dem Grundstück", text: "Parkflächen auf dem Gelände – Anzahl der Stellplätze folgt." },
-              { icon: MapIcon, title: "Alles auf einen Blick", text: "Interaktive Karte, Live-Verfügbarkeit und transparente Kosten." },
+              { icon: ChefHat, title: "Profiküche", text: "Herdblock, Kombidämpfer und Spülküche direkt hinter der Theke." },
+              { icon: Theater, title: "Bühne", text: "Leicht erhöht und per Schiebetür zum Nebenzimmer zu öffnen." },
+              { icon: TreeDeciduous, title: "Wintergarten & Biergarten", text: "Glasdach und Holz-Glastüren, davor der Hof mit Pergola und Sandsteinmauer." },
+              { icon: BedDouble, title: "Landhotel", text: "Zehn Zimmer und eine Wohnung im Obergeschoss, exklusiv für Ihre Gäste." },
+              { icon: Car, title: "Parken im Hof", text: "Eigene Parkplätze im Hof, direkt vor Biergarten und Eingang." },
+              { icon: MapIcon, title: "Toiletten inklusive", text: "Zwei WC-Anlagen im Erdgeschoss gehören zu jeder Buchung." },
             ].map((f) => (
               <li key={f.title} className="bg-anthracite/80 p-7">
                 <f.icon className="h-7 w-7 text-gold-light" strokeWidth={1.4} aria-hidden />
@@ -163,10 +163,10 @@ export default async function HomePage() {
               </SectionHeading>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink href="/bereiche/hotel" variant="primary">
-                  Zum Hotel
+                  Zimmer ansehen
                 </ButtonLink>
                 <ButtonLink href="/kontakt?betreff=Hotelanfrage" variant="secondary">
-                  Zimmer anfragen
+                  Übernachtung anfragen
                 </ButtonLink>
               </div>
             </div>
@@ -178,8 +178,8 @@ export default async function HomePage() {
       <section id="galerie" className="bg-cream py-24 md:py-28" aria-labelledby="gallery-title">
         <div className="container-page">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <SectionHeading id="gallery-title" eyebrow="Bilder & Filme" title="Eindrücke aus der Krone.">
-              <p>{gallery.some((g) => !g.isReal) ? "Aktuell mit Beispielbildern – echte Aufnahmen folgen." : "Ein erster Blick in unsere Räume."}</p>
+            <SectionHeading id="gallery-title" eyebrow="Eindrücke" title="Die Krone in Bildern.">
+              <p>{gallery.some((g) => !g.isReal) ? "Aktuell mit Beispielbildern – echte Aufnahmen folgen." : "Aktuelle Aufnahmen aus Haus, Hof und Hotel."}</p>
             </SectionHeading>
             <ButtonLink href="/galerie" variant="secondary">
               Zur Galerie <ArrowRight className="h-4 w-4" />
@@ -211,8 +211,8 @@ export default async function HomePage() {
       {/* Booking CTA */}
       <section id="buchen" className="bg-paper py-24 md:py-32" aria-labelledby="booking-title">
         <div className="container-page">
-          <SectionHeading id="booking-title" eyebrow="Buchung" title="In wenigen Schritten zu Ihrer Veranstaltung." align="center">
-            <p>Wählen Sie Bereiche, prüfen Sie freie Termine und buchen Sie direkt – oder fragen Sie unverbindlich an.</p>
+          <SectionHeading id="booking-title" eyebrow="Ablauf" title="So kommen Sie zu Ihrem Termin." align="center">
+            <p>Vier Schritte, alles online. Wir melden uns anschließend persönlich bei Ihnen.</p>
           </SectionHeading>
           <ol className="mx-auto mt-14 grid max-w-6xl gap-6 md:grid-cols-4">
             {STEPS.map((s, i) => (
@@ -226,10 +226,10 @@ export default async function HomePage() {
           </ol>
           <div className="mt-12 flex flex-col justify-center gap-3 sm:flex-row">
             <ButtonLink href="/buchen" variant="gold" size="lg">
-              Jetzt buchen <ArrowRight className="h-4 w-4" />
+              Termin anfragen <ArrowRight className="h-4 w-4" />
             </ButtonLink>
             <ButtonLink href="#karte" variant="secondary" size="lg">
-              Bereiche auf der Karte wählen
+              Räume auf der Karte wählen
             </ButtonLink>
           </div>
         </div>
@@ -250,18 +250,18 @@ export default async function HomePage() {
             <div>
               <p className="eyebrow !text-gold-light">Kontakt</p>
               <h2 id="contact-title" className="mt-3 text-4xl text-paper md:text-5xl">
-                Wir freuen uns auf Ihre Nachricht.
+                Erzählen Sie uns von Ihrem Fest.
               </h2>
               <p className="mt-3 max-w-xl text-paper/70">
-                Fragen zu Räumen, Terminen oder Ihrer Idee? Schreiben Sie uns – wir melden uns persönlich.
+                Ob Hochzeit, runder Geburtstag oder Firmenabend: Wir beraten Sie persönlich und planen den Ablauf mit Ihnen.
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
               <ButtonLink href="/kontakt" variant="gold" size="lg">
-                Kontakt aufnehmen
+                Nachricht schreiben
               </ButtonLink>
               <ButtonLink href="/buchen" variant="dark" size="lg">
-                Unverbindlich anfragen
+                Termin anfragen
               </ButtonLink>
             </div>
           </div>

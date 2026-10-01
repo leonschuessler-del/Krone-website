@@ -21,7 +21,7 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 
   address: {
-    street: null as string | null, // TODO: street + house number (needs verification)
+    street: "Hauptstraße 106" as string | null, // from the entrance sign (drone footage V01) – confirm
     postalCode: "63849",
     city: "Leidersbach",
     country: "Deutschland",
@@ -31,7 +31,7 @@ export const siteConfig = {
   /** Known from the property listing – total area of the whole property/building. Not a rentable room size. */
   propertyFacts: {
     totalAreaSqm: 1720,
-    totalAreaNote: "ca. 1.720 m² Gesamtfläche laut Immobilienangebot – keine vermietbare Nutzfläche einzelner Räume.",
+    totalAreaNote: "ca. 1.720 m² Fläche des Anwesens (Immobilienangebot) – keine vermietbare Nutzfläche einzelner Räume.",
   },
 
   contact: {
@@ -49,9 +49,9 @@ export const siteConfig = {
   ],
 
   hero: {
-    eyebrow: "Landhotel · Gasthof · Leidersbach",
-    title: "Ein Ort. Viele Möglichkeiten.",
-    subline: "Restaurant, Eventräume, Biergarten und Hotel – flexibel kombinierbar für Ihren Anlass.",
+    eyebrow: "Landhotel & Gasthof · Leidersbach",
+    title: "Willkommen in der Krone.",
+    subline: "Gaststube, Säle, Wintergarten, Biergarten und ein eigenes Hotel unter einem Dach. Für Hochzeiten, Familienfeste und Firmenabende im Spessart.",
     primaryCta: { label: "Location entdecken", href: "#location" },
     secondaryCta: { label: "Bereiche auswählen", href: "#karte" },
     video: {
@@ -63,17 +63,17 @@ export const siteConfig = {
   },
 
   positioning: {
-    eyebrow: "Willkommen in der Krone",
-    title: "Tradition und Gastlichkeit – mit Raum für Ihre Ideen.",
+    eyebrow: "Das Haus",
+    title: "Ein Gasthof mit Platz für große und kleine Feste.",
     text:
-      "Zur Krone vereint Restaurant, mehrere Veranstaltungsbereiche, Biergarten und Hotel auf einem Grundstück. " +
-      "Wählen Sie genau die Bereiche, die Ihr Anlass braucht – vom einzelnen Raum bis zur gesamten Location.",
+      "Unter einem Dach liegen Gaststube, Nebenzimmer, Bühne, Alte Wirtschaft und Wintergarten, dahinter der Biergarten, darüber das Landhotel. " +
+      "Sie mieten genau die Räume, die Ihr Anlass braucht: einen einzelnen oder das ganze Haus.",
   },
 
   mapSection: {
-    eyebrow: "Interaktive Grundstückskarte",
-    title: "Stellen Sie Ihre Location zusammen.",
-    text: "Wählen Sie einen oder mehrere Bereiche direkt auf der Karte. Mit einem Termin sehen Sie sofort, was frei ist.",
+    eyebrow: "Raumplaner",
+    title: "Wählen Sie Ihre Räume.",
+    text: "Tippen Sie auf der Luftaufnahme die Bereiche an, die Sie nutzen möchten. Mit einem Datum zeigt die Karte sofort, was frei ist.",
     dateQuestion: "Wann möchten Sie feiern?",
   },
 
