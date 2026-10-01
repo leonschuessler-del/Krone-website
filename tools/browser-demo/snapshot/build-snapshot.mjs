@@ -53,7 +53,7 @@ for (const s of apiSpaces) {
     capacityStanding: s.capacityStanding,
     bookable: s.bookable,
     includedInFullVenue: s.includedInFullVenue,
-    images: await Promise.all(unique.map(toDataUrl)),
+    images: unique.map((u) => (u.startsWith("/") ? u.slice(1) : u)),
     shape: s.shape,
   });
 }
@@ -167,7 +167,9 @@ const result = await page.evaluate(
       for (const img of root.querySelectorAll("img")) {
         const src = img.getAttribute("src");
         if (!src || src.startsWith("data:")) continue;
-        img.setAttribute("src", await dataUrl(original(src)));
+        const o = original(src);
+        // site media are published next to the page → relative path; anything else inline
+        img.setAttribute("src", o.startsWith("/media/") || o.startsWith("/map/") ? o.slice(1) : await dataUrl(o));
         img.removeAttribute("srcset");
         img.removeAttribute("sizes");
         img.removeAttribute("loading");
@@ -177,7 +179,7 @@ const result = await page.evaluate(
         v.querySelectorAll("source").forEach((s) => s.remove());
         v.removeAttribute("src");
         const poster = v.getAttribute("poster");
-        if (poster) v.setAttribute("poster", await dataUrl(poster));
+        if (poster) v.setAttribute("poster", poster.startsWith("/media/") ? poster.slice(1) : await dataUrl(poster));
       }
       for (const el of root.querySelectorAll("[style*='url(']")) {
         el.setAttribute("style", await inlineCssUrls(el.getAttribute("style"), location.href));
@@ -201,38 +203,9 @@ const result = await page.evaluate(
     // --- tour
     const section = doc.querySelector("#rundgang");
     const sticky = section.firstElementChild;
-    const roomIdx = chapters.map((c, i) => (c.spaceId ? i : -1)).filter((i) => i >= 0);
-    const layerEls = [...sticky.children].filter((el) => el.classList.contains("overflow-hidden") && el.classList.contains("bg-anthracite"));
-    layerEls.forEach((el, j) => {
-      const i = roomIdx[j];
-      const s = spaces.find((x) => x.id === chapters[i].spaceId);
-      el.dataset.tl = String(i);
-      const inner = el.firstElementChild;
-      const [a, b] = s?.images ?? [];
-      if (inner && a) {
-        inner.innerHTML =
-          `<img src="${a}" alt="" class="absolute inset-0 h-full w-full object-cover">` +
-          (b ? `<div data-ts="${i}" class="absolute inset-0" style="opacity:0"><img src="${b}" alt="" class="absolute inset-0 h-full w-full object-cover"></div>` : "");
-      }
-    });
-    const cap0 = section.querySelector("h1").closest(".container-page");
-    [...cap0.parentElement.children].forEach((el, i) => (el.dataset.tc = String(i)));
-    [...section.querySelectorAll("button")].find((b) => b.textContent.includes("Rundgang starten"))?.setAttribute("data-tstart", "");
-    const svg = section.querySelector("[data-k] svg");
-    [...svg.querySelectorAll(":scope > polygon")].forEach((p, j) => (p.dataset.tp = String(polyChapters[j])));
-    svg.querySelector(":scope > g")?.setAttribute("data-tall", "");
-    section.querySelector(".animate-bounce")?.closest("div")?.setAttribute("data-thint", "");
-    section.querySelector("[style*='scaleX']")?.setAttribute("data-tprogress", "");
-    section.querySelector("a.bottom-5.right-5")?.setAttribute("data-tskip", "");
-    section.querySelectorAll("nav li button").forEach((btn, i) => {
-      btn.dataset.rail = String(i);
-      const [label, dot] = btn.children;
-      if (label) label.className = "text-xs font-semibold tracking-wide transition-opacity duration-300 text-paper/70 opacity-0 group-hover:opacity-100";
-      if (dot) {
-        dot.className = "block rounded-full transition-all duration-300";
-        dot.removeAttribute("style");
-      }
-    });
+    // The scroll film is a client-side video timeline – the snapshot shows its
+    // first frame (poster) until the live app takes over.
+    section.querySelectorAll("video").forEach((v) => v.setAttribute("preload", "none"));
 
     // --- map / configurator
     const karte = doc.querySelector("#karte");
@@ -277,7 +250,9 @@ const result = await page.evaluate(
 
     await processTree(doc);
     for (const b of doc.querySelectorAll("[data-lightbox]")) {
-      if (!b.dataset.lightbox.startsWith("data:")) b.dataset.lightbox = await dataUrl(b.dataset.lightbox);
+      const lb = b.dataset.lightbox;
+      if (lb.startsWith("/media/")) b.dataset.lightbox = lb.slice(1);
+      else if (!lb.startsWith("data:")) b.dataset.lightbox = await dataUrl(lb);
     }
     const headers = [];
     for (const h of [headerTop, headerScrolled]) {

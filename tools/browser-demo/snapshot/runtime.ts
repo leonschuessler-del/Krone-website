@@ -42,7 +42,8 @@ const selected = new Set<string>();
 /* ------------------------------------------------------------------ tour */
 function initTour() {
   const section = document.getElementById("rundgang");
-  if (!section) return;
+  // the video scroll film runs only in the live app; the snapshot shows its first frame
+  if (!section || !section.querySelector("[data-tl]")) return;
   const chapters = tourConfig.chapters;
   const spans = chapterSpans(chapters, null);
   const { width: MAP_W, height: MAP_H } = floorplanMeta.viewBox;
