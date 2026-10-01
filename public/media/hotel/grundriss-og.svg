@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1308 940" font-family="Source Sans 3, system-ui, sans-serif">
+<rect width="1308" height="940" fill="#fbf8f2"/>
+<polygon points="120.0,160.0 272.0,160.0 272.0,292.0 120.0,292.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="32.0,160.0 116.0,160.0 116.0,292.0 32.0,292.0" fill="#d9e4ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="32.0,296.0 204.0,296.0 204.0,346.0 32.0,346.0" fill="#f4efe6" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="288.0,160.0 484.0,160.0 484.0,348.0 288.0,348.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="488.0,160.0 588.0,160.0 588.0,348.0 488.0,348.0" fill="#ece6da" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="592.0,160.0 732.0,160.0 732.0,348.0 592.0,348.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="736.0,160.0 804.0,160.0 804.0,348.0 736.0,348.0" fill="#d9e4ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="808.0,160.0 944.0,160.0 944.0,348.0 808.0,348.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="208.0,352.0 944.0,352.0 944.0,424.0 208.0,424.0" fill="#f4efe6" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="32.0,348.0 136.0,348.0 136.0,412.0 32.0,412.0" fill="#d9e4ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="32.0,424.0 204.0,424.0 204.0,496.0 32.0,496.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="32.0,500.0 256.0,500.0 256.0,616.0 32.0,616.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="260.0,428.0 516.0,428.0 516.0,616.0 260.0,616.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="520.0,428.0 636.0,428.0 636.0,508.0 520.0,508.0" fill="#d9e4ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="520.0,512.0 684.0,512.0 684.0,672.0 520.0,672.0" fill="#ece6da" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="528.0,672.0 676.0,672.0 676.0,720.0 528.0,720.0" fill="#f7f3ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="688.0,428.0 844.0,428.0 844.0,616.0 688.0,616.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="848.0,428.0 944.0,428.0 944.0,616.0 848.0,616.0" fill="#e2cfa6" stroke="#3b332d" stroke-width="4" stroke-linejoin="miter"/>
+<polygon points="496.0,32.0 588.0,32.0 588.0,160.0 496.0,160.0" fill="#ece6da" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="296.0,108.0 476.0,108.0 476.0,160.0 296.0,160.0" fill="#f7f3ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="952.0,160.0 1072.0,160.0 1072.0,292.0 952.0,292.0" fill="#e6ddd3" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="1076.0,160.0 1264.0,160.0 1264.0,320.0 1076.0,320.0" fill="#e6ddd3" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="952.0,296.0 1072.0,296.0 1072.0,324.0 952.0,324.0" fill="#f4efe6" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="952.0,328.0 1060.0,328.0 1060.0,468.0 952.0,468.0" fill="#e6ddd3" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="1076.0,324.0 1264.0,324.0 1264.0,476.0 1076.0,476.0" fill="#e6ddd3" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="952.0,472.0 1060.0,472.0 1060.0,556.0 952.0,556.0" fill="#f4efe6" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="1064.0,480.0 1124.0,480.0 1124.0,540.0 1064.0,540.0" fill="#f4efe6" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="1064.0,544.0 1124.0,544.0 1124.0,588.0 1064.0,588.0" fill="#d9e4ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="1128.0,480.0 1264.0,480.0 1264.0,572.0 1128.0,572.0" fill="#d9e4ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<polygon points="992.0,108.0 1228.0,108.0 1228.0,160.0 992.0,160.0" fill="#f7f3ea" stroke="#3b332d" stroke-width="2.5" stroke-linejoin="miter"/>
+<text x="196" y="222" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 1</text>
+<text x="196" y="246" text-anchor="middle" font-size="15" fill="#6b6158">Doppel · 14,73 m²</text>
+<text x="74" y="231" text-anchor="middle" font-size="10" fill="#6b6158">Bad Zimmer 1</text>
+<text x="118" y="326" text-anchor="middle" font-size="15" fill="#6b6158">Treppenhaus</text>
+<text x="386" y="250" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 2</text>
+<text x="386" y="274" text-anchor="middle" font-size="15" fill="#6b6158">3-Bett · 18,5 m²</text>
+<text x="538" y="259" text-anchor="middle" font-size="12" fill="#6b6158">Wäschekammer</text>
+<text x="662" y="250" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 3</text>
+<text x="662" y="274" text-anchor="middle" font-size="15" fill="#6b6158">Doppel · 16,18 m²</text>
+<text x="876" y="250" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 4</text>
+<text x="876" y="274" text-anchor="middle" font-size="15" fill="#6b6158">Doppel · 16,18 m²</text>
+<text x="576" y="393" text-anchor="middle" font-size="15" fill="#6b6158">Hotelflur</text>
+<text x="84" y="385" text-anchor="middle" font-size="13" fill="#6b6158">Bad</text>
+<text x="118" y="456" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 5</text>
+<text x="118" y="480" text-anchor="middle" font-size="15" fill="#6b6158">Einzel · 9,45 m²</text>
+<text x="144" y="554" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 6</text>
+<text x="144" y="578" text-anchor="middle" font-size="15" fill="#6b6158">Doppel · 16,41 m²</text>
+<text x="388" y="518" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 7</text>
+<text x="388" y="542" text-anchor="middle" font-size="15" fill="#6b6158">3-Bett · 19,68 m²</text>
+<text x="578" y="473" text-anchor="middle" font-size="15" fill="#6b6158">Bad</text>
+<text x="602" y="597" text-anchor="middle" font-size="15" fill="#6b6158">Aufenthaltsraum</text>
+<text x="602" y="701" text-anchor="middle" font-size="12" fill="#8f8474">Balkon</text>
+<text x="766" y="518" text-anchor="middle" font-size="26" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 8</text>
+<text x="766" y="542" text-anchor="middle" font-size="15" fill="#6b6158">Doppel · 16,28 m²</text>
+<text x="896" y="518" text-anchor="middle" font-size="18" font-weight="700" fill="#231e1b" font-family="Cormorant Garamond, Georgia, serif">Zimmer 9</text>
+<text x="896" y="542" text-anchor="middle" font-size="14" fill="#6b6158">Einzel · 10,77 m²</text>
+<text x="542" y="101" text-anchor="middle" font-size="11" fill="#6b6158">Büro</text>
+<text x="386" y="139" text-anchor="middle" font-size="12" fill="#8f8474">Balkon</text>
+<text x="1012" y="231" text-anchor="middle" font-size="15" fill="#6b6158">Kind</text>
+<text x="1170" y="245" text-anchor="middle" font-size="15" fill="#6b6158">Wohnen</text>
+<text x="1006" y="403" text-anchor="middle" font-size="13" fill="#6b6158">Küche/Essen</text>
+<text x="1170" y="405" text-anchor="middle" font-size="15" fill="#6b6158">Eltern</text>
+<text x="1006" y="519" text-anchor="middle" font-size="13" fill="#6b6158">Diele</text>
+<text x="1196" y="531" text-anchor="middle" font-size="15" fill="#6b6158">Bad</text>
+<text x="1110" y="139" text-anchor="middle" font-size="12" fill="#8f8474">Balkon</text>
+</svg>

@@ -168,7 +168,30 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
         </div>
       </section>
 
+      {/* Hotel: upper-floor plan */}
+      {space.type === "hotel" && (
+        <section className="bg-paper py-20" aria-labelledby="plan-title">
+          <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:items-center">
+            <SectionHeading id="plan-title" eyebrow="1. Obergeschoss" title="Das ganze Hotel für Ihre Gäste">
+              <p>
+                Das Hotel liegt im Obergeschoss über Restaurant, Nebenzimmer und Bühne. Es wird als Ganzes vermietet: Doppel-, Dreibett- und
+                Einzelzimmer mit Bad, Aufenthaltsraum mit Balkon und eine Wohnung mit Küche.
+              </p>
+              <p className="mt-2 text-sm text-muted">Grundriss nach dem Bauplan des Hauses; Flächen laut Plan. Aktuelle Zimmeraufteilung laut Betreiber: 10 Zimmer + Wohnung.</p>
+              <div className="mt-6">
+                <ButtonLink href="/#grundriss" variant="gold">
+                  Hotel zur Auswahl hinzufügen
+                </ButtonLink>
+              </div>
+            </SectionHeading>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/media/hotel/grundriss-og.svg" alt="Grundriss Obergeschoss mit den Hotelzimmern" className="w-full rounded-[1.25rem] border border-sand bg-white p-3 shadow-soft" loading="lazy" />
+          </div>
+        </section>
+      )}
+
       {/* Location on the property */}
+      {space.type !== "hotel" && (
       <section className="bg-paper py-20" aria-labelledby="location-title">
         <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:items-center">
           <SectionHeading id="location-title" eyebrow="Lage" title="Wo auf dem Grundstück?">
@@ -177,7 +200,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
                 ? `Der Bereich „${space.name}“ ist auf der Grundstückskarte hervorgehoben. Klicken Sie auf einen anderen Bereich, um ihn zu entdecken.`
                 : "Die genaue Abgrenzung dieses Bereichs auf dem Grundstück wird noch eingezeichnet."}
             </p>
-            <p className="mt-2 text-sm text-muted">Schematische Darstellung – nicht maßstabsgetreu.</p>
+            <p className="mt-2 text-sm text-muted">Drohnenaufnahme von oben – Raumgrenzen sinngemäß eingezeichnet.</p>
             {space.bookable && (
               <div className="mt-6">
                 <ButtonLink href="/#karte" variant="secondary">
@@ -189,6 +212,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
           <SpaceMiniMap spaces={spaces} currentId={space.id} />
         </div>
       </section>
+      )}
 
       {/* Availability */}
       {space.bookable ? (

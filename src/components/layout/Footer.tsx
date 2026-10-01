@@ -87,7 +87,7 @@ export function Footer() {
           <p>
             © {new Date().getFullYear()} {siteConfig.name} · {siteConfig.locality}
           </p>
-          <p>Kartendarstellung schematisch · Angaben ohne Gewähr, solange nicht bestätigt</p>
+          <p>Karte: Drohnenaufnahme von oben, Raumgrenzen sinngemäß · Angaben ohne Gewähr, solange nicht bestätigt</p>
         </div>
       </div>
     </footer>

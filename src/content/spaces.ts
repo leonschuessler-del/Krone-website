@@ -70,10 +70,9 @@ export const spaceSeeds: SpaceSeed[] = [
     color: "#9a3340",
     mediaFolder: "restaurant",
     sortOrder: 10,
-    shortDescription: "Der große, zentrale Gastraum im Herzen des Hauses.",
+    shortDescription: "Die Gaststube mit Theke und Rezeption – das Herz des Hauses.",
     longDescription:
-      "Das Restaurant bildet den zentralen Bereich des Hauptgebäudes und grenzt an Küche, Nebenzimmer, Bühne und Wintergarten. " +
-      "Ausführliche Beschreibung, Ausstattung und Bestuhlungsvarianten folgen. [PLACEHOLDER – Text durch Betreiber zu bestätigen]",
+      "Das Hauptrestaurant liegt im Erdgeschoss zwischen Küche und Nebenzimmer: helles Holz, Polsterbänke, Steinsäulen und die große Theke mit Rezeption. Über eine mobile Trennwand lässt es sich mit dem Nebenzimmer zu einem großen Raum verbinden. Der Haupteingang mit Vorraum liegt direkt davor. Bestuhlung und Kapazität werden vom Betreiber ergänzt.",
   },
   {
     ...defaults,
@@ -86,10 +85,9 @@ export const spaceSeeds: SpaceSeed[] = [
     color: "#4f6d8a",
     mediaFolder: "kitchen",
     sortOrder: 20,
-    shortDescription: "Die Küche im oberen Bereich des Hauptkomplexes.",
+    shortDescription: "Die Profiküche direkt hinter der Rezeption.",
     longDescription:
-      "Die Küche liegt im nördlichen Teil des Hauptgebäudes, direkt am Restaurant. Ob und in welchem Umfang eine Küchennutzung " +
-      "(z. B. durch Caterer) möglich ist, wird noch festgelegt. [PLACEHOLDER – Nutzungsbedingungen durch Betreiber zu bestätigen]",
+      "Die Küche erreicht man durch die Tür hinter der Rezeption. Sie ist voll ausgestattet mit Herdblock, Kombidämpfern und Spülküche. Ob und in welchem Umfang eine Küchennutzung (z. B. durch Caterer) möglich ist, wird noch festgelegt. [Nutzungsbedingungen durch Betreiber zu bestätigen]",
   },
   {
     ...defaults,
@@ -102,10 +100,9 @@ export const spaceSeeds: SpaceSeed[] = [
     color: "#c49a2c",
     mediaFolder: "side-room",
     sortOrder: 30,
-    shortDescription: "Separater Raum östlich des Restaurants.",
+    shortDescription: "Der Saal mit Kachelofen – separat oder zum Restaurant geöffnet.",
     longDescription:
-      "Das Nebenzimmer schließt östlich an das Restaurant an und eignet sich als eigenständiger Raum oder als Ergänzung. " +
-      "Details folgen. [PLACEHOLDER – Text durch Betreiber zu bestätigen]",
+      "Das Nebenzimmer schließt an das Hauptrestaurant an und ist durch eine mobile Wand abgetrennt – geöffnet entsteht ein großer, durchgehender Raum. Charakteristisch ist der weiße Kachelofen; lange Tafeln eignen sich für Feiern, Hochzeiten und Firmenessen. Zur Bühne hin führt eine Schiebetür.",
   },
   {
     ...defaults,
@@ -118,10 +115,9 @@ export const spaceSeeds: SpaceSeed[] = [
     color: "#6f5a92",
     mediaFolder: "stage",
     sortOrder: 40,
-    shortDescription: "Bühnenbereich im Südosten des Hauptgebäudes.",
+    shortDescription: "Der leicht erhöhte Bereich hinter der Schiebetür – für Band, Reden und Auftritte.",
     longDescription:
-      "Die Bühne liegt südöstlich angrenzend an Restaurant und Nebenzimmer. Technische Ausstattung (Licht, Ton) wird noch ergänzt. " +
-      "[PLACEHOLDER – Text durch Betreiber zu bestätigen]",
+      "Die Bühne liegt am Ende des Gebäudes, hinter einer großen Schiebetür neben dem Nebenzimmer, und ist leicht erhöht. Geschlossen dient sie als gemütlicher Bereich mit Sesseln, geöffnet als Bühne für Musik, Reden oder Programm. Technische Ausstattung (Licht, Ton) folgt.",
   },
   {
     ...defaults,
@@ -134,10 +130,9 @@ export const spaceSeeds: SpaceSeed[] = [
     color: "#b0662b",
     mediaFolder: "old-tavern",
     sortOrder: 50,
-    shortDescription: "Der längliche, traditionsreiche Gebäudeteil im Westen.",
+    shortDescription: "Die gemütliche Stube mit Holzboden und eigener Theke.",
     longDescription:
-      "Die Alte Wirtschaft befindet sich im länglichen westlichen Gebäudeteil zwischen Biergarten und Restaurant. " +
-      "Geschichte, Ausstattung und Kapazität folgen. [PLACEHOLDER – Text durch Betreiber zu bestätigen]",
+      "Die Alte Wirtschaft ist der traditionsreiche Teil des Hauses: Holzboden, Bänke und eine eigene kleine Theke – ideal für kleinere Runden und gesellige Abende. Aktuelle Fotos, Ausstattung und Kapazität werden ergänzt.",
   },
   {
     ...defaults,
@@ -150,10 +145,9 @@ export const spaceSeeds: SpaceSeed[] = [
     color: "#6f9a68",
     mediaFolder: "winter-garden",
     sortOrder: 60,
-    shortDescription: "Heller Wintergarten südlich des Restaurants.",
+    shortDescription: "Hell, mit Glasdach – direkt am Biergarten.",
     longDescription:
-      "Der Wintergarten liegt südlich bzw. südöstlich des Restaurants. Weitere Informationen folgen. " +
-      "[PLACEHOLDER – Text durch Betreiber zu bestätigen]",
+      "Der Wintergarten mit Glasdach liegt auf der Rückseite des Hauses und öffnet sich über große Holz-Glastüren direkt zum Biergarten. Viel Tageslicht, Korbstühle und Blick ins Grüne – auch an kühleren Tagen.",
   },
   {
     ...defaults,
@@ -166,10 +160,9 @@ export const spaceSeeds: SpaceSeed[] = [
     color: "#3f6b3a",
     mediaFolder: "beer-garden",
     sortOrder: 70,
-    shortDescription: "Der Außenbereich im Westen des Grundstücks.",
+    shortDescription: "Der Hof hinter dem Haus – mit Sandsteinmauer, Pergola und überdachter Terrasse.",
     longDescription:
-      "Der Biergarten liegt im westlichen Außenbereich des Grundstücks. Saisonale Nutzbarkeit, Kapazität und Wetterregelungen folgen. " +
-      "[PLACEHOLDER – Text durch Betreiber zu bestätigen]",
+      "Der Biergarten liegt vor dem Wintergarten im Hof: eine überdachte Terrasse, Holztische mit grünen Polstern, eine historische Sandsteinmauer und Bäume als Schattenspender. Saisonale Nutzbarkeit und Kapazität werden vom Betreiber ergänzt.",
   },
   {
     ...defaults,

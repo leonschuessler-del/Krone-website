@@ -472,12 +472,12 @@ function MapLegend({ spaces, selected, onToggle, hasStatus }: { spaces: SpaceVie
           <li key={s.id} className="inline-flex items-center gap-1.5 text-muted">
             <span className="h-3 w-3 rounded-sm border border-dashed border-taupe" />
             <Link href={s.href} className="underline-offset-4 hover:underline">
-              {s.name} – genaue Abgrenzung folgt
+              {s.type === "hotel" ? `${s.name} (1. OG) – eigener Button unter der Karte` : `${s.name} – genaue Abgrenzung folgt`}
             </Link>
           </li>
         ))}
         <li className="inline-flex items-center gap-1.5 text-muted">
-          <span className="grid h-4 w-4 place-items-center rounded bg-[#40566e] text-[0.6rem] font-bold text-white">P</span> Parkplatz (nicht buchbar)
+          <span className="grid h-4 min-w-4 place-items-center rounded bg-anthracite/80 px-0.5 text-[0.55rem] font-bold text-white">WC</span> Toiletten – bei jeder Buchung inklusive
         </li>
       </ul>
       <ul className="flex shrink-0 flex-wrap gap-x-4 gap-y-2 text-xs text-muted" aria-label="Legende Status">
