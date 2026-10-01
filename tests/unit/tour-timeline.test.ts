@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { progressiveOrder } from "@/features/home/tour-player";
+import { packCount, progressiveOrder } from "@/features/home/tour-player";
 import { describe, expect, it } from "vitest";
 import { FINALE_START_CAMERA, tourConfig, WIDE_CAMERA } from "@/config/tour";
 import { cameraTransform, chapterSpans, computeFrame, overviewCamera, smoothstep, TAIL } from "@/features/home/tour-timeline";
@@ -18,11 +18,14 @@ describe("scroll film timeline", () => {
     ]);
     chapters.forEach((c) => {
       expect(c.frames.dir).toBe(`/media/tour/frames/${c.id}/`);
-      expect(c.poster).toBe(`${c.frames.dir}00.webp`);
-      // every frame of the sequence exists in /public
-      for (let f = 0; f < c.frames.count; f++) {
-        expect(existsSync(`public${c.frames.dir}${String(f).padStart(2, "0")}.webp`)).toBe(true);
+      expect(c.poster).toBe(`${c.frames.dir}poster.webp`);
+      expect(c.frames.count).toBeGreaterThanOrEqual(40);
+      // every pack, the preview track and the poster exist in /public
+      for (let p = 0; p < packCount(c.frames.count); p++) {
+        expect(existsSync(`public${c.frames.dir}p${String(p).padStart(2, "0")}.webp`)).toBe(true);
       }
+      expect(existsSync(`public${c.frames.dir}preview.webp`)).toBe(true);
+      expect(existsSync(`public${c.frames.dir}poster.webp`)).toBe(true);
     });
   });
 
@@ -96,6 +99,13 @@ describe("scroll film timeline", () => {
   it("smoothstep is clamped", () => {
     expect(smoothstep(0.2, 0.4, 0)).toBe(0);
     expect(smoothstep(0.2, 0.4, 1)).toBe(1);
+  });
+});
+
+describe("scroll weights", () => {
+  it("chapters with more movement get more scroll distance", () => {
+    const sp = chapterSpans([{ id: "a", frames: { count: 40 } }, { id: "b", frames: { count: 120 } }]);
+    expect(sp[1]!.end - sp[1]!.start).toBeCloseTo(2 * (sp[0]!.end - sp[0]!.start), 5);
   });
 });
 

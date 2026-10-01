@@ -26,7 +26,7 @@ es bringt keine zusätzliche Schärfe, nur größere Dateien.
 
 | Ort | Inhalt |
 |---|---|
-| `public/media/tour/frames/<kapitel>/00…35.webp` | Scroll-Film: 36 Einzelbilder je Kapitel (1280×720), auf einem Canvas gescrubbt – funktioniert in jedem Browser (auch iOS und eingebettete Viewer), vorwärts wie rückwärts |
+| `public/media/tour/frames/<kapitel>/pNN.webp`, `preview.webp`, `poster.webp` | Scroll-Film: 40–200 Einzelbilder je Kapitel (1600×900), je 4 in einer Datei; `preview.webp` enthält alle Bilder klein (sofort scrubbar), die scharfen Pakete laden um die aktuelle Position nach. Anzahl je Kapitel in `src/generated/tour-frames.json` |
 | `public/media/<bereich>/hero.webp`, `gallery-NN.webp` | Titel- und Galeriebilder je Bereich |
 | `public/media/<bereich>/tour.mp4`, `poster.webp` | Raumvideo auf der Detailseite (1920×1080) |
 | `public/media/property/gallery-NN.webp` | Außen-/Drohnenbilder |
@@ -38,16 +38,16 @@ es bringt keine zusätzliche Schärfe, nur größere Dateien.
 
 | Kapitel | Quelle (Sortierungs-Nr.) |
 |---|---|
-| Anflug | V01 (Drohne, 0:40–0:52) |
-| Hauptrestaurant | V04 (Drohne, 0:09–0:16) |
+| Anflug | V01 (Drohne, 0:23–0:52) |
+| Hauptrestaurant | V04 (Drohne, 0:06–0:30) |
 | Nebenzimmer | V27 (iPhone) |
-| Bühne | V15 (iPhone, 0:33–0:36, Sesselbereich) |
+| Bühne | V22 (iPhone, 0:33–0:41) |
 | Wintergarten | V04 (Drohne, 0:49–1:00, bis zur Gartentür) |
 | Biergarten | Drohnenfoto F122 (Kamerafahrt) |
 | Küche | retuschiertes Küchenbild (Kamerafahrt) |
 | Alte Wirtschaft | Foto F028 (Kamerafahrt) |
-| Hotel | V40 (iPhone, 0:11–0:15) |
-| Blick von oben | V06 (Drohne, 0:34–1:19 rückwärts) → Drohnenfoto F054 |
+| Hotel | V40 (iPhone, 0:06–0:16) |
+| Blick von oben | V06 (Drohne, 1:00–1:37 rückwärts) → Drohnenfoto F054 |
 
 Einzelbilder neu erzeugen: `tools/media/film.py <kapitel>` (Originale nicht im
 Repo; Ordner per `KRONE_ORIGINALS`). Ablauf je Kapitel:
@@ -56,8 +56,8 @@ Repo; Ordner per `KRONE_ORIGINALS`). Ablauf je Kapitel:
 3. Einheitlicher Look, 1600×900, leichte Schärfung
 4. Bildauswahl nach gleichmäßiger Bewegung (Kamerapfad aus Verschiebung, Drehung
    und Vorwärtsfahrt): jeder Scroll-Schritt zeigt gleich viel Bewegung
-   Abschnitte je Kapitel mit `tools/media/analyze.py` gewählt: kurze, ruhige
-   Passagen (≈1–2 % Bildbreite pro Schritt) statt langer, schneller Flüge
+   Anzahl der Bilder folgt der Bewegung (≈2 % Bildbreite pro Schritt, 40–200),
+   bei jedem Bild das schärfste der Nachbarbilder (Bewegungsunschärfe)
 5. WebP q≈72; Anzahl je Kapitel in `src/config/tour.ts` (40, Drohne 48)
 Biergarten, Küche und Alte Wirtschaft sind ruhige Kamerafahrten über Fotos
 (F122, retuschiertes Küchenbild, F028).

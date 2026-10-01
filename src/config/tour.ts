@@ -1,3 +1,4 @@
+import frameCounts from "@/generated/tour-frames.json";
 /**
  * ============================================================================
  *  SCROLL FILM – the opening of the homepage
@@ -9,8 +10,8 @@
  *  Order: Anflug von außen → Hauptrestaurant → Nebenzimmer → Bühne →
  *  Wintergarten → Biergarten → Küche → Alte Wirtschaft → Hotel → Blick von oben.
  *
- *  Each chapter is an image sequence (/public/media/tour/frames/<id>/00.webp …)
- *  drawn on a canvas. Unlike video seeking this scrubs smoothly in every
+ *  Each chapter is an image sequence (/public/media/tour/frames/<id>/, packed
+ *  4 frames per file) drawn on a canvas. Unlike video seeking this scrubs smoothly in every
  *  browser (incl. iOS Safari and embedded viewers) and in both directions.
  *  The grading/extraction pipeline is documented in docs/MEDIA.md.
  * ============================================================================
@@ -41,17 +42,22 @@ export const WIDE_CAMERA: TourCamera = { x: 920, y: 520, zoom: 1 };
 /** Where the finale camera starts before settling on WIDE_CAMERA. */
 export const FINALE_START_CAMERA: TourCamera = { x: 820, y: 420, zoom: 1.6 };
 
-/** Frames per chapter: the drone shots get a few more for their longer moves. */
-const clip = (id: string, count = 40) => ({
-  frames: { dir: `/media/tour/frames/${id}/`, count },
-  poster: `/media/tour/frames/${id}/00.webp`,
+/**
+ * Frames per chapter come from the media pipeline (tools/media/film.py writes
+ * src/generated/tour-frames.json): the count follows the amount of camera
+ * movement, so every scroll step shows the same small step of motion.
+ * Files: pNN.webp (packs of 4 frames), preview.webp (all frames, small), poster.webp.
+ */
+const clip = (id: keyof typeof frameCounts) => ({
+  frames: { dir: `/media/tour/frames/${id}/`, count: frameCounts[id] },
+  poster: `/media/tour/frames/${id}/poster.webp`,
 });
 
 export const tourConfig = {
   /** Scroll distance per chapter in viewport heights. Smaller = faster tour. */
-  scrollPerChapterVh: { desktop: 80, mobile: 70 },
+  scrollPerChapterVh: { desktop: 66, mobile: 58 },
   chapters: [
-    { id: "intro", spaceId: null, ...clip("intro", 48) },
+    { id: "intro", spaceId: null, ...clip("intro") },
     { id: "restaurant", spaceId: "restaurant", ...clip("restaurant"), kicker: "Das Herz des Hauses" },
     { id: "side-room", spaceId: "side-room", ...clip("side-room"), kicker: "Für Feiern im eigenen Rahmen" },
     { id: "stage", spaceId: "stage", ...clip("stage"), kicker: "Ihr Auftritt" },
@@ -60,7 +66,7 @@ export const tourConfig = {
     { id: "kitchen", spaceId: "kitchen", ...clip("kitchen"), kicker: "Wo alles entsteht" },
     { id: "old-tavern", spaceId: "old-tavern", ...clip("old-tavern"), kicker: "Gemütlich wie früher" },
     { id: "hotel", spaceId: "hotel", ...clip("hotel"), kicker: "Übernachten im Haus" },
-    { id: "finale", spaceId: null, ...clip("finale", 48) },
+    { id: "finale", spaceId: null, ...clip("finale") },
   ] satisfies TourChapter[],
   copy: {
     scrollHint: "Scrollen",

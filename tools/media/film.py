@@ -18,16 +18,16 @@ LOOK = ("eq=contrast=1.07:saturation=1.10:gamma=0.97,"
 
 # chapter → source + segment (seconds) + options
 PLAN = {
-    "intro":         dict(vid="V01", start=40, end=52, n=48, smoothing=90),
-    "restaurant":    dict(vid="V04", start=9.2, end=15.6, n=40, smoothing=80),
-    "side-room":     dict(vid="V27", start=0, end=6, n=40, smoothing=60),
-    "stage":         dict(vid="V15", start=33, end=36.3, n=40, smoothing=60),
-    "winter-garden": dict(vid="V04", start=49, end=60, n=40, smoothing=80),
-    "hotel":         dict(vid="V40", start=11.5, end=15, n=40, smoothing=60),
+    "intro":         dict(vid="V01", start=23, end=52, smoothing=100, q=62),
+    "restaurant":    dict(vid="V04", start=6, end=30, smoothing=90),
+    "side-room":     dict(vid="V27", start=0, end=6, smoothing=60),
+    "stage":         dict(vid="V22", start=33, end=41, smoothing=60),
+    "winter-garden": dict(vid="V04", start=49, end=60, smoothing=90),
+    "hotel":         dict(vid="V40", start=6.5, end=16, smoothing=70),
     "beer-garden":   dict(kb="F122", n=40, z=(1.0, 1.22), c0=(0.5, 0.55), c1=(0.47, 0.62)),
     "old-tavern":    dict(kb="F028", n=40, z=(1.0, 1.16), c0=(0.5, 0.5), c1=(0.56, 0.54)),
     "kitchen":       dict(kb="@" + os.environ.get("KRONE_KITCHEN_CLEAN", "k_clean1.png"), graded=True, n=40, z=(1.0, 1.14), c0=(0.5, 0.52), c1=(0.53, 0.52)),
-    "finale":        dict(vid="V06", start=34, end=79, n=48, smoothing=90, reverse=True),
+    "finale":        dict(vid="V06", start=60, end=97, smoothing=100, reverse=True, n=96, q=60),
 }
 
 def run(cmd):
@@ -78,6 +78,35 @@ def smooth_path(paths, sigma=2.2, zoom=1.04):
 def is_hlg(path):
     return "arib-std-b67" in subprocess.run([FF, "-hide_banner", "-i", path], capture_output=True, text=True).stderr
 
+STEP = 9.0          # target motion per frame (px at 480 wide ≈ 1.9 % of the width)
+PACK = 4            # frames per pack file (must match src/features/home/tour-player.ts)
+PREVIEW_COLS, PW, PH = 10, 240, 135
+MANIFEST = os.path.join(os.path.dirname(OUT), "../../../src/generated/tour-frames.json")
+
+
+def write_packs(cid, imgs, q=70):
+    """packs pNN.webp (PACK frames stacked vertically), preview.webp (grid of all
+    frames, small), poster.webp (frame 0) + frame count in the manifest."""
+    d = f"{OUT}/{cid}"; os.makedirs(d, exist_ok=True)
+    for f in glob.glob(d + "/*.webp"): os.remove(f)
+    n = len(imgs)
+    for p in range(0, n, PACK):
+        part = imgs[p:p + PACK]
+        sheet = Image.new("RGB", (W, H * len(part)))
+        for k, im in enumerate(part): sheet.paste(im, (0, k * H))
+        sheet.save(f"{d}/p{p // PACK:02d}.webp", quality=q, method=6)
+    rows = (n + PREVIEW_COLS - 1) // PREVIEW_COLS
+    grid = Image.new("RGB", (PREVIEW_COLS * PW, rows * PH))
+    for k, im in enumerate(imgs): grid.paste(im.resize((PW, PH), Image.LANCZOS), ((k % PREVIEW_COLS) * PW, (k // PREVIEW_COLS) * PH))
+    grid.save(f"{d}/preview.webp", quality=62, method=6)
+    imgs[0].save(f"{d}/poster.webp", quality=80, method=6)
+    man = json.load(open(MANIFEST)) if os.path.exists(MANIFEST) else {}
+    man[cid] = n
+    json.dump(dict(sorted(man.items())), open(MANIFEST, "w"), indent=2)
+    size = sum(os.path.getsize(x) for x in glob.glob(d + "/*.webp"))
+    print(cid, "→", n, "frames", (n + PACK - 1) // PACK, "packs", f"{size/1e6:.1f} MB", flush=True)
+
+
 def kenburns(cid, p):
     from PIL import ImageOps
     tmp = f"{HERE}/tmp-{cid}"; os.makedirs(tmp, exist_ok=True)
@@ -98,8 +127,7 @@ def kenburns(cid, p):
     if im.width < W * 1.4:
         im = im.resize((int(W * 1.4), int(W * 1.4 * 9 / 16)), Image.LANCZOS)
     n = p["n"]; z0, z1 = p["z"]
-    d = f"{OUT}/{cid}"; os.makedirs(d, exist_ok=True)
-    for f in glob.glob(d + "/*.webp"): os.remove(f)
+    out = []
     for k in range(n):
         t = k / (n - 1); e = t * t * (3 - 2 * t) * 0.6 + t * 0.4   # gentle ease, never stops
         z = z0 + (z1 - z0) * e
@@ -107,9 +135,9 @@ def kenburns(cid, p):
         cy = (p["c0"][1] + (p["c1"][1] - p["c0"][1]) * e) * im.height
         cw, ch = im.width / z, im.height / z
         x0 = min(max(0, cx - cw / 2), im.width - cw); y0 = min(max(0, cy - ch / 2), im.height - ch)
-        im.crop((x0, y0, x0 + cw, y0 + ch)).resize((W, H), Image.LANCZOS).save(f"{d}/{k:02d}.webp", quality=74, method=6)
+        out.append(im.crop((x0, y0, x0 + cw, y0 + ch)).resize((W, H), Image.LANCZOS))
     shutil.rmtree(tmp, ignore_errors=True)
-    print(cid, "kenburns →", n, f"{sum(os.path.getsize(x) for x in glob.glob(d + '/*.webp'))/1e6:.1f} MB", flush=True)
+    write_packs(cid, out)
 
 def build(cid, p):
     if "kb" in p:
@@ -160,16 +188,25 @@ def select(cid, p, frames):
     mag = np.sqrt(steps[:, 0] ** 2 + steps[:, 1] ** 2 + (steps[:, 2] * half) ** 2 + (steps[:, 3] * half) ** 2)
     mag = _gauss(mag[:, None], float(os.environ.get("MAGSIGMA", 3.0)))[:, 0] + 1e-3
     cum = np.cumsum(mag); cum = (cum - cum[0]) / (cum[-1] - cum[0])
-    n = p["n"]
+    total = float(mag.sum() - mag[0])
+    n = p.get("n") or int(np.clip(round(total / STEP), 40, 200))
     picks = [int(np.argmin(np.abs(cum - k / (n - 1)))) for k in range(n)]
-    d = f"{OUT}/{cid}"; os.makedirs(d, exist_ok=True)
-    for f in glob.glob(d + "/*.webp"): os.remove(f)
+    # prefer the sharpest frame close to each pick (drone footage has motion blur on fast turns)
+    sharp = {}
+    def sharpness(i):
+        if i not in sharp:
+            g = cv2.imread(frames[i], cv2.IMREAD_REDUCED_GRAYSCALE_4)
+            sharp[i] = float(cv2.Laplacian(g, cv2.CV_32F).var())
+        return sharp[i]
+    rad = max(1, int(len(frames) / n / 2))
+    out = []
+    for k, i in enumerate(picks):
+        lo = max(0, i - rad, out[-1] + 1 if out else 0); hi = min(len(frames) - 1, i + rad)
+        cands = range(lo, max(lo, hi) + 1)
+        out.append(max(cands, key=lambda j: sharpness(j) * (1 - 0.08 * abs(j - i) / rad)))
+    picks = out
     chosen = [frames[i] for i in picks]
-    imgs = smooth_path(chosen) if os.environ.get("STAGE2") else [cv2.imread(x) for x in chosen]
-    for k, im in enumerate(imgs):
-        Image.fromarray(cv2.cvtColor(im, cv2.COLOR_BGR2RGB)).save(f"{d}/{k:02d}.webp", quality=72, method=6)
-    size = sum(os.path.getsize(x) for x in glob.glob(d + "/*.webp"))
-    print(cid, len(frames), "→", n, f"{size/1e6:.1f} MB", flush=True)
+    write_packs(cid, [Image.open(x).convert("RGB") for x in chosen], p.get("q", 70))
 
 
 if __name__ == "__main__":

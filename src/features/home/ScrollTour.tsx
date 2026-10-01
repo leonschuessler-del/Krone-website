@@ -10,6 +10,7 @@ import type { Point } from "@/domain/types";
 import { SelectSpaceButton } from "@/features/spaces/SelectSpaceButton";
 import { cn } from "@/lib/cn";
 import { mountTourPlayer } from "./tour-player";
+import { totalWeight } from "./tour-timeline";
 
 export interface TourSpace {
   id: string;
@@ -76,7 +77,7 @@ export function ScrollTour({ spaces, hero }: Props) {
       aria-label="Rundgang durch die Krone"
       className="tour-section relative bg-anthracite motion-reduce:hidden"
       style={{
-        ["--tour-chapters" as string]: chapters.length,
+        ["--tour-chapters" as string]: totalWeight(chapters).toFixed(2),
         ["--tour-step-mobile" as string]: `${tourConfig.scrollPerChapterVh.mobile}vh`,
         ["--tour-step-desktop" as string]: `${tourConfig.scrollPerChapterVh.desktop}vh`,
       }}

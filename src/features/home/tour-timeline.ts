@@ -26,10 +26,28 @@ export interface ChapterSpan {
   end: number;
 }
 
-/** Equal spans per chapter. */
-export function chapterSpans(chapters: readonly Pick<TourChapter, "id">[]): ChapterSpan[] {
-  const n = chapters.length;
-  return chapters.map((_, i) => ({ start: i / n, end: (i + 1) / n }));
+/**
+ * Scroll weight of a chapter: chapters with more camera movement (more
+ * frames) get proportionally more scroll distance, so the film never rushes.
+ */
+export function chapterWeight(c: Pick<TourChapter, "id"> & { frames?: { count: number } }): number {
+  const n = c.frames?.count ?? 40;
+  return Math.min(2.6, Math.max(1, n / 60));
+}
+
+export function totalWeight(chapters: readonly (Pick<TourChapter, "id"> & { frames?: { count: number } })[]): number {
+  return chapters.reduce((sum, c) => sum + chapterWeight(c), 0);
+}
+
+/** Spans per chapter, proportional to their scroll weight. */
+export function chapterSpans(chapters: readonly (Pick<TourChapter, "id"> & { frames?: { count: number } })[]): ChapterSpan[] {
+  const total = totalWeight(chapters);
+  let acc = 0;
+  return chapters.map((c, i) => {
+    const start = acc / total;
+    acc += chapterWeight(c);
+    return { start, end: i === chapters.length - 1 ? 1 : acc / total };
+  });
 }
 
 /** Share of a chapter used to crossfade from the previous clip. */

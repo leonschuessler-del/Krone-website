@@ -23,11 +23,16 @@ export interface TourPlayerOptions {
   onActive?: (index: number) => void;
 }
 
-const MAX_PARALLEL = 6;
-/** chapters kept in memory around the active one */
-const KEEP = 2;
+const MAX_PARALLEL = 4;
+/** frames per pack file (vertical strip) */
+export const PACK = 4;
+/** preview track: low-res grid with every frame, columns per row */
+export const PREVIEW_COLS = 10;
+/** packs kept around the playhead: behind / ahead (in packs) */
+const BEHIND = 2;
+const AHEAD = 5;
 
-/** 0, n-1, n/2, n/4, 3n/4 … – coarse first, so scrubbing works before everything loaded */
+/** 0, n-1, n/2, n/4, 3n/4 … – coarse first */
 export function progressiveOrder(n: number): number[] {
   const out: number[] = [];
   const seen = new Set<number>();
@@ -47,101 +52,153 @@ export function progressiveOrder(n: number): number[] {
   return out;
 }
 
+interface Slot {
+  img: HTMLImageElement;
+  ready: boolean;
+}
+
+/** A drawable source rectangle (frame inside a pack or a preview cell). */
+export interface FrameSource {
+  img: HTMLImageElement;
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+  sharp: boolean;
+}
+
+export const packIndex = (f: number) => Math.floor(f / PACK);
+export const packCount = (frames: number) => Math.ceil(frames / PACK);
+
+/**
+ * Loads each chapter as (1) one small preview grid holding every frame – the
+ * film scrubs immediately – and (2) packs of PACK full-resolution frames
+ * around the playhead, prefetching in scroll direction and releasing packs
+ * that fall out of the window (bounded memory, also on phones).
+ */
 class FrameStore {
-  private images: Array<Array<HTMLImageElement | undefined>>;
-  private ready: boolean[][];
+  private packs = new Map<string, Slot>();
+  private previews = new Map<number, Slot>();
   private inflight = 0;
-  private wanted: number[] = [];
+  private queue: Array<[number, number]> = []; // [chapter, pack] ; pack -1 = preview
+  private heads = new Map<number, number>(); // chapter → frame position
+  private dir = 1;
 
   constructor(
     private chapters: readonly TourChapter[],
     private url: (src: string) => string,
     private onLoad: () => void,
-  ) {
-    this.images = chapters.map((c) => new Array(c.frames.count));
-    this.ready = chapters.map((c) => new Array<boolean>(c.frames.count).fill(false));
-  }
+  ) {}
 
-  focus(active: number) {
+  /** Tell the store where each visible layer is; recomputes the load queue. */
+  update(heads: Map<number, number>, direction: number) {
+    this.heads = heads;
+    if (direction) this.dir = direction;
+    const want: Array<[number, number]> = [];
+    const keep = new Set<string>();
+    const chapters = [...heads.keys()];
     const n = this.chapters.length;
-    this.wanted = [active, active + 1, active - 1, active + 2].filter((i) => i >= 0 && i < n);
-    // free memory far away from the viewer
-    this.chapters.forEach((_, i) => {
-      if (Math.abs(i - active) > KEEP + 1) {
-        this.images[i] = new Array(this.chapters[i]!.frames.count);
-        this.ready[i]!.fill(false);
+    // previews: visible chapters and their neighbours
+    const pv = new Set<number>();
+    for (const c of chapters) for (const d of [0, 1, -1]) if (c + d >= 0 && c + d < n) pv.add(c + d);
+    for (const c of pv) if (!this.previews.has(c)) want.push([c, -1]);
+    for (const [c, pos] of heads) {
+      const total = packCount(this.chapters[c]!.frames.count);
+      const cur = packIndex(Math.round(pos));
+      const order = [cur];
+      for (let d = 1; d <= AHEAD; d++) {
+        order.push(cur + d * this.dir);
+        if (d <= BEHIND) order.push(cur - d * this.dir);
       }
-    });
+      for (const p of order) {
+        if (p < 0 || p >= total) continue;
+        keep.add(`${c}:${p}`);
+        if (!this.packs.has(`${c}:${p}`)) want.push([c, p]);
+      }
+    }
+    // the first packs of the next chapter, so the cut is sharp right away
+    const top = Math.max(...chapters);
+    if (top + 1 < n) for (const p of [0, 1]) if (p < packCount(this.chapters[top + 1]!.frames.count)) {
+      keep.add(`${top + 1}:${p}`);
+      if (!this.packs.has(`${top + 1}:${p}`)) want.push([top + 1, p]);
+    }
+    // release packs outside the window
+    for (const [k, slot] of this.packs) {
+      if (!keep.has(k)) {
+        slot.img.src = "";
+        this.packs.delete(k);
+      }
+    }
+    for (const [c, slot] of this.previews) {
+      if (Math.min(...chapters.map((x) => Math.abs(x - c))) > 2) {
+        slot.img.src = "";
+        this.previews.delete(c);
+      }
+    }
+    this.queue = want;
     this.pump();
   }
 
   private pump() {
-    while (this.inflight < MAX_PARALLEL) {
-      const next = this.nextMissing();
-      if (!next) return;
-      this.load(next[0], next[1]);
+    while (this.inflight < MAX_PARALLEL && this.queue.length) {
+      const [c, p] = this.queue.shift()!;
+      const key = `${c}:${p}`;
+      if (p === -1 ? this.previews.has(c) : this.packs.has(key)) continue;
+      const { dir } = this.chapters[c]!.frames;
+      const img = new Image();
+      img.decoding = "async";
+      const slot: Slot = { img, ready: false };
+      if (p === -1) this.previews.set(c, slot);
+      else this.packs.set(key, slot);
+      this.inflight++;
+      const done = () => {
+        this.inflight--;
+        this.onLoad();
+        this.pump();
+      };
+      img.onerror = done;
+      img.onload = () => {
+        // decode off the main thread before first use, so drawing never stalls
+        const ok = () => {
+          slot.ready = true;
+          done();
+        };
+        if (typeof img.decode === "function") img.decode().then(ok, ok);
+        else ok();
+      };
+      img.src = this.url(p === -1 ? `${dir}preview.webp` : `${dir}p${String(p).padStart(2, "0")}.webp`);
     }
   }
 
-  private nextMissing(): [number, number] | null {
-    // first frame of every wanted chapter, then the rest progressively
-    for (const c of this.wanted) if (!this.images[c]![0]) return [c, 0];
-    const active = this.wanted[0] ?? 0;
-    for (const f of progressiveOrder(this.chapters[active]!.frames.count).slice(0, 12)) if (!this.images[active]![f]) return [active, f];
-    for (const c of this.wanted) {
-      for (const f of progressiveOrder(this.chapters[c]!.frames.count)) if (!this.images[c]![f]) return [c, f];
+  /** Best available source for frame f of chapter c: sharp pack frame, else preview cell. */
+  get(c: number, f: number): FrameSource | null {
+    const count = this.chapters[c]!.frames.count;
+    const fi = Math.max(0, Math.min(count - 1, f));
+    const pack = this.packs.get(`${c}:${packIndex(fi)}`);
+    if (pack?.ready && pack.img.naturalWidth) {
+      const rows = Math.min(PACK, count - packIndex(fi) * PACK);
+      const fh = pack.img.naturalHeight / rows;
+      return { img: pack.img, sx: 0, sy: (fi % PACK) * fh, sw: pack.img.naturalWidth, sh: fh, sharp: true };
     }
-    return null;
-  }
-
-  private load(c: number, f: number) {
-    const { dir } = this.chapters[c]!.frames;
-    const img = new Image();
-    img.decoding = "async";
-    const list = this.images[c]!;
-    list[f] = img;
-    this.inflight++;
-    const done = (ok: boolean) => {
-      this.inflight--;
-      if (ok && this.images[c] === list) this.ready[c]![f] = true;
-      this.onLoad();
-      this.pump();
-    };
-    img.onerror = () => done(false);
-    img.onload = () => {
-      // decode off the main thread before the frame is used, so drawing never stalls
-      if (typeof img.decode === "function") img.decode().then(() => done(true), () => done(true));
-      else done(true);
-    };
-    img.src = this.url(`${dir}${String(f).padStart(2, "0")}.webp`);
-  }
-
-  hasExact(c: number, f: number) {
-    return !!this.ready[c]?.[f];
-  }
-
-  /** nearest loaded frame to f (prefers the exact one) */
-  get(c: number, f: number): HTMLImageElement | null {
-    const ready = this.ready[c];
-    if (!ready) return null;
-    for (let d = 0; d < ready.length; d++) {
-      if (ready[f - d]) return this.images[c]![f - d]!;
-      if (ready[f + d]) return this.images[c]![f + d]!;
+    const pv = this.previews.get(c);
+    if (pv?.ready && pv.img.naturalWidth) {
+      const rows = Math.ceil(count / PREVIEW_COLS);
+      const cw = pv.img.naturalWidth / PREVIEW_COLS;
+      const ch = pv.img.naturalHeight / rows;
+      return { img: pv.img, sx: (fi % PREVIEW_COLS) * cw, sy: Math.floor(fi / PREVIEW_COLS) * ch, sw: cw, sh: ch, sharp: false };
     }
     return null;
   }
-
 }
 
-function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number, alpha: number, zoom = 1) {
-  const iw = img.naturalWidth;
-  const ih = img.naturalHeight;
-  if (!iw || !ih || alpha <= 0) return;
-  const s = Math.max(w / iw, h / ih) * zoom;
-  const dw = iw * s;
-  const dh = ih * s;
+function drawCover(ctx: CanvasRenderingContext2D, src: FrameSource, w: number, h: number, alpha: number, zoom = 1) {
+  const { img, sx, sy, sw, sh } = src;
+  if (!sw || !sh || alpha <= 0) return;
+  const s = Math.max(w / sw, h / sh) * zoom;
+  const dw = sw * s;
+  const dh = sh * s;
   ctx.globalAlpha = Math.min(1, alpha);
-  ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  ctx.drawImage(img, sx, sy, sw, sh, (w - dw) / 2, (h - dh) / 2, dw, dh);
 }
 
 export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): () => void {
@@ -173,6 +230,19 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
   let h = 0;
 
   const store = new FrameStore(chapters, url, () => schedule(true));
+  let fedKey = "";
+  /** tell the store which frames are on screen (only when a pack boundary is crossed) */
+  const feed = (f: TourFrame, direction: number) => {
+    const heads = new Map<number, number>();
+    f.layerOpacity.forEach((o, i) => {
+      if (o > 0.001) heads.set(i, f.layerProgress[i]! * (chapters[i]!.frames.count - 1));
+    });
+    if (heads.size === 0) heads.set(f.index, 0);
+    const key = [...heads].map(([c, pos]) => `${c}:${Math.floor(pos / PACK)}`).join("|") + (direction > 0 ? "+" : direction < 0 ? "-" : "");
+    if (key === fedKey) return;
+    fedKey = key;
+    store.update(heads, direction);
+  };
 
   const size = () => {
     if (!canvas) return;
@@ -198,18 +268,18 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     chapters.forEach((c, i) => {
       const o = f.layerOpacity[i]!;
       if (o <= 0.001) return;
-      // frame A plus a short, eased dissolve into frame B around the midpoint:
-      // softens the step between frames without ghosting on fast moves
+      // frame A plus an eased dissolve into frame B around the midpoint
       const pos = f.layerProgress[i]! * (c.frames.count - 1);
       const a = Math.floor(pos);
       const frac = pos - a;
-      const img = store.get(i, a);
-      if (!img) return;
+      const src = store.get(i, a);
+      if (!src) return;
       const zoom = f.layerScale[i] ?? 1;
-      drawCover(ctx, img, w, h, o, zoom);
+      drawCover(ctx, src, w, h, o, zoom);
       drew = true;
-      const blend = smoothstep(0.3, 0.7, frac);
-      if (blend > 0.01 && a + 1 < c.frames.count && store.hasExact(i, a + 1)) drawCover(ctx, store.get(i, a + 1)!, w, h, o * blend, zoom);
+      const blend = smoothstep(0.25, 0.75, frac);
+      const next = blend > 0.01 && a + 1 < c.frames.count ? store.get(i, a + 1) : null;
+      if (next && next.sharp === src.sharp) drawCover(ctx, next, w, h, o * blend, zoom);
     });
     ctx.globalAlpha = 1;
     if (drew && !drewOnce && poster) {
@@ -221,7 +291,6 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
   const setActive = (index: number) => {
     if (index === active) return;
     active = index;
-    store.focus(index);
     captions.forEach((el, i) => {
       el.style.pointerEvents = i === index ? "auto" : "none";
       el.querySelectorAll<HTMLElement>("a,button").forEach((b) => (b.tabIndex = i === index ? 0 : -1));
@@ -255,6 +324,7 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     const vp = { width: window.innerWidth, height: window.innerHeight };
     const finaleTo = overviewCamera(WIDE_CAMERA, vp, map);
     frame = computeFrame(current, chapters, spans, FINALE_START_CAMERA, finaleTo);
+    feed(frame, Math.sign(target - current));
     draw(frame);
     captions.forEach((el, i) => {
       const c = frame!.captionOpacity[i] ?? 0;
@@ -318,7 +388,7 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
   };
 
   size();
-  store.focus(0);
+  feed(computeFrame(0, chapters, spans, FINALE_START_CAMERA, WIDE_CAMERA), 1);
   schedule();
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onResize);
