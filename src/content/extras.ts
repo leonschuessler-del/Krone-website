@@ -1,6 +1,7 @@
 /**
  * Additional services (Zusatzleistungen) from the operator's price sheet
- * (10/2026). Prices are net amounts in cents (plus VAT). "tableware" is
+ * (10/2026, confirmed by the operator on 2026-10-02). Prices are net amounts
+ * in cents (plus VAT). "tableware" is
  * charged per guest, the others once per booking.
  */
 export const extraSeeds = [

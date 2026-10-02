@@ -3,7 +3,8 @@ import type { Space } from "@/domain/types";
 /**
  * Seed content for all spaces ("Bereiche").
  *
- * Prices and seats: operator's price sheet (10/2026) – flat package per
+ * Prices and seats: operator's price sheet (10/2026, figures confirmed by the
+ * operator on 2026-10-02) – flat package per
  * booking, Fri–Sun, every further day +100 €, all prices net (plus VAT). The
  * Restaurant is always part of a booking (entrance, bar); every other room is
  * an add-on to it (`requires: ["restaurant"]`). Areas and a few other facts
