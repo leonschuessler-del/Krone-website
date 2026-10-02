@@ -102,6 +102,12 @@ export interface QuoteLine {
   isDemo: boolean;
 }
 
+/** A flat room price covers the weekend (Fri–Sun); every further day costs this much extra. */
+export const PACKAGE_DAYS = 3;
+export const EXTRA_DAY_FEE = 10000;
+/** All prices are net; German VAT. */
+export const VAT_RATE = 19;
+
 export interface Quote {
   currency: "EUR";
   lines: QuoteLine[];
@@ -109,8 +115,12 @@ export interface Quote {
   discountTotal: number;
   extrasTotal: number | null;
   cleaningTotal: number | null;
-  /** Mietsumme (without Kaution) */
+  /** Mietsumme net (without Kaution) */
   total: number | null;
+  /** VAT on the net total */
+  vat: { rate: number; amount: number | null };
+  /** Mietsumme incl. VAT */
+  grossTotal: number | null;
   /** Kaution – refundable, not revenue */
   deposit: number | null;
   /** Due today (down payment / full amount, plus Kaution if collected with payment) */
@@ -244,6 +254,14 @@ export function calculateQuote(input: {
     });
   }
 
+  // --- weekend package: further days ---------------------------------------------
+  if (request.rentalMode === "daily" && dates.length > PACKAGE_DAYS && selected.some((s) => s.priceModel === "flat")) {
+    const extraDays = dates.length - PACKAGE_DAYS;
+    const amount = extraDays * EXTRA_DAY_FEE;
+    rentBySpace.set("extra-days" as SpaceId, amount);
+    lines.push({ kind: "rental", refId: "extra-days", label: "Weitere Miettage", detail: `${extraDays} × ${euro(EXTRA_DAY_FEE)} (Pauschale gilt Fr–So)`, amount, isDemo: false });
+  }
+
   const rentValues = [...rentBySpace.values()];
   const rentalSubtotal = rentValues.some((v) => v === null) || selected.length === 0 ? null : rentValues.reduce<number>((a, b) => a + (b ?? 0), 0);
 
@@ -355,24 +373,28 @@ export function calculateQuote(input: {
     }
     deposit = policy.depositStrategy === "max" ? Math.max(deposit, s.deposit) : deposit + s.deposit;
   }
-  if (deposit === null) missing.push("Kaution");
+  // an unknown deposit is shown as "folgt" but does not make the quote incomplete
 
   // --- totals -------------------------------------------------------------------------
   const rentAfterBundle = rentalSubtotal === null ? null : rentalSubtotal - discountTotal;
   const total =
     rentAfterBundle === null || extrasTotal === null || cleaningTotal === null ? null : rentAfterBundle + extrasTotal + cleaningTotal;
 
+  const vatAmount = total === null ? null : Math.round((total * VAT_RATE) / 100);
+  const grossTotal = total === null || vatAmount === null ? null : total + vatAmount;
+  if (total !== null) notes.push(`Alle Preise zzgl. ${VAT_RATE} % MwSt.`);
+
   let dueNow: number | null;
   if (policy.mode === "none") dueNow = 0;
-  else if (total === null) dueNow = null;
+  else if (grossTotal === null) dueNow = null;
   else {
-    const rentPart = policy.mode === "full" ? total : Math.round((total * (policy.downPaymentPercent ?? 100)) / 100);
+    const rentPart = policy.mode === "full" ? grossTotal : Math.round((grossTotal * (policy.downPaymentPercent ?? 100)) / 100);
     const depositPart = policy.depositCollection === "with_payment" ? deposit : 0;
     dueNow = depositPart === null ? null : rentPart + depositPart;
   }
 
   // --- booking mode ---------------------------------------------------------------------
-  const isComplete = total !== null && deposit !== null && selected.length > 0;
+  const isComplete = total !== null && selected.length > 0;
   let bookingMode: BookingMode = selected.every((s) => s.bookingMode === "instant" || s.bookingMode === "both") ? "both" : "inquiry";
   if (selected.some((s) => s.bookingMode === "instant") && bookingMode !== "inquiry" && selected.every((s) => s.bookingMode === "instant")) {
     bookingMode = "instant";
@@ -391,6 +413,8 @@ export function calculateQuote(input: {
     extrasTotal,
     cleaningTotal,
     total,
+    vat: { rate: VAT_RATE, amount: vatAmount },
+    grossTotal,
     deposit,
     dueNow,
     durationMinutes,

@@ -71,7 +71,7 @@ export interface BookingDraftState {
   /** Last previewed space on the map (UI only). */
   previewSpaceId: SpaceId | null;
 
-  toggleSpace: (id: SpaceId) => void;
+  toggleSpace: (id: SpaceId, requires?: readonly SpaceId[]) => void;
   addSpace: (id: SpaceId) => void;
   removeSpace: (id: SpaceId) => void;
   setSelection: (ids: SpaceId[]) => void;
@@ -134,12 +134,13 @@ export const useBookingStore = create<BookingDraftState>()(
       submissionMode: "booking",
       previewSpaceId: null,
 
-      toggleSpace: (id) => {
+      toggleSpace: (id, requires = []) => {
         const selected = get().selectedSpaceIds.includes(id);
         set({
           selectedSpaceIds: selected
             ? get().selectedSpaceIds.filter((s) => s !== id)
-            : unique([...get().selectedSpaceIds, id]),
+            : // a room that needs others (every room needs the Restaurant) brings them along
+              unique([...get().selectedSpaceIds, ...requires, id]),
         });
         track(selected ? "space_deselected" : "space_selected", { spaceId: id });
       },

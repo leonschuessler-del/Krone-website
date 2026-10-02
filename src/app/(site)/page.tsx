@@ -116,8 +116,8 @@ export default async function HomePage() {
             {[
               { icon: ChefHat, title: "Profiküche", text: "Herdblock, Kombidämpfer und Spülküche direkt hinter der Theke." },
               { icon: Theater, title: "Bühne", text: "Leicht erhöht und per Schiebetür zum Nebenzimmer zu öffnen." },
-              { icon: TreeDeciduous, title: "Wintergarten & Biergarten", text: "Glasdach und Holz-Glastüren, davor der Hof mit Pergola und Sandsteinmauer." },
-              { icon: BedDouble, title: "Landhotel", text: "Zehn Zimmer und eine Wohnung im Obergeschoss, Übernachtung mit Frühstück." },
+              { icon: TreeDeciduous, title: "Wintergarten & Biergarten", text: "Glasdach und Holz-Glastüren, davor der Biergarten mit Pergola und Sandsteinmauer." },
+              { icon: BedDouble, title: "Landhotel", text: "Acht Doppelzimmer, zwei Einzelzimmer und ein Apartment im Obergeschoss – einzeln buchbar, Frühstück inklusive." },
               { icon: Car, title: "Parken am Haus", text: "Stellplätze in der Hofeinfahrt und im Hof, direkt vor Biergarten und Eingang." },
               { icon: MapIcon, title: "Toiletten inklusive", text: "Zwei WC-Anlagen im Erdgeschoss gehören zu jeder Buchung." },
             ].map((f) => (
@@ -152,11 +152,11 @@ export default async function HomePage() {
                 <p>{hotel.longDescription?.replace("[PLACEHOLDER]", "")}</p>
               </SectionHeading>
               <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink href="/bereiche/hotel" variant="primary">
-                  Zimmer ansehen
+                <ButtonLink href="/bereiche/hotel#zimmer" variant="primary">
+                  Zimmer buchen
                 </ButtonLink>
-                <ButtonLink href="/kontakt?betreff=Hotelanfrage" variant="secondary">
-                  Übernachtung anfragen
+                <ButtonLink href="/bereiche/hotel" variant="secondary">
+                  Zimmer ansehen
                 </ButtonLink>
               </div>
             </div>

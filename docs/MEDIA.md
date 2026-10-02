@@ -85,3 +85,10 @@ Austausch: Datei gleichen Namens ersetzen, `npm run dev`/`build` neu starten
 ## Grundstücksgrenze der Karte
 
 Die farbige Fläche der Karte ist das Grundstück, wie es der Eigentümer auf dem Drohnenfoto F054 lila eingezeichnet hat (`tools/media/plot_outline.py` → `plotOutline` in `src/config/floorplan.ts`). Außerhalb ist das Foto entsättigt und abgedunkelt.
+
+
+## Fotos (Titelbilder, Galerien)
+
+`tools/media/grade3.py <quelle> <ziel.webp> <breite> <höhe> [cx cy]` gradet jedes Foto gleich: Tonwerte (Perzentil-Spreizung), Weißabgleich mit leicht warmer Tendenz, Helligkeits-Normalisierung, Krone-Look (Kontrast, Sättigung, warm/kühl, S-Kurve), Vignette, Schärfung auf Ausgabegröße. Quelle: Katalog-ID (`F044`), Videobild (`V22@37.0`) oder Dateipfad. Dadurch wirken alle Bilder wie eine Serie.
+
+Zuordnung (10/2026): Nebenzimmer-Titel F044, Bühne V22 @ 37 s, Wintergarten F013, Hotel F035 (+ F038, F037, F036, F039, F115, F030), Biergarten: fünf Fotos des Betreibers, „Die Krone in Bildern“: F120, F001, F013, F043, F047, F035.

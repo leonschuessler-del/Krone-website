@@ -18,6 +18,10 @@ import {
 } from "@/server/db/schema";
 import type { AdminBookingUpdate } from "./admin-validation";
 import { applyBookingStatusToBlocks, getBookingDetails } from "./booking-service";
+import { env } from "@/lib/env";
+import { siteConfig } from "@/config/site";
+import { declineReasonText } from "@/domain/decline";
+import { pushCalendarEvent, removeCalendarEvent, type CalendarSyncResult } from "@/server/integrations/calendar";
 import { sendEmail, type EmailTemplate } from "./email-service";
 import { releaseExpiredHolds } from "./hold-service";
 import { listSpaceRows } from "./space-service";
@@ -397,6 +401,7 @@ const STATUS_EMAIL: Partial<Record<BookingStatus, EmailTemplate>> = {
 };
 
 export interface BookingUpdateResult {
+  calendar?: CalendarSyncResult;
   status: BookingStatus;
   paymentStatus: PaymentStatus;
   blocksCreated: number;
@@ -563,8 +568,12 @@ export async function updateBookingByAdmin(db: Database, id: string, patch: Admi
 
   // ---- notification (outside the transaction) -------------------------------
   let emailSent: EmailTemplate | null = null;
+  const wasRequest = from === "inquiry" || from === "pending";
   if (statusChange && patch.notifyCustomer !== false) {
-    const template = STATUS_EMAIL[to];
+    // accepting / declining a request gets its own wording
+    let template = STATUS_EMAIL[to];
+    if (to === "confirmed" && wasRequest) template = "request_accepted";
+    if (to === "cancelled" && wasRequest && patch.declineReason) template = "request_declined";
     if (template && details.customer) {
       const start = b.startAt.getTime();
       const end = b.endAt.getTime();
@@ -580,14 +589,44 @@ export async function updateBookingByAdmin(db: Database, id: string, patch: Admi
           timeLabel: b.rentalMode === "daily" ? `${formatDateTime(start)} – ${formatDateTime(end)} Uhr` : formatTimeRange(start, end),
           totalLabel: formatMoney(b.total, "auf Anfrage"),
           handoverLabel: b.handoverAt ? `${formatDateTime(b.handoverAt)} Uhr` : undefined,
+          reasonText: patch.declineReason ? declineReasonText(patch.declineReason) : undefined,
+          note: patch.declineNote?.trim() || undefined,
+          phone: siteConfig.contact.phone ?? undefined,
         },
         id,
       );
       emailSent = template;
     }
   }
+  if (statusChange && patch.declineReason) {
+    await writeAudit(db, actor, "booking.declined", "booking", id, { reason: patch.declineReason });
+  }
+
+  // ---- operator's calendar (Apple Calendar via CalDAV) -------------------------
+  let calendar: CalendarSyncResult | undefined;
+  if (statusChange && (to === "confirmed" || to === "cancelled")) {
+    calendar =
+      to === "confirmed"
+        ? await pushCalendarEvent({
+            id,
+            title: `${b.kind === "inquiry" ? "Feier" : "Buchung"} ${b.bookingNumber} – ${details.items.map((i) => i.spaceName).join(", ")}`,
+            start: b.startAt,
+            end: b.endAt,
+            location: `${siteConfig.name}, ${siteConfig.address.street ?? ""} ${siteConfig.address.postalCode} ${siteConfig.address.city}`.trim(),
+            description: [
+              details.customer ? `${details.customer.firstName} ${details.customer.lastName} · ${details.customer.email}${details.customer.phone ? ` · ${details.customer.phone}` : ""}` : "",
+              b.guestCount ? `${b.guestCount} Gäste` : "",
+              `${env.siteUrl}/admin/buchungen/${id}`,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          })
+        : await removeCalendarEvent(id);
+    if (!calendar.ok && calendar.mode === "caldav") await writeAudit(db, actor, "booking.calendar_failed", "booking", id, { error: calendar.error });
+  }
 
   return {
+    calendar,
     status: (set.status ?? from) as BookingStatus,
     paymentStatus: (set.paymentStatus ?? b.paymentStatus) as PaymentStatus,
     blocksCreated,

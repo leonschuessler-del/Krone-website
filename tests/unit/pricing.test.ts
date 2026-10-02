@@ -37,7 +37,9 @@ describe("pricing engine", () => {
     expect(q.cleaningTotal).toBe(10000);
     expect(q.total).toBe(50000);
     expect(q.deposit).toBe(30000);
-    expect(q.dueNow).toBe(15000); // 30 % down payment, deposit collected separately
+    expect(q.vat.amount).toBe(9500); // 19 % on the net total
+    expect(q.grossTotal).toBe(59500);
+    expect(q.dueNow).toBe(17850); // 30 % down payment on the gross total, deposit collected separately
     expect(q.isComplete).toBe(true);
   });
 

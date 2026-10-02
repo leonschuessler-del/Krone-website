@@ -18,7 +18,8 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   test("Bereiche per Klick und Tastatur auswählen", async ({ page }) => {
     await page.goto("/#karte");
     const map = page.getByTestId("site-map").first();
-    await expect(map.locator("[data-space]")).toHaveCount(7);
+    // 6 bookable rooms on the photo (the kitchen is an add-on, hotel rooms are booked separately)
+    await expect(map.locator("[data-space]")).toHaveCount(6);
 
     await map.locator('[data-space="restaurant"]').click();
     await map.locator('[data-space="stage"]').click();
@@ -62,21 +63,21 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   test("Test 61: Gesamte Location zeigt konkret den blockierten Bereich", async ({ page }) => {
     await page.goto("/#karte");
     await page.getByTestId("full-venue").click();
-    await expect(page.getByTestId("selection-count").first()).toHaveText("7 Bereiche ausgewählt");
+    await expect(page.getByTestId("selection-count").first()).toHaveText("6 Bereiche ausgewählt");
     await page.getByTestId("open-schedule").click();
     await pickDate(page, scenario.winterGardenBookedDate);
     await page.getByTestId("start-time").selectOption("16:00");
     await page.getByTestId("end-time").selectOption("22:00");
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByTestId("availability-summary")).toHaveText("6 von 7 Bereichen verfügbar.");
+    await expect(dialog.getByTestId("availability-summary")).toHaveText("5 von 6 Bereichen verfügbar.");
     await expect(dialog.getByTestId("blocked-space")).toHaveCount(1);
     await expect(dialog.getByTestId("blocked-space")).toContainText("Wintergarten");
   });
 });
 
-test("Test 60: komplette Buchung Restaurant + Bühne + Biergarten bis zur Bestätigung", async ({ page }) => {
+test("Test 60: komplette Anfrage Restaurant + Bühne + Biergarten bis zur Bestätigungsseite", async ({ page }) => {
   await page.goto("/buchen?spaces=restaurant,stage,beer-garden");
-  await expect(page.getByTestId("step-title")).toContainText("Bereiche");
+  await expect(page.getByTestId("step-title")).toContainText("Räume");
   await page.getByTestId("wizard-next").click();
 
   await pickDate(page, scenario.winterGardenBookedDate);
@@ -86,7 +87,7 @@ test("Test 60: komplette Buchung Restaurant + Bühne + Biergarten bis zur Bestä
   await expect(page.getByTestId("quote-total")).not.toHaveText(/0,00/);
   await page.getByTestId("wizard-next").click();
 
-  await expect(page.getByTestId("step-title")).toContainText("Zusatzoptionen");
+  await expect(page.getByTestId("step-title")).toContainText("Zusatzleistungen");
   await page.getByTestId("wizard-next").click();
 
   await page.getByLabel("Art der Veranstaltung *").selectOption("company");
@@ -111,13 +112,14 @@ test("Test 60: komplette Buchung Restaurant + Bühne + Biergarten bis zur Bestä
   for (const id of ["house_rules", "rental_terms", "cancellation", "deposit", "handover", "privacy"]) await page.getByTestId(`term-${id}`).check();
   await page.getByTestId("wizard-next").click();
 
-  await expect(page.getByTestId("step-title")).toContainText("Zahlung");
+  // every booking is a request the operator confirms (no online payment)
+  const inquiryRadio = page.getByRole("radio", { name: /Unverbindlich anfragen/ });
+  if (await inquiryRadio.count()) await inquiryRadio.click();
   await page.getByTestId("wizard-submit").click();
-  await page.getByTestId("demo-pay-success").click();
 
-  await page.waitForURL(/\/buchung\/KR-\d{4}-/);
-  await expect(page.getByTestId("booking-number")).toHaveText(/^KR-\d{4}-[2-9A-Z]{5}$/);
-  await expect(page.getByTestId("booking-status")).toHaveText("Bestätigt");
+  await page.waitForURL(/\/buchung\/KA-\d{4}-/);
+  await expect(page.getByTestId("booking-number")).toHaveText(/^KA-\d{4}-[2-9A-Z]{5}$/);
+  await expect(page.getByTestId("booking-status")).toHaveText("Anfrage");
   const spaces = page.getByTestId("booking-spaces").locator("li");
   await expect(spaces).toHaveCount(3);
   await expect(page.getByTestId("booking-spaces")).toContainText("Restaurant");
@@ -126,9 +128,9 @@ test("Test 60: komplette Buchung Restaurant + Bühne + Biergarten bis zur Bestä
 });
 
 test("Unverbindliche Anfrage erhält eigene Nummer", async ({ page }) => {
-  await page.goto("/buchen?spaces=side-room");
+  await page.goto("/buchen?spaces=restaurant,side-room");
   await page.getByTestId("wizard-next").click();
-  await pickDate(page, scenario.restaurantEveningDate);
+  await pickDate(page, scenario.oldTavernReservedDate);
   await page.getByTestId("start-time").selectOption("12:00");
   await page.getByTestId("end-time").selectOption("16:00");
   await expect(page.getByTestId("availability-summary")).toHaveText(/verfügbar/);
@@ -153,10 +155,19 @@ test("Unverbindliche Anfrage erhält eigene Nummer", async ({ page }) => {
   // booking vs. inquiry is chosen on the next step, so all starred terms are asked here
   for (const id of ["house_rules", "rental_terms", "cancellation", "deposit", "handover", "privacy"]) await page.getByTestId(`term-${id}`).check();
   await page.getByTestId("wizard-next").click();
-  await page.getByRole("radio", { name: /Unverbindlich anfragen/ }).click();
+  const radio = page.getByRole("radio", { name: /Unverbindlich anfragen/ });
+  if (await radio.count()) await radio.click();
   await page.getByTestId("wizard-submit").click();
   await page.waitForURL(/\/buchung\/KA-\d{4}-/);
   await expect(page.getByTestId("booking-status")).toHaveText("Anfrage");
+});
+
+test("Ohne Restaurant geht es nicht – der Planer nimmt es automatisch dazu", async ({ page }) => {
+  await page.goto("/#karte");
+  const map = page.getByTestId("site-map").first();
+  await map.locator('[data-space="stage"]').click();
+  await expect(map.locator('[data-space="restaurant"]')).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("selection-count").first()).toHaveText("2 Bereiche ausgewählt");
 });
 
 test("Detailseite: Bereich auswählen und zurück zur Karte – Auswahl bleibt erhalten", async ({ page }) => {

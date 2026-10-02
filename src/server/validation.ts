@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DECLINE_REASON_IDS } from "@/domain/decline";
 import { isLocalDate, isLocalTime } from "@/domain/time";
 
 /** Server-side input validation for every API endpoint. */
@@ -120,6 +121,9 @@ export const adminBookingPatchSchema = z
     paymentStatus: z.enum(["unpaid", "pending", "deposit_required", "deposit_paid", "paid", "partially_refunded", "refunded", "failed"]).optional(),
     adminNotes: trimmed(4000).nullish(),
     markReviewed: z.boolean().optional(),
+    /** when declining (status → cancelled from a request): reason for the customer's e-mail */
+    declineReason: z.enum(DECLINE_REASON_IDS).optional(),
+    declineNote: trimmed(2000).optional(),
   })
   .strict();
 

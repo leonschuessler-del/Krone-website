@@ -14,8 +14,10 @@ test.describe("Raumplaner am Ende des Films", () => {
     await expect(planner.locator('[data-toggle-space="side-room"]')).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator('.tour-area[data-space-id="side-room"]')).toHaveAttribute("data-selected", "true");
     // list in the panel
+    // the Restaurant came along automatically (it is part of every booking)
+    await expect(planner.locator('[data-toggle-space="restaurant"]')).toHaveAttribute("aria-pressed", "true");
     await planner.locator('[data-toggle-space="stage"]').click();
-    await expect(planner.getByTestId("selection-count")).toHaveText("2 Bereiche ausgewählt");
+    await expect(planner.getByTestId("selection-count")).toHaveText("3 Bereiche ausgewählt");
 
     await planner.getByRole("button", { name: /Verfügbarkeit prüfen/ }).click();
     await expect(page.getByRole("dialog", { name: "Termin & Verfügbarkeit" })).toBeVisible();

@@ -59,7 +59,7 @@ export function SpaceCard({ space, demo }: { space: SpaceView; demo: boolean }) 
             Details <ArrowUpRight className="h-4 w-4" />
           </Link>
           {space.bookable ? (
-            <SelectSpaceButton spaceId={space.id} name={space.name} className="flex-1" />
+            <SelectSpaceButton spaceId={space.id} name={space.name} requires={space.requires} className="flex-1" />
           ) : (
             <Link href="/kontakt?betreff=Hotel" className="inline-flex h-10 flex-1 items-center justify-center rounded-full bg-cream text-sm font-semibold hover:bg-sand">
               Anfragen

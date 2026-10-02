@@ -60,7 +60,7 @@ export function Logo({ tone = "dark", className }: { tone?: "dark" | "light"; co
   const id = useId().replace(/:/g, "");
   return (
     <svg
-      viewBox="0 0 300 214"
+      viewBox="0 0 300 222"
       role="img"
       aria-label="Landhotel-Gasthof Zur Krone"
       className={cn("block h-[3.65rem] w-auto", className)}
@@ -68,20 +68,21 @@ export function Logo({ tone = "dark", className }: { tone?: "dark" | "light"; co
       fill="currentColor"
     >
       <defs>
-        <path id={`arc-${id}`} d="M 14 58 Q 150 0 286 58" />
+        <path id={`arc-${id}`} d="M 14 54 Q 150 -4 286 54" />
       </defs>
       <text fontSize={31} stroke="currentColor" strokeWidth={1.25} textAnchor="middle" style={{ fontFamily: "var(--font-goudy), Georgia, serif" }}>
         <textPath href={`#arc-${id}`} startOffset="50%">
           Landhotel-Gasthof
         </textPath>
       </text>
-      <g transform="translate(0 -9)">
+      {/* crown sits clearly above the lettering (the K must not touch the ring) */}
+      <g transform="translate(0 -18) scale(0.96) translate(6 0)">
         <CrownShape maskId={`crown-${id}`} />
       </g>
       <text
         x={150}
-        y={207}
-        fontSize={82}
+        y={214}
+        fontSize={78}
         textAnchor="middle"
         stroke="currentColor"
         strokeWidth={2}

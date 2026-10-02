@@ -33,7 +33,7 @@ export const faqItems: FaqItem[] = [
     id: "hotel",
     question: "Kann ich Hotelzimmer dazu buchen?",
     answer:
-      "Ja. Die Übernachtung im Landhotel fügen Sie bei Ihrer Anfrage einfach hinzu. Das Hotel mit zehn Zimmern und einer Wohnung wird für Ihre Gesellschaft exklusiv vermietet; den Preis erhalten Sie mit unserem Angebot.",
+      "Ja. Das Landhotel im Obergeschoss hat acht Doppelzimmer (100 € / Nacht, zur Einzelnutzung 74 €), zwei Einzelzimmer (68 €) und ein Apartment, jeweils mit Frühstück. Die Zimmer buchen Sie einzeln über die Hotelseite – gern auch als Kontingent für Ihre Gäste; sprechen Sie uns dazu an.",
     needsVerification: true,
   },
   {

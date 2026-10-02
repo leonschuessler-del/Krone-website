@@ -25,7 +25,7 @@ export default async function BookingPage() {
         <p className="eyebrow">Buchung</p>
         <h1 className="mt-3 text-4xl md:text-5xl">Ihre Veranstaltung in der Krone</h1>
         <p className="mt-3 max-w-2xl text-lg text-ink-soft">
-          Wählen Sie Bereiche und Termin – die Verfügbarkeit wird für jeden Bereich live geprüft. Am Ende buchen Sie direkt oder fragen unverbindlich an.
+          Wählen Sie Räume und Termin – die Verfügbarkeit wird für jeden Raum live geprüft. Am Ende senden Sie Ihre Anfrage; wir bestätigen persönlich.
         </p>
         <div className="mt-10">
           <Suspense>

@@ -9,30 +9,36 @@ const spaces = spaceSeeds.map((s) => ({ ...s }));
 describe("full venue selection (Test 61)", () => {
   it("selects exactly the spaces flagged includedInFullVenue – not every entity", () => {
     const ids = getFullVenueSpaceIds(spaces);
-    expect(ids).toEqual(["restaurant", "kitchen", "side-room", "stage", "old-tavern", "winter-garden", "beer-garden"]);
+    // kitchen is an add-on (not a room), hotel rooms are booked separately
+    expect(ids).toEqual(["restaurant", "side-room", "stage", "old-tavern", "winter-garden", "beer-garden"]);
     expect(ids).not.toContain("hotel");
     expect(isFullVenueSelection(ids, spaces)).toBe(true);
     expect(isFullVenueSelection(ids.slice(1), spaces)).toBe(false);
   });
 
   it("excludes spaces when includedInFullVenue is false", () => {
-    const modified = spaces.map((s) => (s.id === "kitchen" ? { ...s, includedInFullVenue: false } : s));
-    expect(getFullVenueSpaceIds(modified)).not.toContain("kitchen");
+    const modified = spaces.map((s) => (s.id === "stage" ? { ...s, includedInFullVenue: false } : s));
+    expect(getFullVenueSpaceIds(modified)).not.toContain("stage");
   });
 });
 
 describe("selection sanitising (URL state)", () => {
   it("drops unknown/invalid ids and duplicates", () => {
-    expect(sanitizeSpaceIds("restaurant,stage,winter-garden,foo,<script>,stage,hotel", spaces)).toEqual(["restaurant", "stage", "winter-garden", "hotel"]);
+    expect(sanitizeSpaceIds("restaurant,stage,winter-garden,foo,<script>,stage,hotel", spaces)).toEqual(["restaurant", "stage", "winter-garden"]);
   });
 
-  it("validates requires / incompatibleWith rules", () => {
-    const withRules = spaces.map((s) =>
-      s.id === "stage" ? { ...s, requires: ["restaurant"] } : s.id === "beer-garden" ? { ...s, incompatibleWith: ["winter-garden"] } : s,
-    );
-    expect(validateSelection(["stage"], withRules)).toEqual([{ type: "requires", spaceId: "stage", missing: ["restaurant"] }]);
-    expect(validateSelection(["stage", "restaurant"], withRules)).toEqual([]);
-    expect(validateSelection(["beer-garden", "winter-garden"], withRules)[0]?.type).toBe("incompatible");
+  it("the Restaurant is always part of a booking – every other room requires it", () => {
+    for (const s of spaces.filter((x) => x.bookable && x.id !== "restaurant")) {
+      expect(validateSelection([s.id], spaces).some((i) => i.type === "requires" && i.missing.includes("restaurant"))).toBe(true);
+    }
+    expect(validateSelection(["restaurant"], spaces)).toEqual([]);
+    expect(validateSelection(["restaurant", "stage", "beer-garden"], spaces)).toEqual([]);
+    expect(validateSelection(["stage"], spaces)).toContainEqual({ type: "requires", spaceId: "stage", missing: ["restaurant"] });
+  });
+
+  it("validates incompatibleWith rules", () => {
+    const withRules = spaces.map((s) => (s.id === "beer-garden" ? { ...s, incompatibleWith: ["winter-garden"] } : s));
+    expect(validateSelection(["restaurant", "beer-garden", "winter-garden"], withRules)[0]?.type).toBe("incompatible");
   });
 });
 

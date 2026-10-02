@@ -138,7 +138,7 @@ export const spaceShapes: SpaceShape[] = [
     labelPosition: { x: 918, y: 652 },
   },
   {
-    // Upper floor (10 Zimmer + Wohnung) – booked as a whole via the hotel button.
+    // Upper floor (8 Doppelzimmer, 2 Einzelzimmer, 1 Apartment) – rooms are booked individually on the hotel page.
     spaceId: "hotel",
     level: "first-floor",
     polygon: null,

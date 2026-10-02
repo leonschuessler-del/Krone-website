@@ -5,13 +5,13 @@ import { cn } from "@/lib/cn";
 import { useBookingStore } from "@/store/booking-store";
 
 /** Adds/removes a space to/from the global booking selection. */
-export function SelectSpaceButton({ spaceId, name, className, size = "md" }: { spaceId: string; name: string; className?: string; size?: "md" | "lg" }) {
+export function SelectSpaceButton({ spaceId, name, requires = [], className, size = "md" }: { spaceId: string; name: string; requires?: readonly string[]; className?: string; size?: "md" | "lg" }) {
   const selected = useBookingStore((s) => s.selectedSpaceIds.includes(spaceId));
   const toggle = useBookingStore((s) => s.toggleSpace);
   return (
     <button
       type="button"
-      onClick={() => toggle(spaceId)}
+      onClick={() => toggle(spaceId, requires)}
       aria-pressed={selected}
       aria-label={selected ? `${name} aus der Auswahl entfernen` : `${name} auswählen`}
       className={cn(

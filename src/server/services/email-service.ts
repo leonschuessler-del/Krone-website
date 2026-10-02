@@ -19,6 +19,13 @@ export type EmailTemplate =
   | "booking_changed"
   | "booking_cancelled"
   | "handover_reminder"
+  | "request_accepted"
+  | "request_declined"
+  | "hotel_request_received"
+  | "hotel_confirmed"
+  | "hotel_declined"
+  | "hotel_cancelled"
+  | "operator_new_hotel_request"
   | "operator_new_request"
   | "contact_message";
 
@@ -32,6 +39,10 @@ export interface EmailContext {
   totalLabel?: string;
   handoverLabel?: string;
   message?: string;
+  /** request_declined: sentence from DECLINE_REASONS + optional personal note */
+  reasonText?: string;
+  note?: string;
+  phone?: string;
 }
 
 const TEMPLATES: Record<EmailTemplate, (c: EmailContext) => { subject: string; body: string[] }> = {
@@ -63,9 +74,48 @@ const TEMPLATES: Record<EmailTemplate, (c: EmailContext) => { subject: string; b
     subject: `Erinnerung: Übergabe ${c.bookingNumber}`,
     body: [`Guten Tag ${c.customerName},`, `wir erinnern Sie an die Übergabe der Räumlichkeiten.`],
   }),
+  request_accepted: (c) => ({
+    subject: `Ihre Anfrage ${c.bookingNumber} ist angenommen – Zur Krone`,
+    body: [
+      `Guten Tag ${c.customerName},`,
+      `gute Nachrichten: Wir haben Ihre Anfrage angenommen und die Räume für Sie reserviert.`,
+      `Wir melden uns in den nächsten Tagen telefonisch bei Ihnen, um den Ablauf zu besprechen – Schlüsselübergabe, Kaution, Bewirtung und alles, was Ihre Feier braucht.`,
+      c.phone ? `Sie erreichen uns vorab unter ${c.phone}.` : ``,
+      `Wir freuen uns auf Ihre Veranstaltung in der Krone!`,
+    ].filter(Boolean),
+  }),
+  request_declined: (c) => ({
+    subject: `Ihre Anfrage ${c.bookingNumber} – Zur Krone`,
+    body: [
+      `Guten Tag ${c.customerName},`,
+      `vielen Dank für Ihre Anfrage. Leider müssen wir Ihnen absagen: ${c.reasonText ?? "wir können Ihre Anfrage nicht annehmen."}`,
+      c.note ? c.note : ``,
+      `Gern prüfen wir einen anderen Termin oder eine andere Raumkombination für Sie – antworten Sie einfach auf diese E-Mail${c.phone ? ` oder rufen Sie uns an unter ${c.phone}` : ""}.`,
+    ].filter(Boolean),
+  }),
+  hotel_request_received: (c) => ({
+    subject: `Ihre Zimmeranfrage ${c.bookingNumber} – Zur Krone`,
+    body: [`Guten Tag ${c.customerName},`, `vielen Dank für Ihre Zimmeranfrage. Wir prüfen die Verfügbarkeit und bestätigen Ihnen die Reservierung persönlich – in der Regel innerhalb eines Tages.`, `Frühstück ist bei allen Zimmern inklusive. Anreise ab 15 Uhr, Abreise bis 11 Uhr.`],
+  }),
+  hotel_confirmed: (c) => ({
+    subject: `Ihre Zimmerreservierung ${c.bookingNumber} ist bestätigt – Zur Krone`,
+    body: [`Guten Tag ${c.customerName},`, `Ihre Zimmer sind reserviert – wir freuen uns auf Ihren Besuch!`, `Anreise ab 15 Uhr, Abreise bis 11 Uhr, Frühstück im Haus. Bezahlt wird vor Ort.`, c.phone ? `Fragen? Sie erreichen uns unter ${c.phone}.` : ``].filter(Boolean),
+  }),
+  hotel_declined: (c) => ({
+    subject: `Ihre Zimmeranfrage ${c.bookingNumber} – Zur Krone`,
+    body: [`Guten Tag ${c.customerName},`, `vielen Dank für Ihre Anfrage. Leider können wir Ihnen die gewünschten Zimmer nicht bestätigen${c.reasonText ? `: ${c.reasonText}` : "."}`, c.note ? c.note : ``, `Gern prüfen wir einen anderen Zeitraum für Sie – antworten Sie einfach auf diese E-Mail${c.phone ? ` oder rufen Sie uns an unter ${c.phone}` : ""}.`].filter(Boolean),
+  }),
+  hotel_cancelled: (c) => ({
+    subject: `Stornierung Ihrer Zimmerreservierung ${c.bookingNumber}`,
+    body: [`Guten Tag ${c.customerName},`, `Ihre Zimmerreservierung wurde storniert.`, c.note ? c.note : ``].filter(Boolean),
+  }),
+  operator_new_hotel_request: (c) => ({
+    subject: `Neue Zimmeranfrage ${c.bookingNumber}`,
+    body: [`Neue Zimmeranfrage von ${c.customerName}.`, c.message ? `Nachricht: ${c.message}` : ``, `Bestätigen oder ablehnen: Verwaltungsbereich → Hotel.`].filter(Boolean),
+  }),
   operator_new_request: (c) => ({
     subject: `Neue ${c.bookingNumber?.startsWith("KA") ? "Anfrage" : "Buchung"} ${c.bookingNumber}`,
-    body: [`Neue Online-${c.bookingNumber?.startsWith("KA") ? "Anfrage" : "Buchung"} von ${c.customerName}.`],
+    body: [`Neue Online-${c.bookingNumber?.startsWith("KA") ? "Anfrage" : "Buchung"} von ${c.customerName}.`, c.message ? `Nachricht: ${c.message}` : ``, `Annehmen oder ablehnen: im Verwaltungsbereich unter „Buchungen“.`].filter(Boolean),
   }),
   contact_message: (c) => ({
     subject: `Kontaktanfrage von ${c.customerName}`,

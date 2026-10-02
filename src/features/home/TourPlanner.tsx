@@ -95,7 +95,7 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
                   type="button"
                   data-toggle-space={s.id}
                   aria-pressed={on}
-                  onClick={() => toggleSpace(s.id)}
+                  onClick={() => toggleSpace(s.id, s.requires)}
                   className="tour-planner-item flex min-w-0 flex-1 items-center gap-3 text-left max-lg:h-10 max-lg:rounded-full max-lg:border max-lg:border-white/20 max-lg:bg-white/5 max-lg:pl-1 max-lg:pr-4 max-lg:aria-pressed:border-white max-lg:aria-pressed:bg-paper max-lg:aria-pressed:text-anthracite"
                 >
                   <span
@@ -122,6 +122,9 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
       </ul>
 
       <div className="border-t border-white/10 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 lg:px-7 lg:pb-6 lg:pt-5">
+        <p className="mb-2 text-xs text-paper/55">
+          Übernachtung? <Link href="/bereiche/hotel#zimmer" className="text-gold-light underline-offset-2 hover:underline">Zimmer einzeln buchen</Link>
+        </p>
         <div className="flex items-center justify-between gap-3 text-sm">
           <span data-testid="selection-count" className="text-paper/70">
             {selected.length ? `${pluralize(selected.length, "Bereich", "Bereiche")} ausgewählt` : "Noch keine Auswahl"}

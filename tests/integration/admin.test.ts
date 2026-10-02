@@ -124,13 +124,14 @@ describe("booking status changes by the admin", () => {
   let number: string;
 
   beforeAll(async () => {
-    const created = await createBooking(db, inquiry(["side-room"], freeFriday, "10:00", "14:00"));
+    const created = await createBooking(db, inquiry(["restaurant", "side-room"], freeFriday, "10:00", "14:00"));
     number = created.bookingNumber;
     id = await bookingId(number);
   });
 
-  it("an open inquiry does not block the space", async () => {
-    expect((await available(["side-room"], freeFriday, "10:00", "14:00")).bookingAllowed).toBe(true);
+  it("an open request holds the rooms and is listed as new", async () => {
+    // Schedule is in the block interval helper test; a request holds its rooms until the operator decides
+    expect((await available(["restaurant", "side-room"], freeFriday, "10:00", "14:00")).bookingAllowed).toBe(false);
     const list = await listAdminBookings(db, { filter: "neu", q: number });
     expect(list.items.map((i) => i.bookingNumber)).toEqual([number]);
     expect(list.counts.anfrage).toBeGreaterThanOrEqual(1);
@@ -144,11 +145,13 @@ describe("booking status changes by the admin", () => {
 
   it("inquiry → confirmed creates booked availability blocks and sends the confirmation", async () => {
     const result = await updateBookingByAdmin(db, id, { status: "confirmed" }, ACTOR);
-    expect(result).toMatchObject({ status: "confirmed", blocksCreated: 1, emailSent: "booking_confirmed" });
+    // the request's holds are converted into firm bookings (no new blocks needed)
+    expect(result).toMatchObject({ status: "confirmed", blocksCreated: 0, emailSent: "request_accepted" });
 
     const blocks = await db.select().from(availabilityBlocks).where(and(eq(availabilityBlocks.bookingId, id), eq(availabilityBlocks.active, true)));
-    expect(blocks).toHaveLength(1);
-    expect(blocks[0]).toMatchObject({ spaceId: "side-room", type: "booked", expiresAt: null });
+    expect(blocks).toHaveLength(2);
+    expect(blocks.every((b) => b.type === "booked" && b.expiresAt === null)).toBe(true);
+    expect(blocks.map((b) => b.spaceId).sort()).toEqual(["restaurant", "side-room"]);
 
     const [b] = await db.select().from(bookings).where(eq(bookings.id, id));
     expect(b!.status).toBe("confirmed");
@@ -158,10 +161,10 @@ describe("booking status changes by the admin", () => {
     expect(res.bookingAllowed).toBe(false);
     expect(res.blockedSpaces.map((s) => s.spaceId)).toEqual(["side-room"]);
 
-    const mails = await db.select().from(emailLog).where(and(eq(emailLog.bookingId, id), eq(emailLog.template, "booking_confirmed")));
+    const mails = await db.select().from(emailLog).where(and(eq(emailLog.bookingId, id), eq(emailLog.template, "request_accepted")));
     expect(mails).toHaveLength(1);
     const audit = await db.select().from(auditLog).where(and(eq(auditLog.entityId, id), eq(auditLog.action, "booking.status")));
-    expect(audit[0]).toMatchObject({ actor: ACTOR, data: { from: "inquiry", to: "confirmed", blocksCreated: 1 } });
+    expect(audit[0]).toMatchObject({ actor: ACTOR, data: { from: "inquiry", to: "confirmed", blocksCreated: 0 } });
   });
 
   it("confirmed cannot go back to inquiry or reserved", async () => {
@@ -188,13 +191,16 @@ describe("booking status changes by the admin", () => {
     expect(r.emailSent).toBe("booking_cancelled");
     const active = await db.select().from(availabilityBlocks).where(and(eq(availabilityBlocks.bookingId, id), eq(availabilityBlocks.active, true)));
     expect(active).toHaveLength(0);
-    expect((await available(["side-room"], freeFriday, "10:00", "14:00")).bookingAllowed).toBe(true);
+    expect((await available(["restaurant", "side-room"], freeFriday, "10:00", "14:00")).bookingAllowed).toBe(true);
     await expect(updateBookingByAdmin(db, id, { status: "confirmed" }, ACTOR)).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
   });
 
   it("inquiry → reserved is refused when the time was taken in the meantime", async () => {
-    const created = await createBooking(db, inquiry(["stage", "old-tavern"], freeFriday, "15:00", "18:00"));
+    const created = await createBooking(db, inquiry(["restaurant", "stage", "old-tavern"], freeFriday, "15:00", "18:00"));
     const inquiryId = await bookingId(created.bookingNumber);
+    // the request's 7-day hold has run out (operator did not decide in time) …
+    await db.update(availabilityBlocks).set({ expiresAt: new Date(Date.now() - 60_000) }).where(eq(availabilityBlocks.bookingId, inquiryId));
+    // … and the stage was blocked for an own event in the meantime
     await createManualBlocks(db, { spaceIds: ["stage"], date: freeFriday, startTime: "16:00", endTime: "17:00", type: "blocked", reason: "Eigenveranstaltung" }, ACTOR);
 
     const err = await updateBookingByAdmin(db, inquiryId, { status: "reserved" }, ACTOR).catch((e: unknown) => e);
@@ -203,10 +209,11 @@ describe("booking status changes by the admin", () => {
     expect((err as Error).message).toContain("Zeitraum inzwischen belegt");
     expect((err as Error).message).toContain("Bühne");
 
-    // nothing half-done: status unchanged, no blocks for the other space either
+    // nothing half-done: status unchanged, no firm block for the other spaces either (only the expired holds remain)
     const [b] = await db.select().from(bookings).where(eq(bookings.id, inquiryId));
     expect(b!.status).toBe("inquiry");
-    expect(await db.select().from(availabilityBlocks).where(eq(availabilityBlocks.bookingId, inquiryId))).toHaveLength(0);
+    const firm = (await db.select().from(availabilityBlocks).where(and(eq(availabilityBlocks.bookingId, inquiryId), eq(availabilityBlocks.active, true)))).filter((x) => x.expiresAt === null || x.expiresAt.getTime() > Date.now());
+    expect(firm).toHaveLength(0);
   });
 });
 
@@ -226,7 +233,7 @@ describe("manual blocks (Sperrzeiten)", () => {
   let blockId: string;
 
   it("a manual block makes checkAvailability report the space as unavailable", async () => {
-    expect((await available(["winter-garden", "restaurant"], day, "12:00", "16:00")).bookingAllowed).toBe(true);
+    expect((await available(["restaurant", "winter-garden"], day, "12:00", "16:00")).bookingAllowed).toBe(true);
     const res = await createManualBlocks(db, { spaceIds: ["winter-garden"], date: day, startTime: "10:00", endTime: "20:00", type: "maintenance", reason: "Glasreinigung" }, ACTOR);
     expect(res.created).toHaveLength(1);
     blockId = res.created[0]!.id;
@@ -264,7 +271,7 @@ describe("manual blocks (Sperrzeiten)", () => {
 
   it("lifting the block makes the space available again", async () => {
     await deactivateBlock(db, blockId, ACTOR);
-    expect((await available(["winter-garden"], day, "12:00", "16:00")).bookingAllowed).toBe(true);
+    expect((await available(["restaurant", "winter-garden"], day, "12:00", "16:00")).bookingAllowed).toBe(true);
     await expect(deactivateBlock(db, "not-a-uuid", ACTOR)).rejects.toMatchObject({ status: 404 });
   });
 });

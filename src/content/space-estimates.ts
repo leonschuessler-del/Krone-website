@@ -25,7 +25,7 @@ export const spaceEstimates: Record<string, SpaceEstimate> = {
   "old-tavern": { areaSqm: 70, seats: 40 },
   "winter-garden": { areaSqm: 50, seats: 20 },
   "beer-garden": { areaSqm: 100, seats: 50 },
-  hotel: { areaSqm: 0, seats: null, capacityNote: "10 Zimmer + 1 Wohnung" },
+  hotel: { areaSqm: 0, seats: null, capacityNote: "8 Doppel-, 2 Einzelzimmer, 1 Apartment" },
 };
 
 export interface DisplayFacts {

@@ -42,7 +42,7 @@ export interface WizardProps {
   paymentProvider: "demo" | "stripe" | "none";
 }
 
-const STEPS = ["Bereiche", "Datum & Zeit", "Zusatzoptionen", "Veranstaltung", "Kontaktdaten", "Übergabe", "Bedingungen", "Zahlung / Anfrage", "Bestätigung"];
+const STEPS = ["Räume", "Datum & Zeit", "Zusatzleistungen", "Veranstaltung", "Kontaktdaten", "Übergabe", "Bedingungen", "Anfrage senden", "Bestätigung"];
 
 interface HandoverOption {
   value: string;

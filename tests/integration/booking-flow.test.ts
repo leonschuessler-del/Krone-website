@@ -7,10 +7,10 @@ import { getDemoScenario, seedDatabase } from "@/server/db/seed";
 import { checkAvailability } from "@/server/services/availability-service";
 import { BookingError, createBooking, getPublicBooking, type BookingSubmission } from "@/server/services/booking-service";
 import { getHandoverOptions } from "@/server/services/handover-service";
-import { confirmDemoPayment, createPaymentSession } from "@/server/services/payment-service";
+import { updateBookingByAdmin } from "@/server/services/admin-service";
 import { calculatePrice } from "@/server/services/pricing-service";
 import { listSpaces } from "@/server/services/space-service";
-import { zonedDateTimeToUtc } from "@/domain/time";
+import { addDays, zonedDateTimeToUtc } from "@/domain/time";
 
 let db: Database;
 let close: () => Promise<void>;
@@ -35,7 +35,8 @@ const contact = {
   billing: null,
 };
 
-async function submission(spaceIds: string[], date: string, start: string, end: string, kind: "booking" | "inquiry" = "booking"): Promise<BookingSubmission> {
+// every booking is a request the operator confirms (bookingMode "inquiry" on all rooms)
+async function submission(spaceIds: string[], date: string, start: string, end: string, kind: "booking" | "inquiry" = "inquiry"): Promise<BookingSubmission> {
   const s = zonedDateTimeToUtc(date, start);
   let e = zonedDateTimeToUtc(date, end);
   if (e <= s) e += 86_400_000;
@@ -100,38 +101,53 @@ describe("multi-space availability against the database", () => {
 });
 
 describe("booking creation", () => {
-  it("Test 60: Restaurant + Bühne + Biergarten (all free) → exactly three BookingItems, demo payment confirms", async () => {
+  it("Test 60: Restaurant + Bühne + Biergarten (all free) → request with three items, held for the operator, accepted → booked", async () => {
     const date = scenario.winterGardenBookedDate;
     const input = await submission(["restaurant", "stage", "beer-garden"], date, "15:00", "23:00");
     const quote = await calculatePrice(db, { ...input.schedule, spaceIds: input.spaceIds });
-    expect(quote.appliedBundle?.id).toBe("demo-bundle-restaurant-stage-beer-garden");
+    // price sheet: Restaurant 1.300 + Bühne 200 + Biergarten 300 (net) – flat per booking
+    expect(quote.rentalSubtotal).toBe(180000);
+    expect(quote.vat.amount).toBe(Math.round((quote.total ?? 0) * 0.19));
+    expect(quote.bookingMode).toBe("inquiry");
 
     const created = await createBooking(db, input);
-    expect(created.bookingNumber).toMatch(/^KR-\d{4}-/);
-    expect(created.status).toBe("pending");
-    expect(created.paymentRequired).toBe(true);
+    expect(created.bookingNumber).toMatch(/^KA-\d{4}-/);
+    expect(created.status).toBe("inquiry");
+    expect(created.paymentRequired).toBe(false);
 
     const [booking] = await db.select().from(bookings).where(eq(bookings.bookingNumber, created.bookingNumber));
     const items = await db.select().from(bookingItems).where(eq(bookingItems.bookingId, booking!.id));
     expect(items.map((i) => i.spaceId).sort()).toEqual(["beer-garden", "restaurant", "stage"]);
 
+    // the request holds the rooms (7 days) until the operator decides
     const holds = await db.select().from(availabilityBlocks).where(eq(availabilityBlocks.bookingId, booking!.id));
     expect(holds).toHaveLength(3);
     expect(holds.every((h) => h.type === "reserved" && h.expiresAt)).toBe(true);
 
-    const session = await createPaymentSession(db, created.bookingNumber, created.accessToken);
-    expect(session.provider).toBe("demo");
-    await confirmDemoPayment(db, created.bookingNumber, created.accessToken, "succeeded");
-
+    // operator accepts → booked, no expiry, acceptance mail
+    const r = await updateBookingByAdmin(db, booking!.id, { status: "confirmed" }, "test@krone");
+    expect(r.emailSent).toBe("request_accepted");
     const view = await getPublicBooking(db, created.bookingNumber, created.accessToken);
     expect(view?.booking.status).toBe("confirmed");
-    expect(view?.booking.paymentStatus).toBe("deposit_paid");
     const blocks = await db.select().from(availabilityBlocks).where(eq(availabilityBlocks.bookingId, booking!.id));
     expect(blocks.every((b) => b.type === "booked" && b.expiresAt === null)).toBe(true);
 
     const mails = await db.select().from(emailLog).where(eq(emailLog.bookingId, booking!.id));
-    expect(mails.length).toBeGreaterThanOrEqual(3);
+    expect(mails.map((m) => m.template)).toEqual(expect.arrayContaining(["inquiry_received", "operator_new_request", "request_accepted"]));
     expect(mails.every((m) => m.status === "preview")).toBe(true);
+  });
+
+  it("declining a request sends the reason and frees the rooms", async () => {
+    const input = await submission(["restaurant", "side-room"], scenario.stageMaintenanceDate, "18:00", "23:00");
+    const created = await createBooking(db, input);
+    const [booking] = await db.select().from(bookings).where(eq(bookings.bookingNumber, created.bookingNumber));
+    const r = await updateBookingByAdmin(db, booking!.id, { status: "cancelled", declineReason: "capacity", declineNote: "Am Samstag darauf wäre das Haus frei." }, "test@krone");
+    expect(r.emailSent).toBe("request_declined");
+    const mail = (await db.select().from(emailLog).where(eq(emailLog.bookingId, booking!.id))).find((m) => m.template === "request_declined");
+    expect(mail?.text).toContain("Gästezahl");
+    expect(mail?.text).toContain("Samstag darauf");
+    const active = await db.select().from(availabilityBlocks).where(eq(availabilityBlocks.bookingId, booking!.id));
+    expect(active.every((b) => !b.active)).toBe(true);
   });
 
   it("rejects a second booking of the same space and time (no double booking)", async () => {
@@ -148,8 +164,8 @@ describe("booking creation", () => {
 
   it("concurrent bookings for the same slot: exactly one wins", async () => {
     const date = scenario.stageMaintenanceDate;
-    const a = await submission(["side-room"], date, "10:00", "13:00");
-    const b = await submission(["side-room"], date, "11:00", "14:00");
+    const a = await submission(["restaurant", "side-room"], date, "10:00", "13:00");
+    const b = await submission(["restaurant", "side-room"], date, "11:00", "14:00");
     const results = await Promise.allSettled([createBooking(db, a), createBooking(db, b)]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
@@ -161,15 +177,22 @@ describe("booking creation", () => {
     await expect(createBooking(db, input)).rejects.toMatchObject({ code: "NOT_AVAILABLE", message: expect.stringContaining("Wintergarten") });
   });
 
-  it("inquiries get their own number and do not block availability", async () => {
-    const input = await submission(["restaurant", "stage"], scenario.restaurantEveningDate, "10:00", "14:00", "inquiry");
+  it("a room without the Restaurant is rejected – the Restaurant is always part of a booking", async () => {
+    const input = await submission(["stage"], scenario.restaurantEveningDate, "10:00", "14:00");
+    await expect(createBooking(db, input)).rejects.toMatchObject({ code: "INVALID_SELECTION", message: expect.stringContaining("Restaurant") });
+  });
+
+  it("inquiries get their own number and hold the rooms for the operator", async () => {
+    // a day without restaurant blocks (handover/return slots widen the occupation into the evening)
+    const input = await submission(["restaurant", "stage"], scenario.oldTavernReservedDate, "10:00", "14:00", "inquiry");
     input.acceptedTerms = ["privacy"];
     const created = await createBooking(db, input);
     expect(created.bookingNumber).toMatch(/^KA-/);
     expect(created.status).toBe("inquiry");
     const [booking] = await db.select().from(bookings).where(eq(bookings.bookingNumber, created.bookingNumber));
     const blocks = await db.select().from(availabilityBlocks).where(eq(availabilityBlocks.bookingId, booking!.id));
-    expect(blocks).toHaveLength(0);
+    expect(blocks).toHaveLength(2);
+    expect(blocks.every((b) => b.type === "reserved" && b.expiresAt !== null)).toBe(true);
   });
 
   it("requires accepted terms and rejects tampered selections", async () => {
@@ -179,7 +202,7 @@ describe("booking creation", () => {
   });
 
   it("wrong access token does not reveal a booking", async () => {
-    const input = await submission(["kitchen"], scenario.oldTavernReservedDate, "10:00", "14:00");
+    const input = await submission(["restaurant"], addDays(scenario.oldTavernReservedDate, 1), "10:00", "14:00");
     const created = await createBooking(db, input);
     expect(await getPublicBooking(db, created.bookingNumber, "x".repeat(32))).toBeNull();
   });

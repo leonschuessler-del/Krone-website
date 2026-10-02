@@ -43,8 +43,9 @@ export const defaultSettings = {
   } satisfies PaymentPolicySetting,
   holds: {
     checkoutHoldMinutes: 20,
-    inquiryCreatesHold: false,
-    inquiryHoldHours: 72,
+    // a request reserves the rooms until the operator decides (no double requests for one date)
+    inquiryCreatesHold: true,
+    inquiryHoldHours: 7 * 24,
   } satisfies HoldSetting,
 };
 
@@ -64,11 +65,12 @@ export const demoSettings = {
     isDemo: true,
   } satisfies BookableHoursSetting,
   paymentPolicy: {
-    mode: "down_payment",
-    downPaymentPercent: 30,
+    // requests are confirmed by the operator; payment follows personally (no online payment)
+    mode: "none",
+    downPaymentPercent: null,
     depositCollection: "separately",
     depositStrategy: "sum",
-    isDemo: true,
+    isDemo: false,
   } satisfies PaymentPolicySetting,
 };
 

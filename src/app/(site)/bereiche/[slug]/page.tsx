@@ -10,6 +10,8 @@ import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { SelectSpaceButton } from "@/features/spaces/SelectSpaceButton";
 import { SpaceAvailability } from "@/features/spaces/SpaceAvailability";
+import { hotelCopy, roomTypeSeeds } from "@/content/hotel";
+import { HotelBooking } from "@/features/hotel/HotelBooking";
 import { SpaceMiniMap } from "@/features/spaces/SpaceMiniMap";
 import { formatPriceFrom } from "@/features/spaces/price-label";
 import { env } from "@/lib/env";
@@ -88,14 +90,18 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             {space.bookable ? (
               <>
-                <SelectSpaceButton spaceId={space.id} name={space.name} size="lg" />
+                <SelectSpaceButton spaceId={space.id} name={space.name} requires={space.requires} size="lg" />
                 <ButtonLink href="/#karte" variant="dark" size="lg">
                   Zum Raumplaner <ArrowRight className="h-4 w-4" />
                 </ButtonLink>
               </>
+            ) : space.type === "hotel" ? (
+              <ButtonLink href="#zimmer" variant="gold" size="lg">
+                <BedDouble className="h-4 w-4" /> Zimmer buchen
+              </ButtonLink>
             ) : (
-              <ButtonLink href="/kontakt?betreff=Hotelanfrage" variant="gold" size="lg">
-                <BedDouble className="h-4 w-4" /> Zimmer anfragen
+              <ButtonLink href="/#karte" variant="gold" size="lg">
+                Zum Raumplaner <ArrowRight className="h-4 w-4" />
               </ButtonLink>
             )}
           </div>
@@ -174,15 +180,23 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
       {space.type === "hotel" && (
         <section className="bg-paper py-20" aria-labelledby="plan-title">
           <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:items-center">
-            <SectionHeading id="plan-title" eyebrow="1. Obergeschoss" title="Das ganze Hotel für Ihre Gäste">
-              <p>
-                Das Hotel liegt im Obergeschoss über Restaurant, Nebenzimmer und Bühne. Es wird als Ganzes vermietet: Doppel-, Dreibett- und
-                Einzelzimmer mit Bad, Aufenthaltsraum mit Balkon und eine Wohnung mit Küche.
-              </p>
-              <p className="mt-2 text-sm text-muted">Grundriss nach dem Bauplan des Hauses; Flächen laut Plan. Aktuelle Zimmeraufteilung laut Betreiber: 10 Zimmer + Wohnung.</p>
+            <SectionHeading id="plan-title" eyebrow="1. Obergeschoss" title="Elf Zimmer über dem Gasthof">
+              <p>Das Hotel liegt im Obergeschoss über Restaurant, Nebenzimmer und Bühne: acht Doppelzimmer, zwei Einzelzimmer und ein Apartment mit eigener Küche, dazu ein Aufenthaltsraum mit Balkon. Alle Zimmer haben ein eigenes Bad; Frühstück ist inklusive.</p>
+              <ul className="mt-5 divide-y divide-sand rounded-2xl border border-sand bg-white text-sm">
+                {roomTypeSeeds.map((t) => (
+                  <li key={t.id} className="flex items-baseline justify-between gap-4 px-4 py-3">
+                    <span>
+                      <span className="font-serif text-lg">{t.name}</span>
+                      <span className="block text-xs text-muted">{t.description}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums">{t.basePricePerNight === null ? "auf Anfrage" : `${formatMoney(t.basePricePerNight)} / Nacht`}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-sm text-muted">Grundriss nach dem Bauplan des Hauses.</p>
               <div className="mt-6">
-                <ButtonLink href="/#grundriss" variant="gold">
-                  Hotel zur Auswahl hinzufügen
+                <ButtonLink href="#zimmer" variant="gold">
+                  Zimmer buchen
                 </ButtonLink>
               </div>
             </SectionHeading>
@@ -226,17 +240,25 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             <SpaceAvailability space={space} spaces={spaces} />
           </div>
         </section>
+      ) : space.type === "hotel" ? (
+        <section id="zimmer" className="scroll-mt-24 bg-cream py-20" aria-labelledby="rooms-title">
+          <div className="container-page">
+            <SectionHeading id="rooms-title" eyebrow={hotelCopy.eyebrow} title={hotelCopy.title} className="mb-10">
+              <p>{hotelCopy.text}</p>
+            </SectionHeading>
+            <HotelBooking />
+          </div>
+        </section>
       ) : (
         <section className="bg-cream py-20">
           <div className="container-page">
             <div className="card-surface p-8">
-              <h2 className="font-serif text-3xl">Zimmer & Übernachtung</h2>
+              <h2 className="font-serif text-3xl">Küche als Zusatzleistung</h2>
               <p className="mt-3 max-w-2xl text-ink-soft">
-                Die Hotelbuchung erhält eine eigene Logik (Zimmerkategorien, An- und Abreise). Bis dahin beantworten wir Zimmeranfragen gern persönlich – auch als
-                Kontingent für Ihre Veranstaltungsgäste.
+                Die Küche wird nicht als Raum vermietet, sondern als Zusatzleistung zu Ihrer Feier gebucht – ausschließlich zusammen mit einem Caterer. Sie wählen sie im Raumplaner bei den Zusatzleistungen aus.
               </p>
-              <ButtonLink href="/kontakt?betreff=Hotelanfrage" variant="gold" className="mt-6">
-                Zimmer anfragen
+              <ButtonLink href="/#karte" variant="gold" className="mt-6">
+                Zum Raumplaner
               </ButtonLink>
             </div>
           </div>

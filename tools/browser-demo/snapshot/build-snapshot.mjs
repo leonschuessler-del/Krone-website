@@ -56,6 +56,10 @@ for (const s of apiSpaces) {
     capacityStanding: s.capacityStanding,
     bookable: s.bookable,
     includedInFullVenue: s.includedInFullVenue,
+    requires: s.requires ?? [],
+    basePrice: s.basePrice ?? null,
+    priceModel: s.priceModel ?? null,
+    cleaningFee: s.cleaningFee ?? null,
     images: unique.map((u) => (u.startsWith("/") ? u.slice(1) : u)),
     shape: s.shape,
   });

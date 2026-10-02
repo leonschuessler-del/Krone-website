@@ -53,11 +53,6 @@ export const posterUrl = (dir: string, set: FrameSet) => `${dir}${set}/poster.we
 /** Hosts a canvas element can draw. */
 type Drawable = ImageBitmap | HTMLImageElement;
 
-interface Pack {
-  img: HTMLImageElement;
-  ready: boolean;
-}
-
 /** Map URLs to plot hash targets that should open the planner inside the film. */
 const PLANNER_HASHES = new Set(["#karte", "#grundriss", "#raumplaner"]);
 
@@ -70,24 +65,31 @@ const PLOT_BOX = (() => {
 })();
 
 /**
- * Frame store, built so the picture is ALWAYS sharp:
- *  - every chapter is fetched as packs of full-resolution frames; the whole
- *    film is fetched ahead in the background, nearest packs first
- *  - frames around the playhead are decoded into ImageBitmaps off the main
- *    thread; drawing never waits for a decode
- *  - if the exact frame is not decoded yet, the nearest decoded frame of the
- *    same chapter is shown (a sharp frame held a moment – never a blurry one);
- *    before anything is loaded, the chapter's sharp poster is shown
+ * Frame store, built so the film is always sharp AND always moving:
+ *  - every chapter is fetched as packs of full-resolution frames (as Blobs,
+ *    or <img> where fetch is not allowed); the whole film is fetched ahead in
+ *    the background, nearest packs first
+ *  - packs around the playhead are decoded into ImageBitmaps off the main
+ *    thread, several packs ahead in scroll direction; drawing never decodes
+ *  - the store measures how many frames per second it can decode; the player
+ *    caps the film's speed to that rate, so a fast flick plays as one
+ *    continuous, even movement instead of jumping from held frame to held frame
  */
 class FrameStore {
-  private packs = new Map<string, Pack>();
+  private blobs = new Map<string, Blob | HTMLImageElement>();
+  private loading = new Set<string>();
   private bitmaps = new Map<string, ImageBitmap>();
   private decoding = new Set<string>();
-  private posters = new Map<number, Pack>();
-  private inflight = 0;
+  private posters = new Map<number, HTMLImageElement>();
   private heads = new Map<number, number>();
   private dir = 1;
   private disposed = false;
+  private useFetch = typeof fetch === "function" && typeof createImageBitmap === "function";
+  /** decoded frames per second (smoothed) – the film's speed limit */
+  rate: number;
+  private wanted = new Set<string>();
+  /** pack last drawn per chapter – kept until a closer one is decoded */
+  private shown = new Map<number, string>();
 
   constructor(
     private chapters: readonly TourChapter[],
@@ -95,16 +97,13 @@ class FrameStore {
     readonly set: FrameSet,
     private onReady: () => void,
   ) {
+    this.rate = set === "m" ? 90 : 120;
     chapters.forEach((c, i) => {
       const img = new Image();
       img.decoding = "async";
-      const slot: Pack = { img, ready: false };
-      img.onload = () => {
-        slot.ready = true;
-        this.onReady();
-      };
+      img.onload = () => this.onReady();
       img.src = this.url(posterUrl(c.frames.dir, set));
-      this.posters.set(i, slot);
+      this.posters.set(i, img);
     });
   }
 
@@ -112,8 +111,7 @@ class FrameStore {
     this.disposed = true;
     for (const b of this.bitmaps.values()) b.close();
     this.bitmaps.clear();
-    for (const p of this.packs.values()) p.img.src = "";
-    this.packs.clear();
+    this.blobs.clear();
   }
 
   /** Where each visible layer is (chapter → fractional frame) and the scroll direction. */
@@ -141,46 +139,54 @@ class FrameStore {
       }
     }
     const top = Math.max(0, ...this.heads.keys());
-    // next chapters from their start, then earlier chapters (scrolling back)
     for (let c = top + 1; c < n; c++) for (let p = 0; p < packCount(this.chapters[c]!.frames.count); p++) want.push([c, p]);
     for (let c = top - 1; c >= 0; c--) for (let p = packCount(this.chapters[c]!.frames.count) - 1; p >= 0; p--) want.push([c, p]);
-    for (const w of want) if (!this.packs.has(`${w[0]}:${w[1]}`)) return w;
+    for (const [c, p] of want) {
+      const k = `${c}:${p}`;
+      if (!this.blobs.has(k) && !this.loading.has(k)) return [c, p];
+    }
     return null;
   }
 
   private pump() {
-    // more parallel requests while the playhead waits for frames, fewer for background prefetch
-    while (!this.disposed && this.inflight < 4) {
+    while (!this.disposed && this.loading.size < 4) {
       const next = this.nextPack();
       if (!next) return;
       const [c, p] = next;
-      const img = new Image();
-      img.decoding = "async";
-      const slot: Pack = { img, ready: false };
-      this.packs.set(`${c}:${p}`, slot);
-      this.inflight++;
-      const done = (ok: boolean) => {
-        this.inflight--;
-        if (ok) slot.ready = true;
-        else this.packs.delete(`${c}:${p}`); // retried later
+      const key = `${c}:${p}`;
+      const src = this.url(packUrl(this.chapters[c]!.frames.dir, this.set, p));
+      this.loading.add(key);
+      const done = (data: Blob | HTMLImageElement | null) => {
+        this.loading.delete(key);
         if (this.disposed) return;
+        if (data) this.blobs.set(key, data);
         this.decodeWindow();
         this.pump();
       };
-      img.onload = () => done(true);
-      img.onerror = () => done(false);
-      img.src = this.url(packUrl(this.chapters[c]!.frames.dir, this.set, p));
+      if (this.useFetch) {
+        fetch(src)
+          .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+          .then(done, () => {
+            // fetch not permitted here (embedding policy): fall back to <img>
+            this.useFetch = false;
+            this.loading.delete(key);
+            this.pump();
+          });
+      } else {
+        const img = new Image();
+        img.decoding = "async";
+        img.onload = () => done(img);
+        img.onerror = () => done(null);
+        img.src = src;
+      }
     }
   }
 
-  /**
-   * Decode the packs around the playheads into ImageBitmaps (one decode per
-   * pack, off the main thread) and release the ones that fell out of reach.
-   */
+  /** Decode the packs around the playheads (several ahead) and release the ones out of reach. */
   private decodeWindow() {
     if (this.disposed) return;
     const two = this.heads.size > 1;
-    const AHEAD = two ? 1 : 2;
+    const AHEAD = this.set === "m" ? (two ? 2 : 4) : two ? 3 : 6;
     const BEHIND = 1;
     const order: Array<[number, number]> = [];
     for (const [c, pos] of this.heads) {
@@ -195,6 +201,9 @@ class FrameStore {
         }
       }
     }
+    // the first packs of the next chapter, so the cut never waits
+    const top = Math.max(0, ...this.heads.keys());
+    if (top + 1 < this.chapters.length) order.push([top + 1, 0]);
     const wanted = new Set(order.map(([c, p]) => `${c}:${p}`));
     this.wanted = wanted;
     const shown = new Set(this.shown.values());
@@ -209,12 +218,17 @@ class FrameStore {
       if (this.decoding.size >= 2) break;
       const key = `${c}:${p}`;
       if (this.bitmaps.has(key) || this.decoding.has(key)) continue;
-      const pack = this.packs.get(key);
-      if (!pack?.ready || !pack.img.naturalWidth) continue;
+      const data = this.blobs.get(key);
+      if (!data) continue;
       this.decoding.add(key);
+      const t0 = performance.now();
+      const rows = Math.min(PACK, this.chapters[c]!.frames.count - p * PACK);
       const finish = (b: ImageBitmap | null) => {
         this.decoding.delete(key);
         if (b) {
+          // measured decode speed → speed limit of the film (smoothed)
+          const fps = rows / Math.max(0.004, (performance.now() - t0) / 1000);
+          this.rate = Math.min(260, Math.max(40, this.rate * 0.8 + fps * 0.2));
           if (!this.disposed && this.wanted.has(key)) {
             this.bitmaps.set(key, b);
             this.onReady();
@@ -222,18 +236,18 @@ class FrameStore {
         }
         if (!this.disposed) this.decodeWindow();
       };
-      createImageBitmap(pack.img).then(finish, () => finish(null));
+      createImageBitmap(data).then(finish, () => finish(null));
     }
   }
 
-  private wanted = new Set<string>();
-  /** pack last drawn per chapter – kept until a closer frame is decoded */
-  private shown = new Map<number, string>();
+  /** Is frame f of chapter c ready to draw sharp? */
+  ready(c: number, f: number): boolean {
+    return this.bitmaps.has(`${c}:${packIndex(Math.max(0, f))}`) || (typeof createImageBitmap !== "function" && this.blobs.has(`${c}:${packIndex(f)}`));
+  }
 
   /**
    * Sharp source for frame f of chapter c: the decoded frame, else the nearest
-   * decoded frame of the chapter (held until the exact one is ready), else the
-   * chapter poster. Never a low-resolution stand-in.
+   * decoded frame of the chapter, else the chapter poster. Never a low-resolution stand-in.
    */
   get(c: number, f: number): { img: Drawable; sx: number; sy: number; sw: number; sh: number } | null {
     const count = this.chapters[c]!.frames.count;
@@ -242,31 +256,25 @@ class FrameStore {
       if (g < 0 || g >= count) return null;
       const p = packIndex(g);
       const rows = Math.min(PACK, count - p * PACK);
-      const b = this.bitmaps.get(`${c}:${p}`) ?? (typeof createImageBitmap !== "function" ? this.readyImg(`${c}:${p}`) : undefined);
+      const raw = this.blobs.get(`${c}:${p}`);
+      const b = this.bitmaps.get(`${c}:${p}`) ?? (typeof createImageBitmap !== "function" && raw instanceof HTMLImageElement ? raw : undefined);
       if (!b) return null;
       this.shown.set(c, `${c}:${p}`);
       const fh = b.height / rows;
       return { img: b, sx: 0, sy: (g % PACK) * fh, sw: b.width, sh: fh };
     };
     for (let d = 0; d <= 3 * PACK; d++) {
-      // ties: prefer the frame behind the playhead – the picture never runs ahead of the scroll
       const src = frameOf(fi - d * this.dir) ?? (d ? frameOf(fi + d * this.dir) : null);
       if (src) return src;
     }
-    // far jump: keep the last sharp frame of this chapter until the new packs are decoded
     const last = this.shown.get(c);
     if (last && this.bitmaps.has(last)) {
       const p = Number(last.split(":")[1]);
       return frameOf(fi < p * PACK ? p * PACK : Math.min(count - 1, p * PACK + PACK - 1));
     }
     const poster = this.posters.get(c);
-    if (poster?.ready && poster.img.naturalWidth) return { img: poster.img, sx: 0, sy: 0, sw: poster.img.naturalWidth, sh: poster.img.naturalHeight };
+    if (poster?.complete && poster.naturalWidth) return { img: poster, sx: 0, sy: 0, sw: poster.naturalWidth, sh: poster.naturalHeight };
     return null;
-  }
-
-  private readyImg(key: string) {
-    const p = this.packs.get(key);
-    return p?.ready && p.img.naturalWidth ? p.img : undefined;
   }
 }
 
@@ -379,6 +387,8 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
       if (!src) return;
       drawCover(ctx, src, w, h, o, f.layerScale[i] ?? 1);
       drew = true;
+      // for tests and tuning: which frame of which chapter is on screen
+      if (i === f.index) section.dataset.tourFrame = `${i}:${Math.round(pos)}`;
     });
     ctx.globalAlpha = 1;
     if (drew && !drewOnce && poster) {
@@ -424,10 +434,22 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     const now = performance.now();
     const dt = lastTime ? Math.min(64, now - lastTime) : 16;
     lastTime = now;
-    current = current < 0 || jumped ? target : current + (target - current) * (1 - Math.exp(-dt / 110));
-    if (Math.abs(target - current) < 0.0002) current = target;
     const vp = { width: section.clientWidth || window.innerWidth, height: window.innerHeight };
     const finaleTo = overviewCamera(WIDE_CAMERA, vp, map);
+    let next = current < 0 || jumped ? target : current + (target - current) * (1 - Math.exp(-dt / 110));
+    if (current >= 0 && !jumped) {
+      // speed limit: never ask for more frames per second than the device can
+      // decode – a fast flick then plays as one even, continuous movement
+      // (following behind the scroll) instead of jumping between held frames
+      const at = computeFrame(current, chapters, spans, FINALE_START_CAMERA, finaleTo);
+      const c = chapters[at.index]!;
+      const span = spans[at.index]!;
+      const framesPerProgress = (c.frames.count - 1) / Math.max(1e-6, span.end - span.start);
+      const maxStep = (store.rate * (dt / 1000)) / framesPerProgress;
+      if (Math.abs(next - current) > maxStep) next = current + Math.sign(next - current) * maxStep;
+    }
+    current = next;
+    if (Math.abs(target - current) < 0.0002) current = target;
     frame = computeFrame(current, chapters, spans, FINALE_START_CAMERA, finaleTo);
     feed(frame, Math.sign(target - current));
     draw(frame);

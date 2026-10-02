@@ -79,10 +79,18 @@ export function PriceBreakdown({
         </div>
       </dl>
       <dl className={cn("mt-3 space-y-1.5 border-t pt-3", border)}>
+        <div className="flex justify-between gap-3">
+          <dt>Netto</dt>
+          <dd className="tabular-nums">{formatMoney(quote.total, unknown)}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt>{quote.vat.rate} % MwSt.</dt>
+          <dd className="tabular-nums">{formatMoney(quote.vat.amount, unknown)}</dd>
+        </div>
         <div className="flex items-baseline justify-between gap-3">
           <dt className="font-semibold">Mietsumme</dt>
           <dd className="font-serif text-2xl font-semibold tabular-nums" data-testid="quote-total">
-            {formatMoney(quote.total, unknown)}
+            {formatMoney(quote.grossTotal, unknown)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">

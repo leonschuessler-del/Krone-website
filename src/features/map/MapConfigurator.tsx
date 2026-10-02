@@ -62,7 +62,8 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
   const selectedRaw = useBookingStore((s) => s.selectedSpaceIds);
   const schedule = useBookingStore((s) => s.schedule);
   const previewId = useBookingStore((s) => s.previewSpaceId);
-  const { toggleSpace, removeSpace, setSelection, clearSelection, setPreview, setSchedule, setStep } = useBookingStore.getState();
+  const { toggleSpace: toggleRaw, removeSpace, setSelection, clearSelection, setPreview, setSchedule, setStep } = useBookingStore.getState();
+  const toggleSpace = (id: string) => toggleRaw(id, spaces.find((s) => s.id === id)?.requires ?? []);
 
   const bookable = useMemo(() => spaces.filter((s) => s.bookable && s.active), [spaces]);
   const allIds = useMemo(() => bookable.map((s) => s.id), [bookable]);
@@ -724,7 +725,7 @@ function HotelCard({ hotel, selected, status, onToggle }: { hotel: SpaceView; se
           </p>
         </div>
         <ul className="flex flex-wrap gap-2 text-[0.8rem] font-semibold" aria-label="Ausstattung Hotel">
-          <li className="rounded-full border border-white/20 px-3 py-1">10 Zimmer</li>
+          <li className="rounded-full border border-white/20 px-3 py-1">8 Doppelzimmer · 2 Einzelzimmer · Apartment</li>
           <li className="rounded-full border border-white/20 px-3 py-1">1 Wohnung mit Küche</li>
           <li className="rounded-full border border-white/20 px-3 py-1">Zimmer mit eigenem Bad</li>
         </ul>

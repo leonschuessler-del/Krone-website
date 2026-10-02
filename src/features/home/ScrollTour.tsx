@@ -110,7 +110,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                   <polygon key={f.id} points={pts(f.polygon)} fill="none" stroke="#f4efe6" strokeOpacity={0.45} strokeWidth={1.2} strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
                 ))}
               {onMap.map((s) => (
-                <g key={s.id} className="tour-area" data-space-id={s.id} data-selected={selected.includes(s.id)} onClick={() => toggleSpace(s.id)}>
+                <g key={s.id} className="tour-area" data-space-id={s.id} data-selected={selected.includes(s.id)} onClick={() => toggleSpace(s.id, s.requires)}>
                   <polygon points={pts(s.shape!.polygon as Point[])} />
                 </g>
               ))}
@@ -138,7 +138,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                 aria-pressed={on}
                 aria-label={`${s.name} ${on ? "abwählen" : "auswählen"}`}
                 tabIndex={-1}
-                onClick={() => toggleSpace(s.id)}
+                onClick={() => toggleSpace(s.id, s.requires)}
                 className="tour-label absolute left-0 top-0 inline-flex items-center gap-2 whitespace-nowrap rounded-full border py-0.5 pl-0.5 shadow-[0_8px_20px_-8px_rgb(0_0_0/0.8)] backdrop-blur-md transition-colors"
               >
                 <span className="tour-label-code grid h-7 min-w-7 place-items-center rounded-full px-1 font-serif text-[0.78rem] font-semibold">{s.code}</span>
@@ -201,7 +201,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                     <Link href={s.href} className="inline-flex h-11 items-center rounded-full border border-white/25 bg-white/5 px-5 font-semibold backdrop-blur hover:bg-white/15" tabIndex={isActive ? 0 : -1}>
                       Details ansehen
                     </Link>
-                    {s.bookable && <SelectSpaceButton spaceId={s.id} name={s.name} className="h-11" />}
+                    {s.bookable && <SelectSpaceButton spaceId={s.id} name={s.name} requires={s.requires} className="h-11" />}
                   </div>
                 </div>
               </div>

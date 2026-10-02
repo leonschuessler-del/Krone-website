@@ -1,4 +1,5 @@
 import { count, eq, sql } from "drizzle-orm";
+import { hotelRoomSeeds, roomTypeSeeds } from "@/content/hotel";
 import { spaceSeeds } from "@/content/spaces";
 import { defaultSettings, demoSettings } from "@/content/settings";
 import { extraSeeds } from "@/content/extras";
@@ -27,19 +28,40 @@ export { getDemoScenario, type DemoScenario } from "@/content/demo-scenario";
 async function seedBase(db: Database): Promise<void> {
   for (const s of spaceSeeds) {
     const { features: _features, ...rest } = s;
+    // prices, seats and combination rules come from the operator's price sheet → keep them current
+    const priced = {
+      basePrice: rest.basePrice,
+      priceModel: rest.priceModel,
+      capacitySeated: rest.capacitySeated,
+      cleaningFee: rest.cleaningFee,
+      requires: rest.requires,
+      availableForStandaloneRental: rest.availableForStandaloneRental,
+      bookingMode: rest.bookingMode,
+      bookable: rest.bookable,
+      includedInFullVenue: rest.includedInFullVenue,
+      needsVerification: rest.needsVerification,
+    };
     await db
       .insert(t.spaces)
       .values({ ...rest, weeklyHours: null })
-      .onConflictDoNothing();
+      .onConflictDoUpdate({ target: t.spaces.id, set: priced });
   }
   for (const e of extraSeeds) {
     await db
       .insert(t.extras)
-      .values({ ...e, unitPrice: null, confirmed: false, isDemo: false })
-      .onConflictDoNothing();
+      .values({ ...e, confirmed: true, isDemo: false })
+      .onConflictDoUpdate({ target: t.extras.id, set: { name: e.name, description: e.description, priceModel: e.priceModel, unitPrice: e.unitPrice, confirmed: true, isDemo: false } });
   }
   for (const [key, value] of Object.entries(defaultSettings)) {
     await db.insert(t.settings).values({ key, value }).onConflictDoNothing();
+  }
+  // hotel: room types and rooms (prices from the operator; apartment on request)
+  for (const r of roomTypeSeeds) {
+    const row = { name: r.name, description: r.description, maxGuests: r.maxGuests, basePricePerNight: r.basePricePerNight, inventoryGroup: r.inventoryGroup, sortOrder: r.sortOrder, active: true };
+    await db.insert(t.roomTypes).values({ id: r.id, ...row }).onConflictDoUpdate({ target: t.roomTypes.id, set: row });
+  }
+  for (const room of hotelRoomSeeds) {
+    await db.insert(t.hotelRooms).values({ ...room, active: true }).onConflictDoNothing();
   }
 }
 
@@ -70,140 +92,8 @@ async function seedAdmin(db: Database): Promise<void> {
 }
 
 // ── DEMO / SEED ONLY ────────────────────────────────────────────────────────
-const DEMO_HOURLY: Record<string, number> = {
-  restaurant: 12000,
-  kitchen: 6000,
-  "side-room": 7000,
-  stage: 8000,
-  "old-tavern": 9000,
-  "winter-garden": 8500,
-  "beer-garden": 7500,
-};
-const DEMO_CLEANING: Record<string, number> = {
-  restaurant: 15000,
-  kitchen: 12000,
-  "side-room": 6000,
-  stage: 8000,
-  "old-tavern": 9000,
-  "winter-garden": 8000,
-  "beer-garden": 10000,
-};
-const DEMO_DEPOSIT: Record<string, number> = {
-  restaurant: 50000,
-  kitchen: 50000,
-  "side-room": 20000,
-  stage: 30000,
-  "old-tavern": 30000,
-  "winter-garden": 30000,
-  "beer-garden": 30000,
-};
-
 async function seedDemo(db: Database, today: LocalDate): Promise<void> {
-  // demo prices on spaces (the whole instance is flagged DEMO_MODE)
-  for (const [spaceId, hourly] of Object.entries(DEMO_HOURLY)) {
-    await db
-      .update(t.spaces)
-      .set({
-        basePrice: hourly,
-        priceModel: "hourly",
-        cleaningFee: DEMO_CLEANING[spaceId] ?? null,
-        deposit: DEMO_DEPOSIT[spaceId] ?? null,
-        minimumDurationMinutes: spaceId === "restaurant" ? 180 : 120,
-        advanceBookingMinHours: 48,
-        advanceBookingMaxDays: 540,
-        setupBufferMinutes: 60,
-        cleanupBufferMinutes: 60,
-      })
-      .where(sql`${t.spaces.id} = ${spaceId}`);
-    await db
-      .insert(t.pricingRules)
-      .values([
-        {
-          id: `demo-${spaceId}-weekend`,
-          spaceId,
-          label: "Wochenende (Fr/Sa) – Demo",
-          priceModel: "hourly",
-          amount: Math.round(hourly * 1.2),
-          weekdays: [5, 6],
-          priority: 10,
-          isDemo: true,
-        },
-        {
-          id: `demo-${spaceId}-december`,
-          spaceId,
-          label: "Adventszeit – Demo",
-          priceModel: "hourly",
-          amount: Math.round(hourly * 1.3),
-          weekdays: null,
-          validFrom: `${today.slice(0, 4)}-11-27`,
-          validTo: `${today.slice(0, 4)}-12-23`,
-          priority: 20,
-          isDemo: true,
-        },
-      ])
-      .onConflictDoNothing();
-  }
-
-  await db
-    .insert(t.bundlePricingRules)
-    .values([
-      {
-        id: "demo-bundle-restaurant-stage",
-        name: "Kombi Restaurant + Bühne (Demo)",
-        spaceIds: ["restaurant", "stage"],
-        matchMode: "exact",
-        adjustment: { type: "percent_discount", value: 10 },
-        priority: 10,
-        isDemo: true,
-      },
-      {
-        id: "demo-bundle-restaurant-winter-garden",
-        name: "Kombi Restaurant + Wintergarten (Demo)",
-        spaceIds: ["restaurant", "winter-garden"],
-        matchMode: "exact",
-        adjustment: { type: "percent_discount", value: 10 },
-        priority: 10,
-        isDemo: true,
-      },
-      {
-        id: "demo-bundle-restaurant-stage-beer-garden",
-        name: "Sommerfest-Paket: Restaurant + Bühne + Biergarten (Demo)",
-        spaceIds: ["restaurant", "stage", "beer-garden"],
-        matchMode: "exact",
-        adjustment: { type: "percent_discount", value: 15 },
-        priority: 20,
-        isDemo: true,
-      },
-      {
-        id: "demo-bundle-full-venue",
-        name: "Gesamte Location (Demo)",
-        spaceIds: spaceSeeds.filter((s) => s.includedInFullVenue && s.bookable).map((s) => s.id),
-        matchMode: "subset",
-        adjustment: { type: "percent_discount", value: 20 },
-        // full venue is always individually coordinated → inquiry
-        bookingMode: "inquiry",
-        isFullVenue: true,
-        priority: 100,
-        isDemo: true,
-      },
-    ])
-    .onConflictDoNothing();
-
-  const demoExtraPrices: Record<string, number> = {
-    "extra-cleaning": 9000,
-    "av-tech": 25000,
-    "stage-tech": 35000,
-    seating: 450,
-    "kitchen-use": 20000,
-    "cold-storage": 6000,
-    "setup-time": 5000,
-    "teardown-time": 5000,
-    "service-staff": 3500,
-  };
-  for (const [id, price] of Object.entries(demoExtraPrices)) {
-    await db.update(t.extras).set({ unitPrice: price, isDemo: true }).where(sql`${t.extras.id} = ${id}`);
-  }
-
+  // Prices are real (seedBase); the demo adds only the scenario: settings, handover slots, blocks.
   for (const [key, value] of Object.entries(demoSettings)) {
     await db
       .insert(t.settings)

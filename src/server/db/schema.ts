@@ -373,6 +373,9 @@ export const roomTypes = pgTable("room_types", {
   maxGuests: integer("max_guests"),
   basePricePerNight: integer("base_price_per_night"),
   active: boolean("active").notNull().default(true),
+  /** room types sharing one physical inventory (Doppelzimmer / zur Einzelnutzung) */
+  inventoryGroup: text("inventory_group"),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
 export const hotelRooms = pgTable("hotel_rooms", {
@@ -393,7 +396,15 @@ export const hotelReservations = pgTable("hotel_reservations", {
   rooms: integer("rooms").notNull().default(1),
   guests: integer("guests").notNull().default(1),
   status: text("status").$type<"requested" | "confirmed" | "cancelled">().notNull().default("requested"),
+  reservationNumber: text("reservation_number"),
+  /** cents, null = on request */
+  totalPrice: integer("total_price"),
+  notes: text("notes"),
+  /** id at the channel manager (DIRS21) once synced */
+  channelRef: text("channel_ref"),
+  declineReason: text("decline_reason"),
   createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type SpaceRow = typeof spaces.$inferSelect;

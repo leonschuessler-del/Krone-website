@@ -15,6 +15,7 @@ import {
   Ban,
   X,
   ExternalLink,
+  BedDouble,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +27,7 @@ export const ADMIN_NAV = [
   { href: "/admin", label: "Übersicht", icon: LayoutDashboard, exact: true },
   { href: "/admin/buchungen", label: "Buchungen", icon: ClipboardList },
   { href: "/admin/kalender", label: "Kalender", icon: CalendarRange },
+  { href: "/admin/hotel", label: "Hotel", icon: BedDouble },
   { href: "/admin/sperrzeiten", label: "Sperrzeiten", icon: Ban },
   { href: "/admin/bereiche", label: "Bereiche", icon: LayoutGrid },
   { href: "/admin/preise", label: "Preise & Extras", icon: Euro },

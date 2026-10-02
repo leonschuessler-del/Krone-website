@@ -153,3 +153,24 @@ body { font-size: 1rem; }
 .pv-legal ul { list-style: disc; padding-left: 1.25rem; }
 .pv-check-row { flex-direction: row !important; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .pv-check-row input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-gold-dark); }
+
+/* prices, add-ons, hotel */
+.pv-price { margin-top: 0.25rem; font-size: 0.92rem; }
+.pv-price > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--color-sand); }
+.pv-price dt small { display: block; color: var(--color-muted); font-size: 0.75rem; }
+.pv-price dd { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pv-price .pv-price-sum { margin-top: 0.4rem; border-top: 2px solid var(--color-sand); }
+.pv-price .pv-price-total { border-bottom: 0; font-weight: 600; font-size: 1.15rem; }
+.pv-choices-list { display: grid; gap: 0.5rem; }
+.pv-choices-list .pv-choice { align-items: center; }
+.pv-choice-price { margin-left: auto; white-space: nowrap; font-weight: 600; }
+.pv-choice.is-fixed { border-color: var(--color-gold); background: var(--color-gold-pale); }
+.pv-choice.is-off { opacity: 0.5; }
+.pv-guests { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--color-muted); }
+.pv-guests input { height: 2.6rem; border-radius: 0.75rem; border: 1px solid var(--color-stone); padding: 0 0.75rem; color: var(--color-ink); }
+.pv-rule { display: block; margin-top: 0.4rem; font-size: 0.8rem; color: #a5711d; }
+.pv-hotel-dates { margin-top: 1rem; }
+.pv-hotel-dates label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--color-muted); }
+.pv-hotel-dates input { height: 2.8rem; border-radius: 0.75rem; border: 1px solid var(--color-stone); padding: 0 0.75rem; font-family: var(--font-serif); font-size: 1.1rem; color: var(--color-ink); }
+.pv-hotel-total { display: flex; justify-content: space-between; align-items: baseline; margin: 0.25rem 0 0; }
+.pv-hotel-total strong { font-family: var(--font-serif); font-size: 1.5rem; }

@@ -15,6 +15,10 @@ import { demoBlockSpecs } from "@/content/demo-scenario";
 import { eventTypes } from "@/content/event-types";
 import { demoSettings } from "@/content/settings";
 import { displayFacts, ESTIMATE_NOTE } from "@/content/space-estimates";
+import { extraSeeds } from "@/content/extras";
+import { hotelCopy, roomTypeSeeds } from "@/content/hotel";
+import { freeRooms, generateReservationNumber, nightCount, stayPrice, validateStay, type RoomReservationLike } from "@/domain/hotel";
+import { calculateQuote, type Quote } from "@/domain/pricing";
 import { checkSelection, selectionDayStatus, type AvailabilityContext, type SpaceAvailabilityProfile } from "@/domain/availability";
 import { generateBookingNumber } from "@/domain/booking";
 import type { AvailabilityBlock } from "@/domain/types";
@@ -36,6 +40,10 @@ interface PreviewSpace {
   capacityStanding: number | null;
   bookable: boolean;
   includedInFullVenue: boolean;
+  requires: string[];
+  basePrice: number | null;
+  priceModel: "hourly" | "daily" | "flat" | "on_request" | null;
+  cleaningFee: number | null;
   setupBufferMinutes: number | null;
   cleanupBufferMinutes: number | null;
   images: string[];
@@ -86,10 +94,17 @@ function initHeader() {
 }
 
 /* ------------------------------------------------------------- selection */
+let selectionHint = "";
+/** The Restaurant is part of every booking: it comes along with any room and cannot be dropped while others are selected. */
 function toggle(id: string, force?: boolean) {
   const on = force ?? !selected.has(id);
-  if (on) selected.add(id);
-  else selected.delete(id);
+  selectionHint = "";
+  if (on) {
+    selected.add(id);
+    if (id !== "restaurant" && byId.get(id)?.requires.includes("restaurant")) selected.add("restaurant");
+  } else if (id === "restaurant" && [...selected].some((x) => x !== "restaurant")) {
+    selectionHint = "Das Restaurant ist bei jeder Buchung dabei (Eingang, Theke). Entfernen Sie zuerst die anderen Räume.";
+  } else selected.delete(id);
   updateSelectionUi();
 }
 
@@ -100,6 +115,8 @@ function updateSelectionUi() {
   const label = n === 0 ? "Noch keine Auswahl" : n === 1 ? "1 Bereich ausgewählt" : `${n} Bereiche ausgewählt`;
   document.querySelectorAll<HTMLElement>("[data-testid=selection-count]").forEach((el) => (el.textContent = label));
   document.querySelectorAll<HTMLElement>("[data-pv-hint]").forEach((el) => (el.hidden = n > 0));
+  document.querySelectorAll<HTMLElement>("[data-pv-rule]").forEach((el) => el.remove());
+  if (selectionHint) document.querySelectorAll<HTMLElement>("[data-testid=selection-count]").forEach((el) => el.insertAdjacentHTML("afterend", `<span data-pv-rule class="pv-rule" role="alert">${esc(selectionHint)}</span>`));
   document.querySelectorAll<HTMLElement>("[data-pv-list]").forEach((el) => {
     el.hidden = n === 0;
     el.innerHTML = [...selected]
@@ -196,13 +213,15 @@ function roomHtml(s: PreviewSpace, index: number) {
           <div><dt>Fläche</dt><dd>${esc(facts.area)}</dd></div>
           <div><dt>${isHotel ? "Zimmer" : "Sitzplätze"}</dt><dd>${esc(facts.seats)}</dd></div>
           <div><dt>Lage</dt><dd>${esc(LEVEL[s.level] ?? "–")}</dd></div>
-          <div><dt>Buchung</dt><dd>${!s.bookable ? "nicht einzeln" : isHotel ? "nur komplett, auf Anfrage" : "einzeln oder kombiniert"}</dd></div>
+          <div><dt>Buchung</dt><dd>${isHotel ? "Zimmer einzeln, Frühstück inkl." : !s.bookable ? "als Zusatzleistung" : s.id === "restaurant" ? "immer dabei" : "zusätzlich zum Restaurant"}</dd></div>
         </dl>
         ${facts.estimated ? `<p class="pv-small">ca.-Werte: ${esc(ESTIMATE_NOTE)}</p>` : ""}
-        <p class="pv-small">Toiletten sind bei jeder Buchung inklusive.</p>
+        ${!isHotel && s.bookable ? `<p class="pv-small">${s.basePrice === null ? "Preis auf Anfrage" : `${s.id === "restaurant" ? "" : "+ "}${eur(s.basePrice)} netto je Buchung (Fr–So)`} · Toiletten inklusive.</p>` : ""}
         <div class="pv-actions">
+          ${isHotel ? `<button type="button" class="pv-btn pv-btn-gold" data-hotel-book>Zimmer buchen</button>` : ""}
           ${s.bookable ? `<button type="button" class="pv-btn ${on ? "pv-btn-dark" : "pv-btn-gold"}" data-room-select="${s.id}">${selectLabel}</button>` : ""}
           ${s.bookable ? `<button type="button" class="pv-btn" data-flow data-flow-with="${s.id}">Verfügbarkeit prüfen</button>` : ""}
+          ${!s.bookable && !isHotel ? `<p class="pv-small">Die Küche wird als Zusatzleistung gebucht (nur mit Caterer).</p>` : ""}
         </div>
       </aside>
     </div>
@@ -299,7 +318,7 @@ function interval(date: string, from: string, to: string) {
 }
 
 /* ------------------------------------------------------------ request flow */
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 const flow = {
   step: 1 as Step,
   spaces: new Set<string>(),
@@ -307,12 +326,40 @@ const flow = {
   from: "18:00",
   to: "23:00",
   month: today.slice(0, 7),
+  extras: new Set<string>(),
+  guests: 60,
   form: { event: "", guests: "", name: "", email: "", phone: "", message: "" },
   mode: "inquiry" as "inquiry" | "booking",
   terms: false,
   error: "",
   ref: "",
 };
+const PRICE_POLICY = { mode: "none" as const, downPaymentPercent: null, depositCollection: "separately" as const, depositStrategy: "sum" as const };
+const eur = (c: number | null) => (c === null ? "auf Anfrage" : (c / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" }));
+
+/** Same price engine as the website: flat package per room (Fri–Sun), add-ons, 19 % VAT. */
+function quote(): Quote {
+  const ids = [...flow.spaces];
+  const start = flow.date ? interval(flow.date, flow.from, flow.to) : { start: Date.now(), end: Date.now() + 5 * 3_600_000 };
+  return calculateQuote({
+    request: { spaceIds: ids, start: start.start, end: start.end, rentalMode: "hourly", dates: flow.date ? [flow.date] : [], guestCount: flow.guests || null, extras: [...flow.extras].map((extraId) => ({ extraId, quantity: 1 })) },
+    spaces: spaces.map((s) => ({ id: s.id, name: s.name, basePrice: s.basePrice, priceModel: s.priceModel, deposit: null, cleaningFee: s.cleaningFee, minimumDurationMinutes: null, bookingMode: "inquiry" as const })),
+    rules: [],
+    bundles: [],
+    extras: extraSeeds.map((e) => ({ id: e.id, name: e.name, priceModel: e.priceModel, unitPrice: e.unitPrice, active: true, isDemo: false })),
+    policy: PRICE_POLICY,
+  });
+}
+
+function priceHtml(q: Quote) {
+  const rows = q.lines.filter((l) => l.kind === "rental" || l.kind === "extra").map((l) => `<div><dt>${esc(l.kind === "rental" ? `Miete ${l.label}` : l.label)}${l.detail ? `<small>${esc(l.detail)}</small>` : ""}</dt><dd>${eur(l.amount)}</dd></div>`).join("");
+  return `<dl class="pv-price">${rows}
+    <div class="pv-price-sum"><dt>Netto</dt><dd>${eur(q.total)}</dd></div>
+    <div><dt>${q.vat.rate} % MwSt.</dt><dd>${eur(q.vat.amount)}</dd></div>
+    <div class="pv-price-total"><dt>Gesamt</dt><dd>${eur(q.grossTotal)}</dd></div>
+  </dl>
+  <p class="pv-small">Pauschale je Raum gilt Fr–So, jeder weitere Tag + 100 € · Kaution separat · Preise zzgl. MwSt.</p>`;
+}
 let flowOpen = false;
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
@@ -322,6 +369,7 @@ const nameOf = (id: string) => (id === "hotel" ? "Übernachtung (Hotel)" : (byId
 function openFlow(opts: { with?: string; step?: Step } = {}) {
   flow.spaces = new Set(selected);
   if (opts.with) flow.spaces.add(opts.with);
+  if (flow.spaces.size) flow.spaces.add("restaurant");
   flow.error = "";
   flow.ref = "";
   flow.step = opts.step ?? (flow.spaces.size ? 2 : 1);
@@ -330,7 +378,7 @@ function openFlow(opts: { with?: string; step?: Step } = {}) {
 }
 
 function stepper() {
-  const labels = ["Bereiche", "Termin", "Ihre Angaben", "Bestätigung"];
+  const labels = ["Räume", "Termin", "Zusatzleistungen", "Ihre Angaben", "Bestätigung"];
   return `<ol class="pv-steps">${labels.map((l, i) => `<li class="${i + 1 === flow.step ? "is-on" : i + 1 < flow.step ? "is-done" : ""}"><span>${i + 1}</span>${l}</li>`).join("")}</ol>`;
 }
 
@@ -366,12 +414,13 @@ function renderFlow() {
   const ctx = context();
   let body = "";
   if (flow.step === 1) {
-    body = `<h2 class="pv-h2">Welche Bereiche möchten Sie nutzen?</h2>
-      <p class="pv-text">Mehrfachauswahl möglich. Toiletten sind immer inklusive.</p>
+    const others = [...flow.spaces].some((x) => x !== "restaurant");
+    body = `<h2 class="pv-h2">Welche Räume möchten Sie nutzen?</h2>
+      <p class="pv-text">Das Restaurant ist bei jeder Buchung dabei – Eingang, Theke und Toiletten gehören dazu. Alle weiteren Räume buchen Sie dazu.</p>
       <div class="pv-choices">${bookable
         .map(
-          (s) => `<label class="pv-choice"><input type="checkbox" data-flow-space="${s.id}" ${flow.spaces.has(s.id) ? "checked" : ""}>
-          ${s.images[0] ? `<img src="${esc(s.images[0])}" alt="" loading="lazy">` : ""}<span><strong>${esc(nameOf(s.id))}</strong><small>${esc(displayFacts(s).area)} · ${esc(displayFacts(s).seats)}</small></span></label>`,
+          (s) => `<label class="pv-choice${s.id === "restaurant" ? " is-fixed" : ""}"><input type="checkbox" data-flow-space="${s.id}" ${flow.spaces.has(s.id) || s.id === "restaurant" ? "checked" : ""} ${s.id === "restaurant" && others ? "disabled" : ""}>
+          ${s.images[0] ? `<img src="${esc(s.images[0])}" alt="" loading="lazy">` : ""}<span><strong>${esc(nameOf(s.id))}</strong><small>${esc(displayFacts(s).seats)} · ${s.basePrice === null ? "auf Anfrage" : `${s.id === "restaurant" ? "" : "+ "}${eur(s.basePrice)} netto`}</small></span></label>`,
         )
         .join("")}</div>
       <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${flow.spaces.size ? "" : "disabled"}>Weiter zum Termin</button></div>`;
@@ -405,9 +454,25 @@ function renderFlow() {
           ${check}
         </div>
       </div>
-      <div class="pv-actions"><button type="button" class="pv-btn" data-flow-step="1">Zurück</button><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${ok ? "" : "disabled"}>Weiter zu Ihren Angaben</button></div>`;
+      <div class="pv-actions"><button type="button" class="pv-btn" data-flow-step="1">Zurück</button><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${ok ? "" : "disabled"}>Weiter zu den Zusatzleistungen</button></div>`;
   } else if (flow.step === 3) {
+    const q = quote();
+    body = `<h2 class="pv-h2">Was brauchen Sie dazu?</h2>
+      <p class="pv-text">Zusatzleistungen aus der Preisliste – alles optional.</p>
+      <div class="pv-flow-grid">
+        <div class="pv-choices pv-choices-list">${extraSeeds
+          .map(
+            (e) => `<label class="pv-choice"><input type="checkbox" data-flow-extra="${e.id}" ${flow.extras.has(e.id) ? "checked" : ""}><span><strong>${esc(e.name)}</strong><small>${esc(e.description)}</small></span><b class="pv-choice-price">${eur(e.unitPrice)}${e.priceModel === "per_person" ? " / Gast" : ""}</b></label>`,
+          )
+          .join("")}
+          <label class="pv-guests">Gäste (für Gläser, Geschirr &amp; Besteck)<input type="number" min="1" max="200" data-flow-guests value="${flow.guests}"></label>
+        </div>
+        <div>${priceHtml(q)}</div>
+      </div>
+      <div class="pv-actions"><button type="button" class="pv-btn" data-flow-step="2">Zurück</button><button type="button" class="pv-btn pv-btn-gold" data-flow-next>Weiter zu Ihren Angaben</button></div>`;
+  } else if (flow.step === 4) {
     const f = flow.form;
+    if (!f.guests) f.guests = String(flow.guests);
     body = `<h2 class="pv-h2">Ihre Angaben</h2>
       <p class="pv-text">${esc([...flow.spaces].map(nameOf).join(", "))} · ${flow.date ? esc(fmtDate(flow.date)) : ""}, ${flow.from}–${flow.to} Uhr</p>
       <form class="pv-form" data-flow-form novalidate>
@@ -419,16 +484,17 @@ function renderFlow() {
         <label class="pv-span">Nachricht<textarea name="message" rows="3">${esc(f.message)}</textarea></label>
         ${flow.error ? `<p class="pv-error pv-span" role="alert">${esc(flow.error)}</p>` : ""}
         <label class="pv-span pv-check-row"><input type="checkbox" name="terms" ${flow.terms ? "checked" : ""}> Ich habe die <button type="button" class="pv-link" data-legal="datenschutz">Datenschutzerklärung</button> gelesen.</label>
-        <div class="pv-actions pv-span"><button type="button" class="pv-btn" data-flow-step="2">Zurück</button><button type="submit" name="mode" value="inquiry" class="pv-btn">Unverbindlich anfragen</button><button type="submit" name="mode" value="booking" class="pv-btn pv-btn-gold">Verbindlich buchen</button></div>
-        <p class="pv-small pv-span">Vorschau: Es wird keine echte Buchung angelegt und nichts versendet.</p>
+        <div class="pv-actions pv-span"><button type="button" class="pv-btn" data-flow-step="3">Zurück</button><button type="submit" name="mode" value="inquiry" class="pv-btn pv-btn-gold">Anfrage senden</button></div>
+        <p class="pv-small pv-span">Die Krone prüft Ihre Anfrage und bestätigt persönlich. Vorschau: Es wird nichts versendet.</p>
       </form>`;
   } else {
-    const booking = flow.mode === "booking";
+    const q = quote();
     body = `<div class="pv-done">
-      <p class="pv-eyebrow">${booking ? "Buchung eingegangen" : "Anfrage eingegangen"}</p>
+      <p class="pv-eyebrow">Anfrage eingegangen</p>
       <h2 class="pv-h2">Vielen Dank, ${esc(flow.form.name.split(" ")[0] ?? "")}!</h2>
-      <p class="pv-ref">${booking ? "Ihre Buchungsnummer" : "Ihre Anfragenummer"} <strong>${esc(flow.ref)}</strong></p>
-      <p class="pv-text">${booking ? "Die Räume sind für Sie reserviert. Die Krone bestätigt die Buchung persönlich und meldet sich zu Ablauf, Bewirtung und Übernachtung." : "Die Krone prüft Ihre Anfrage und meldet sich mit einem Angebot."}</p>
+      <p class="pv-ref">Ihre Anfragenummer <strong>${esc(flow.ref)}</strong></p>
+      <p class="pv-text">Ihre Anfrage ist eingegangen und die Räume sind für Sie vorgemerkt. Die Krone meldet sich kurzfristig – bei Zusage telefonisch wegen Schlüsselübergabe und Kaution.</p>
+      <p class="pv-text"><strong>Voraussichtlich ${eur(q.grossTotal)}</strong> inkl. MwSt.${flow.extras.size ? ` (mit ${flow.extras.size} Zusatzleistung${flow.extras.size === 1 ? "" : "en"})` : ""}</p>
       <dl class="pv-facts">
         <div><dt>Bereiche</dt><dd>${esc([...flow.spaces].map(nameOf).join(", "))}</dd></div>
         <div><dt>Termin</dt><dd>${flow.date ? esc(fmtDate(flow.date)) : ""}<br>${flow.from}–${flow.to} Uhr</dd></div>
@@ -464,11 +530,86 @@ function submitFlow(form: HTMLFormElement, submitter?: HTMLElement | null) {
     flow.step = 2;
     return renderFlow();
   }
-  flow.ref = generateBookingNumber(flow.mode, Number(flow.date.slice(0, 4)));
+  flow.mode = "inquiry";
+  flow.ref = generateBookingNumber("inquiry", Number(flow.date.slice(0, 4)));
   requests = [...requests, { ref: flow.ref, spaceIds: ids, date: flow.date, from: flow.from, to: flow.to, name: flow.form.name, guests: flow.form.guests, event: flow.form.event }];
   saveRequests(requests);
-  flow.step = 4;
+  flow.step = 5;
   renderFlow();
+}
+
+/* ------------------------------------------------------------- hotel flow */
+const HOTEL_KEY = "krone-preview-hotel-v1";
+interface StoredStay extends RoomReservationLike {
+  ref: string;
+  name: string;
+}
+function loadStays(): StoredStay[] {
+  try {
+    return JSON.parse(localStorage.getItem(HOTEL_KEY) ?? "[]") as StoredStay[];
+  } catch {
+    return [];
+  }
+}
+let stays = loadStays();
+const hotel = { arrival: addDays(today, 7), departure: addDays(today, 9), type: "double", rooms: 1, guests: 2, name: "", email: "", error: "", ref: "" };
+
+function renderHotel() {
+  const issues = validateStay({ arrival: hotel.arrival, departure: hotel.departure }, today);
+  const nights = nightCount(hotel.arrival, hotel.departure);
+  const t = roomTypeSeeds.find((x) => x.id === hotel.type)!;
+  const free = issues.length ? 0 : freeRooms(hotel.type, { arrival: hotel.arrival, departure: hotel.departure }, stays);
+  const total = stayPrice(hotel.type, { arrival: hotel.arrival, departure: hotel.departure }, hotel.rooms);
+  if (hotel.ref) {
+    return openDialog(`<p class="pv-eyebrow">Zimmeranfrage eingegangen</p><h2 class="pv-h2">Vielen Dank, ${esc(hotel.name.split(" ")[0] ?? "")}!</h2>
+      <p class="pv-ref">Ihre Reservierungsnummer <strong>${esc(hotel.ref)}</strong></p>
+      <dl class="pv-facts"><div><dt>Zimmer</dt><dd>${hotel.rooms} × ${esc(t.name)}</dd></div><div><dt>Aufenthalt</dt><dd>${esc(hotel.arrival)} – ${esc(hotel.departure)} (${nights} Nächte)</dd></div><div><dt>Preis inkl. Frühstück</dt><dd>${eur(total)}</dd></div></dl>
+      <p class="pv-text">Die Krone prüft die Zimmer und bestätigt persönlich per E-Mail. Vorschau: nichts wird versendet; die Zimmer gelten in diesem Browser als belegt.</p>
+      <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Fertig</button></div>`, { label: "Zimmeranfrage" });
+  }
+  openDialog(`<p class="pv-eyebrow">${esc(hotelCopy.eyebrow)}</p><h2 class="pv-h2">${esc(hotelCopy.title)}</h2><p class="pv-text">${esc(hotelCopy.text)}</p>
+    <div class="pv-row pv-hotel-dates"><label>Anreise<input type="date" data-hotel="arrival" min="${today}" value="${hotel.arrival}"></label><label>Abreise<input type="date" data-hotel="departure" min="${addDays(hotel.arrival, 1)}" value="${hotel.departure}"></label></div>
+    <p class="pv-small">${issues.includes("order") ? "Die Abreise muss nach der Anreise liegen." : issues.includes("past") ? "Die Anreise liegt in der Vergangenheit." : `${nights} ${nights === 1 ? "Nacht" : "Nächte"} · ${esc(hotelCopy.checkIn)}`}</p>
+    <div class="pv-choices pv-choices-list">${roomTypeSeeds
+      .map((r) => {
+        const f = issues.length ? 0 : freeRooms(r.id, { arrival: hotel.arrival, departure: hotel.departure }, stays);
+        return `<label class="pv-choice${f === 0 ? " is-off" : ""}"><input type="radio" name="roomtype" data-hotel-type="${r.id}" ${hotel.type === r.id ? "checked" : ""} ${f === 0 ? "disabled" : ""}><span><strong>${esc(r.name)}</strong><small>${esc(r.description)} · ${f === 0 ? "belegt" : `${f} frei`}</small></span><b class="pv-choice-price">${r.basePricePerNight === null ? "auf Anfrage" : `${eur(r.basePricePerNight)} / Nacht`}</b></label>`;
+      })
+      .join("")}</div>
+    <form class="pv-form" data-hotel-form novalidate>
+      <label>Zimmer<select name="rooms" data-hotel="rooms">${Array.from({ length: Math.max(1, Math.min(free, 8)) }, (_, i) => `<option ${i + 1 === hotel.rooms ? "selected" : ""}>${i + 1}</option>`).join("")}</select></label>
+      <label>Gäste<select name="guests" data-hotel="guests">${Array.from({ length: t.maxGuests * hotel.rooms }, (_, i) => `<option ${i + 1 === hotel.guests ? "selected" : ""}>${i + 1}</option>`).join("")}</select></label>
+      <label>Name *<input name="name" required value="${esc(hotel.name)}"></label>
+      <label>E-Mail *<input name="email" type="email" required value="${esc(hotel.email)}"></label>
+      <p class="pv-span pv-price-total pv-hotel-total"><span>Gesamt inkl. Frühstück</span><strong>${eur(total)}</strong></p>
+      ${hotel.error ? `<p class="pv-error pv-span" role="alert">${esc(hotel.error)}</p>` : ""}
+      <div class="pv-actions pv-span"><button type="submit" class="pv-btn pv-btn-gold" ${issues.length || free === 0 ? "disabled" : ""}>Zimmer anfragen</button></div>
+      <p class="pv-small pv-span">Unverbindlich – die Krone bestätigt persönlich. Bezahlt wird vor Ort.</p>
+    </form>`, { wide: true, label: "Zimmer buchen" });
+}
+
+function submitHotel(form: HTMLFormElement) {
+  const fd = new FormData(form);
+  hotel.name = String(fd.get("name") ?? "").trim();
+  hotel.email = String(fd.get("email") ?? "").trim();
+  hotel.rooms = Number(fd.get("rooms")) || 1;
+  hotel.guests = Number(fd.get("guests")) || 1;
+  if (!hotel.name) hotel.error = "Bitte geben Sie Ihren Namen an.";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hotel.email)) hotel.error = "Bitte geben Sie eine gültige E-Mail-Adresse an.";
+  else hotel.error = "";
+  if (hotel.error) return renderHotel();
+  if (freeRooms(hotel.type, { arrival: hotel.arrival, departure: hotel.departure }, stays) < hotel.rooms) {
+    hotel.error = "In diesem Zeitraum sind nicht mehr genug Zimmer frei.";
+    return renderHotel();
+  }
+  hotel.ref = generateReservationNumber(Number(hotel.arrival.slice(0, 4)));
+  stays = [...stays, { ref: hotel.ref, name: hotel.name, roomTypeId: hotel.type, arrivalDate: hotel.arrival, departureDate: hotel.departure, rooms: hotel.rooms, guests: hotel.guests, status: "requested" } as StoredStay];
+  try {
+    localStorage.setItem(HOTEL_KEY, JSON.stringify(stays));
+  } catch {
+    /* private mode */
+  }
+  renderHotel();
 }
 
 /* ------------------------------------------------------------ misc dialogs */
@@ -544,7 +685,11 @@ function initEvents() {
       e.preventDefault();
       return openInfo(hit.dataset.page!, "Diese Seite ist in der Vorschau nicht enthalten. Rechtstexte und weitere Unterseiten werden vor dem Start vom Betreiber ergänzt.");
     }
-    if ((hit = t("[data-hotel-toggle]"))) return toggle("hotel");
+    if ((hit = t("[data-hotel-book]"))) {
+      hotel.ref = "";
+      hotel.error = "";
+      return renderHotel();
+    }
     if ((hit = t("[data-select-space]"))) return toggle(hit.dataset.selectSpace!);
     if ((hit = t("[data-toggle-space]"))) return toggle(hit.dataset.toggleSpace!);
     if ((hit = t("[data-full-venue]"))) {
@@ -566,11 +711,39 @@ function initEvents() {
   document.addEventListener("change", (e) => {
     const el = e.target as HTMLInputElement | HTMLSelectElement;
     if (el.dataset.flowSpace) {
-      if ((el as HTMLInputElement).checked) flow.spaces.add(el.dataset.flowSpace);
-      else flow.spaces.delete(el.dataset.flowSpace);
+      if ((el as HTMLInputElement).checked) {
+        flow.spaces.add(el.dataset.flowSpace);
+        flow.spaces.add("restaurant");
+      } else if (el.dataset.flowSpace === "restaurant" && [...flow.spaces].some((x) => x !== "restaurant")) {
+        flow.error = "Das Restaurant ist bei jeder Buchung dabei.";
+      } else flow.spaces.delete(el.dataset.flowSpace);
+      return renderFlow();
+    }
+    if (el.dataset.flowExtra) {
+      if ((el as HTMLInputElement).checked) flow.extras.add(el.dataset.flowExtra);
+      else flow.extras.delete(el.dataset.flowExtra);
+      return renderFlow();
+    }
+    if (el.dataset.flowGuests !== undefined) {
+      flow.guests = Math.max(1, Number(el.value) || 1);
       return renderFlow();
     }
     if (el.dataset.toggleList) return toggle(el.dataset.toggleList, (el as HTMLInputElement).checked);
+    if (el.dataset.hotelType) {
+      hotel.type = el.dataset.hotelType;
+      hotel.rooms = 1;
+      return renderHotel();
+    }
+    if (el.dataset.hotel) {
+      const k = el.dataset.hotel;
+      if (k === "arrival") {
+        hotel.arrival = el.value;
+        if (hotel.departure <= hotel.arrival) hotel.departure = addDays(hotel.arrival, 1);
+      } else if (k === "departure") hotel.departure = el.value;
+      else if (k === "rooms") hotel.rooms = Number(el.value) || 1;
+      else if (k === "guests") hotel.guests = Number(el.value) || 1;
+      return renderHotel();
+    }
     if (el.dataset.time === "from" || el.dataset.time === "to") {
       flow[el.dataset.time] = el.value;
       return renderFlow();
@@ -580,6 +753,7 @@ function initEvents() {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     if (form.matches("[data-flow-form]")) return submitFlow(form, (e as SubmitEvent).submitter);
+    if (form.matches("[data-hotel-form]")) return submitHotel(form);
     openDialog(`<p class="pv-eyebrow">Kontakt</p><h2 class="pv-h2">Danke für Ihre Nachricht!</h2><p class="pv-text">In der fertigen Website geht sie direkt an die Krone. In dieser Vorschau wird nichts versendet.</p><div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Schließen</button></div>`, { label: "Kontakt" });
   });
   // mobile bottom bar only while the map is on screen (as on the website)
