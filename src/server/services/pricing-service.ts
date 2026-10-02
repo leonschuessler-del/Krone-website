@@ -1,4 +1,5 @@
 import { asc } from "drizzle-orm";
+import { todayLocal } from "@/domain/time";
 import { calculateQuote, type BundleRule, type ExtraDefinition, type PricedSpace, type PricingRule, type Quote } from "@/domain/pricing";
 import { resolveSchedule, type ScheduleInput } from "@/domain/schedule";
 import { env } from "@/lib/env";
@@ -68,6 +69,7 @@ export async function calculatePrice(db: Database, input: QuoteInput): Promise<Q
       end: resolved.end,
       rentalMode: resolved.rentalMode,
       dates: resolved.dates,
+      today: todayLocal(),
       guestCount: input.guestCount ?? null,
       extras: (input.extras ?? []).map((e) => ({
         extraId: e.extraId,

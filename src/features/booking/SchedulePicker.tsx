@@ -2,7 +2,8 @@
 
 import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock, Layers, RefreshCw, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
-import { addDays, isoWeekday, monthRange, parseLocalDate, todayLocal, utcToLocal, zonedToUtc } from "@/domain/time";
+import { dayNudge, eligibleOffer } from "@/domain/offers";
+import { addDays, diffDays, isoWeekday, monthRange, parseLocalDate, todayLocal, utcToLocal, zonedToUtc } from "@/domain/time";
 import type { SpaceAvailabilityStatus } from "@/domain/types";
 import { useAvailabilityCheck } from "@/features/availability/use-availability-check";
 import type { SpaceView } from "@/features/spaces/types";
@@ -282,6 +283,9 @@ function DayDetail({
 
   const common = overview.data?.commonFreeIntervals ?? [];
   const hours = [6, 9, 12, 15, 18, 21, 24, 27];
+  const rentalDays = schedule.endDate && schedule.endDate > date ? diffDays(date, schedule.endDate) + 1 : 1;
+  const offer = eligibleOffer(date, rentalDays, todayLocal());
+  const nudge = dayNudge(rentalDays);
 
   return (
     <div className="rounded-2xl border border-sand bg-white p-4 shadow-soft sm:p-5" data-testid="day-detail">
@@ -292,6 +296,16 @@ function DayDetail({
         </p>
         {overview.state === "loading" && <span className="text-xs text-muted">Verfügbarkeit wird geladen …</span>}
       </div>
+      {(offer || nudge) && (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs" data-testid="day-offer">
+          {offer && (
+            <span className="rounded-full bg-success-pale px-3 py-1 font-semibold text-success">
+              {offer.label}: −{offer.percent} % auf die Raummiete
+            </span>
+          )}
+          {nudge && <span className="rounded-full bg-[#f6efe2] px-3 py-1 text-[#7a5410]">{nudge}</span>}
+        </div>
+      )}
 
       {overview.state === "error" && !overview.data ? (
         <p className="mt-3 flex items-center gap-2 text-sm text-danger">

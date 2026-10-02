@@ -15,6 +15,7 @@ import { SpaceCard } from "@/features/spaces/SpaceCard";
 import { env } from "@/lib/env";
 import { getPropertyGallery } from "@/lib/media";
 import { listSpaceViews } from "@/server/services/space-service";
+import { Offers } from "@/features/home/Offers";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <Offers />
 
       {/* Positioning */}
       <section id="location" className="relative bg-paper py-24 md:py-32" aria-labelledby="location-title">

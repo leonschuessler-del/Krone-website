@@ -50,7 +50,7 @@ Zwei Wege, beide ohne zusätzliche Software:
 
 ## Hotelzimmer / DIRS21
 
-Zimmer werden einzeln gebucht (8 Doppelzimmer, 2 Einzelzimmer, 1 Apartment; Preise in `src/content/hotel.ts`). Die Website führt Verfügbarkeit und Reservierungen selbst (`hotel_reservations`). Für den Channel-Manager **DIRS21** gibt es den Adapter `src/server/integrations/dirs21.ts` mit drei Funktionen – Verfügbarkeit, Reservierung anlegen, stornieren – hinter einer schmalen Schnittstelle (`HotelChannel`).
+Zimmer werden einzeln gebucht (8 Doppelzimmer, 2 Einzelzimmer, 1 Apartment, optional die ganze Etage; Preise in `src/content/hotel.ts`). Eine Anfrage kann mehrere Zimmertypen enthalten (z. B. 1 × Einzelzimmer + 2 × Doppelzimmer): pro Typ eine Zeile in `hotel_reservations`, alle mit derselben Reservierungsnummer; Bestätigen/Ablehnen im Admin wirkt immer auf die ganze Anfrage. Die Website führt Verfügbarkeit und Reservierungen selbst (`hotel_reservations`). Für den Channel-Manager **DIRS21** gibt es den Adapter `src/server/integrations/dirs21.ts` mit drei Funktionen – Verfügbarkeit, Reservierung anlegen, stornieren – hinter einer schmalen Schnittstelle (`HotelChannel`).
 
 | Variable | Bedeutung |
 |---|---|

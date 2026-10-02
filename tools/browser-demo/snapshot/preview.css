@@ -187,3 +187,28 @@ body { font-size: 1rem; }
 .pv-grid-item { display: block; overflow: hidden; border-radius: 0.75rem; aspect-ratio: 3 / 2; }
 .pv-grid-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
 .pv-grid-item:hover img { transform: scale(1.04); }
+
+.pv-tip { margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; border: 1px solid rgb(184 144 74 / 0.5); background: var(--color-gold-pale); font-size: 0.82rem; color: #5d4413; }
+.pv-choice-price small { display: block; font-weight: 500; font-size: 0.7rem; color: var(--color-muted); }
+
+/* hotel: arrival/departure calendar + room steppers */
+.pv-stay-dates { gap: 0.6rem; }
+.pv-stay-date { flex: 1; border: 1px solid var(--color-stone); border-radius: 0.9rem; padding: 0.6rem 0.9rem; background: #fff; display: grid; gap: 0.15rem; }
+.pv-stay-date small { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); font-weight: 700; }
+.pv-stay-date strong { font-family: var(--font-serif); font-size: 1.1rem; }
+.pv-stay-date.is-active { border-color: var(--color-gold); box-shadow: 0 0 0 2px rgb(184 144 74 / 0.25); }
+.pv-stay-cal { margin-top: 0.75rem; }
+.pv-stay-months { display: grid; gap: 1rem; }
+@media (min-width: 760px) { .pv-stay-months { grid-template-columns: 1fr 1fr; } }
+.pv-stay-month > strong { display: block; text-align: center; font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 0.4rem; }
+.pv-day.is-range { background: var(--color-gold-pale); }
+.pv-room { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; cursor: default; }
+.pv-room > span:first-child { display: grid; gap: 0.15rem; min-width: 0; flex: 1; }
+.pv-room.is-on { border-color: var(--color-gold); box-shadow: 0 0 0 2px rgb(184 144 74 / 0.25); }
+.pv-stepper { display: inline-flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.pv-stepper button { width: 2.2rem; height: 2.2rem; border-radius: 999px; border: 1px solid var(--color-stone); background: #fff; font-size: 1.2rem; line-height: 1; }
+.pv-stepper button:last-child { background: var(--color-anthracite); color: var(--color-paper); border-color: transparent; }
+.pv-stepper button:disabled { opacity: 0.3; }
+.pv-stepper b { min-width: 1.4rem; text-align: center; font-family: var(--font-serif); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.pv-stay-sum p { display: flex; justify-content: space-between; margin: 0.15rem 0; font-size: 0.9rem; }
+.pv-stay-sum .pv-good { color: #3f6b3a; }

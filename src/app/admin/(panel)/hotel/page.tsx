@@ -5,7 +5,7 @@ import { HotelReservationActions } from "@/features/admin/hotel/HotelReservation
 import { Badge, Card, EmptyState, PageHeader, tableClass, tdClass, thClass } from "@/features/admin/ui";
 import { formatDateMedium, formatMoney } from "@/lib/format";
 import { getDb } from "@/server/db/client";
-import { listHotelReservations } from "@/server/services/hotel-service";
+import { groupHotelReservations, listHotelReservations } from "@/server/services/hotel-service";
 
 export const metadata: Metadata = { title: "Hotel" };
 export const dynamic = "force-dynamic";
@@ -17,8 +17,8 @@ const STATUS: Record<string, { label: string; tone: "warning" | "success" | "neu
 };
 
 export default async function HotelAdminPage() {
-  const rows = await listHotelReservations(await getDb());
-  const open = rows.filter((r) => r.r.status === "requested");
+  const rows = groupHotelReservations(await listHotelReservations(await getDb()));
+  const open = rows.filter((r) => r.status === "requested");
   return (
     <div className="space-y-6">
       <PageHeader
@@ -44,14 +44,14 @@ export default async function HotelAdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ r, customer, type }) => (
+                {rows.map((r) => (
                   <tr key={r.id} data-testid="hotel-row">
-                    <td className={`${tdClass} font-mono text-xs`}>{r.reservationNumber ?? r.id.slice(0, 8)}</td>
+                    <td className={`${tdClass} font-mono text-xs`}>{r.reservationNumber}</td>
                     <td className={tdClass}>
-                      {customer ? (
+                      {r.customer ? (
                         <>
-                          {customer.firstName} {customer.lastName}
-                          <span className="block text-xs text-muted">{customer.email}{customer.phone ? ` · ${customer.phone}` : ""}</span>
+                          {r.customer.firstName} {r.customer.lastName}
+                          <span className="block text-xs text-muted">{r.customer.email}{r.customer.phone ? ` · ${r.customer.phone}` : ""}</span>
                         </>
                       ) : (
                         "–"
@@ -59,17 +59,19 @@ export default async function HotelAdminPage() {
                       {r.notes && <span className="mt-1 block max-w-xs text-xs text-ink-soft">„{r.notes}“</span>}
                     </td>
                     <td className={tdClass}>
-                      {r.rooms} × {type.name}
+                      {r.lines.map((l) => (
+                        <span key={l.name} className="block">{l.rooms} × {l.name}</span>
+                      ))}
                       <span className="block text-xs text-muted">{r.guests} Gäste</span>
                     </td>
                     <td className={tdClass}>
                       {formatDateMedium(r.arrivalDate)} – {formatDateMedium(r.departureDate)}
                       <span className="block text-xs text-muted">{nightCount(r.arrivalDate, r.departureDate)} Nächte</span>
                     </td>
-                    <td className={`${tdClass} tabular-nums`}>{formatMoney(r.totalPrice, "auf Anfrage")}</td>
+                    <td className={`${tdClass} tabular-nums`}>{formatMoney(r.total, "auf Anfrage")}</td>
                     <td className={tdClass}>
                       <Badge tone={STATUS[r.status]?.tone ?? "neutral"}>{STATUS[r.status]?.label ?? r.status}</Badge>
-                      {r.channelRef && <span className="block text-[0.65rem] text-muted">DIRS21 {r.channelRef}</span>}
+                      {r.lines.some((l) => l.channelRef) && <span className="block text-[0.65rem] text-muted">DIRS21 {r.lines.map((l) => l.channelRef).filter(Boolean).join(", ")}</span>}
                     </td>
                     <td className={tdClass}>
                       <HotelReservationActions id={r.id} status={r.status} />

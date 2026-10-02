@@ -1,5 +1,6 @@
 import { addDays, isoWeekday, utcToLocal, type LocalDate } from "./time";
 import type { BookingMode, PriceModel, RentalMode, SpaceId } from "./types";
+import { eligibleOffer, extraDaysDetail, extraDaysFee, PACKAGE_DAYS as PKG } from "./offers";
 
 /**
  * ============================================================================
@@ -91,6 +92,8 @@ export interface QuoteRequest {
   dates: LocalDate[];
   guestCount: number | null;
   extras: Array<{ extraId: string; quantity: number }>;
+  /** booking day – enables the automatic offers (midweek, last-minute weekend) */
+  today?: LocalDate;
 }
 
 export interface QuoteLine {
@@ -102,9 +105,7 @@ export interface QuoteLine {
   isDemo: boolean;
 }
 
-/** A flat room price covers the weekend (Fri–Sun); every further day costs this much extra. */
-export const PACKAGE_DAYS = 3;
-export const EXTRA_DAY_FEE = 10000;
+export { EXTRA_DAY_FEE, PACKAGE_DAYS } from "./offers";
 /** All prices are net; German VAT. */
 export const VAT_RATE = 19;
 
@@ -254,12 +255,11 @@ export function calculateQuote(input: {
     });
   }
 
-  // --- weekend package: further days ---------------------------------------------
-  if (dates.length > PACKAGE_DAYS && selected.some((s) => s.priceModel === "flat")) {
-    const extraDays = dates.length - PACKAGE_DAYS;
-    const amount = extraDays * EXTRA_DAY_FEE;
+  // --- package: further days (tiered, the 7th day is free – see domain/offers) ----
+  if (dates.length > PKG && selected.some((s) => s.priceModel === "flat")) {
+    const amount = extraDaysFee(dates.length);
     rentBySpace.set("extra-days" as SpaceId, amount);
-    lines.push({ kind: "rental", refId: "extra-days", label: "Weitere Miettage", detail: `${extraDays} × ${euro(EXTRA_DAY_FEE)} (Pauschale gilt Fr–So)`, amount, isDemo: false });
+    lines.push({ kind: "rental", refId: "extra-days", label: "Weitere Miettage", detail: extraDaysDetail(dates.length), amount, isDemo: false });
   }
 
   const rentValues = [...rentBySpace.values()];
@@ -299,6 +299,20 @@ export function calculateQuote(input: {
       // Fixed bundle price replaces unknown individual prices.
       for (const id of bundle.spaceIds) rentBySpace.set(id, 0);
       notes.push(`${bundle.name}: Paketpreis ${euro(bundlePrice)}.`);
+    }
+  }
+
+  // --- automatic offers (only when no bundle discount applied) -------------------
+  if (request.today && discountTotal === 0 && rentalSubtotal) {
+    const offer = eligibleOffer(dates[0]!, dates.length, request.today);
+    if (offer) {
+      const roomRent = selected.reduce((sum, s) => sum + (rentBySpace.get(s.id) ?? 0), 0);
+      const amount = Math.round((roomRent * offer.percent) / 100);
+      if (amount > 0) {
+        discountTotal += amount;
+        lines.push({ kind: "bundle", refId: `offer-${offer.id}`, label: offer.label, detail: `−${offer.percent} % auf die Raummiete`, amount: -amount, isDemo: false });
+        notes.push(offer.text);
+      }
     }
   }
 
