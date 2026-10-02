@@ -12,6 +12,7 @@ import { fetchJson, useAsyncResource } from "@/lib/use-async-resource";
 import { AvailabilityResult } from "@/features/booking/AvailabilityResult";
 import { scheduleHasRange, usePriceQuote } from "@/features/booking/hooks";
 import { PriceBreakdown } from "@/features/booking/PriceBreakdown";
+import { provisionalQuote, type ProvisionalExtra } from "@/features/booking/provisional-quote";
 import { SchedulePicker } from "@/features/booking/SchedulePicker";
 import { SiteMap } from "@/features/map/SiteMap";
 import type { SpaceView } from "@/features/spaces/types";
@@ -697,7 +698,15 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                   <PriceBreakdown quote={q} tone="dark" demo={demo} showDueNow={mode === "booking"} />
                 )
               ) : (
-                <PriceBreakdown quote={null} tone="dark" />
+                <>
+                  <PriceBreakdown
+                    quote={provisionalQuote(spaces, selected, { extras: extras.map((e) => ({ id: e.id, name: e.name, priceModel: e.priceModel as ProvisionalExtra["priceModel"], unitPrice: e.unitPrice })), chosenExtras: Object.entries(s.extras).filter(([, n]) => n > 0).map(([id]) => id), guestCount: guests })}
+                    tone="dark"
+                    demo={demo}
+                    showDueNow={false}
+                  />
+                  {selected.length > 0 && <p className="mt-2 text-xs text-paper/50">Vorläufig – Pauschalen Fr–So; weitere Tage und Gästezahl ändern den Betrag.</p>}
+                </>
               )}
               {quote.state === "loading" && <p className="mt-2 text-xs text-paper/50">wird aktualisiert …</p>}
             </div>

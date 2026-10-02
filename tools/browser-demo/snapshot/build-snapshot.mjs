@@ -156,7 +156,10 @@ const result = await page.evaluate(
           a.setAttribute("href", "#karte");
           a.dataset.room = m[1];
         } else if (h === "/bereiche") a.setAttribute("href", "#bereiche");
-        else if (h.startsWith("/galerie")) a.setAttribute("href", "#galerie");
+        else if (h.startsWith("/galerie")) {
+          a.setAttribute("href", "#galerie");
+          a.dataset.galleryAll = "";
+        }
         else if (h.startsWith("/kontakt")) a.setAttribute("href", "#kontakt");
         else if ((m = h.match(/^\/(impressum|datenschutz|agb|mietbedingungen|hausordnung)$/))) {
           a.setAttribute("href", "#");

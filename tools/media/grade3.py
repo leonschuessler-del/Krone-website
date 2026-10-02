@@ -9,11 +9,14 @@ from PIL import Image, ImageOps, ImageFilter
 import pillow_heif, imageio_ffmpeg
 pillow_heif.register_heif_opener()
 FF = imageio_ffmpeg.get_ffmpeg_exe()
-IC = os.environ.get("KRONE_ORIGINALS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "../icloud2/"))  # catalog.json + originals/ (not in git)
+IC = os.environ.get("KRONE_ORIGINALS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "../icloud2/"))
 cat = {i["id"]: i for i in json.load(open(IC + "catalog.json"))["items"]}
-LOOK = ("eq=contrast=1.08:saturation=1.08:gamma=0.98,"
+CINE = float(os.environ.get("CINE", "1.0"))
+LOOK = (f"eq=contrast={1.06 + 0.04 * CINE:.3f}:saturation={1.06 + 0.06 * CINE:.3f}:gamma=0.98,"
         "colorbalance=rs=0.03:bs=-0.03:rm=0.02:bm=-0.04:rh=0.01:bh=-0.04,"
-        "curves=all='0/0.015 0.2/0.17 0.5/0.5 0.8/0.84 1/0.985'")
+        f"curves=all='0/0.012 0.2/{0.175 - 0.01 * CINE:.3f} 0.5/0.5 0.8/{0.835 + 0.01 * CINE:.3f} 1/0.988',"
+        # clarity: wide-radius unsharp mask = local contrast, like a Lightroom "Clarity" push
+        f"unsharp=13:13:{0.35 * CINE:.2f}:13:13:0")
 
 def load(src):
     if src.startswith("F"):
@@ -51,9 +54,10 @@ def main(src, out, w, h, cx=0.5, cy=0.5):
     im = normalise(load(src))
     # crop to aspect around the focus point, at ≥ 1.25× output for clean downscale
     W, H = im.size; ar = w / h
-    cw, ch = (W, int(W / ar)) if W / H > ar else (int(H * ar), H)
-    if W / H > ar: cw = int(H * ar)
-    else: ch = int(W / ar)
+    # cover-crop to the target aspect: never larger than the source (a too-large box left black bars)
+    if W / H > ar: cw, ch = int(round(H * ar)), H
+    else: cw, ch = W, int(round(W / ar))
+    cw, ch = min(cw, W), min(ch, H)
     x0 = int(min(max(0, cx * W - cw / 2), W - cw)); y0 = int(min(max(0, cy * H - ch / 2), H - ch))
     im = im.crop((x0, y0, x0 + cw, y0 + ch))
     big = (max(w, int(w * 1.25)), max(h, int(h * 1.25)))

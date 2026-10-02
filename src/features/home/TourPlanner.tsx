@@ -16,7 +16,8 @@ import { SchedulePicker } from "@/features/booking/SchedulePicker";
 import type { SpaceView } from "@/features/spaces/types";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { formatDateMedium, pluralize } from "@/lib/format";
+import { formatDateMedium, formatMoney, pluralize } from "@/lib/format";
+import { provisionalQuote } from "@/features/booking/provisional-quote";
 import { useBookingStore, type ScheduleDraft } from "@/store/booking-store";
 
 function scheduleLabel(s: ScheduleDraft): string | null {
@@ -48,6 +49,7 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
   const hasRange = scheduleHasRange(schedule);
   const allAvailable = check.data?.bookingAllowed === true && check.state !== "loading";
   const label = scheduleLabel(schedule);
+  const estimate = provisionalQuote(bookable, selected);
 
   const goToBooking = (inquiry = false) => {
     setSubmissionMode(inquiry ? "inquiry" : "booking");
@@ -123,6 +125,22 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
       </ul>
 
       <div className="border-t border-white/10 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 lg:px-7 lg:pb-6 lg:pt-5">
+        {/* estimate for the current selection – the preview runtime updates the figures via data-pv-* */}
+        <dl data-pv-pricebox className={cn("mb-3 space-y-0.5 text-sm", selected.length === 0 && "hidden")}>
+          <div className="flex justify-between text-paper/60">
+            <dt>Netto</dt>
+            <dd data-pv-net className="tabular-nums">{formatMoney(estimate?.total ?? null, "auf Anfrage")}</dd>
+          </div>
+          <div className="flex justify-between text-paper/60">
+            <dt>19 % MwSt.</dt>
+            <dd data-pv-vat className="tabular-nums">{formatMoney(estimate?.vat.amount ?? null, "–")}</dd>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <dt className="font-semibold">Gesamt</dt>
+            <dd data-pv-gross className="font-serif text-2xl tabular-nums" data-testid="planner-total">{formatMoney(estimate?.grossTotal ?? null, "auf Anfrage")}</dd>
+          </div>
+          <p className="text-[0.7rem] text-paper/45">Pauschale Fr–So, ohne Zusatzleistungen · Kaution separat</p>
+        </dl>
         <p className="mb-2 text-xs text-paper/55">
           Übernachtung? <Link href="/bereiche/hotel#zimmer" className="text-gold-light underline-offset-2 hover:underline">Zimmer einzeln buchen</Link>
         </p>

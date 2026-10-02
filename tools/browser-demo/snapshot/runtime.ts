@@ -63,6 +63,8 @@ const bookable = spaces.filter((s) => s.bookable);
 const selected = new Set<string>();
 const rel = (src: string) => (src.startsWith("/") ? src.slice(1) : src);
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const PRICE_POLICY = { mode: "none" as const, downPaymentPercent: null, depositCollection: "separately" as const, depositStrategy: "sum" as const };
+const eur = (c: number | null) => (c === null ? "auf Anfrage" : (c / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" }));
 const LEVEL: Record<string, string> = { "ground-floor": "Erdgeschoss", "first-floor": "1. Obergeschoss", outdoor: "Außenbereich", site: "Gelände" };
 
 /* ------------------------------------------------------------------ tour */
@@ -136,6 +138,18 @@ function updateSelectionUi() {
     const text = b.querySelector("[data-pv-label]") ?? b;
     text.textContent = on ? "Ausgewählt ✓" : "Auswählen";
     b.setAttribute("aria-pressed", String(on));
+  });
+  // price box in the planner: same engine as the request dialog
+  const est = selected.size ? calculateQuote({
+    request: { spaceIds: [...selected], start: Date.UTC(2030, 0, 4, 17), end: Date.UTC(2030, 0, 4, 22), rentalMode: "hourly", dates: ["2030-01-04"], guestCount: null, extras: [] },
+    spaces: spaces.map((s) => ({ id: s.id, name: s.name, basePrice: s.basePrice, priceModel: s.priceModel, deposit: null, cleaningFee: s.cleaningFee, minimumDurationMinutes: null, bookingMode: "inquiry" as const })),
+    rules: [], bundles: [], extras: [], policy: PRICE_POLICY,
+  }) : null;
+  document.querySelectorAll<HTMLElement>("[data-pv-pricebox]").forEach((box) => {
+    box.classList.toggle("hidden", !est);
+    box.querySelector("[data-pv-net]")!.textContent = eur(est?.total ?? null);
+    box.querySelector("[data-pv-vat]")!.textContent = est?.vat.amount === null || est?.vat.amount === undefined ? "–" : eur(est.vat.amount);
+    box.querySelector("[data-pv-gross]")!.textContent = eur(est?.grossTotal ?? null);
   });
   const full = spaces.filter((s) => s.includedInFullVenue && s.bookable);
   const fullOn = full.length > 0 && full.every((s) => selected.has(s.id));
@@ -347,8 +361,6 @@ const flow = {
   error: "",
   ref: "",
 };
-const PRICE_POLICY = { mode: "none" as const, downPaymentPercent: null, depositCollection: "separately" as const, depositStrategy: "sum" as const };
-const eur = (c: number | null) => (c === null ? "auf Anfrage" : (c / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" }));
 
 /** Same price engine as the website: flat package per room (Fri–Sun), add-ons, 19 % VAT. */
 function quote(): Quote {
@@ -519,7 +531,8 @@ function renderFlow() {
       <h2 class="pv-h2">Vielen Dank, ${esc(flow.form.firstName)}!</h2>
       <p class="pv-ref">Ihre Anfragenummer <strong>${esc(flow.ref)}</strong></p>
       <p class="pv-text">Ihre Anfrage ist eingegangen und die Räume sind für Sie vorgemerkt. Die Krone meldet sich kurzfristig – bei Zusage telefonisch wegen Schlüsselübergabe und Kaution.</p>
-      <p class="pv-text"><strong>Voraussichtlich ${eur(q.grossTotal)}</strong> inkl. MwSt.${flow.extras.size ? ` (mit ${flow.extras.size} Zusatzleistung${flow.extras.size === 1 ? "" : "en"})` : ""}</p>
+      <h3 class="pv-h3">Voraussichtlicher Preis</h3>
+      ${priceHtml(q)}
       <dl class="pv-facts">
         <div><dt>Bereiche</dt><dd>${esc([...flow.spaces].map(nameOf).join(", "))}</dd></div>
         <div><dt>Termin</dt><dd>${esc(fmtRange())}<br>${flow.from}–${flow.to} Uhr</dd></div>
@@ -668,6 +681,23 @@ function closeTopLayer() {
   } else closeDialog();
 }
 
+/* ----------------------------------------------------------- full gallery */
+function openGalleryAll() {
+  const groups = spaces.filter((s) => s.images.length);
+  openDialog(
+    `<p class="pv-eyebrow">Galerie</p><h2 class="pv-h2">Die Krone in Bildern</h2>
+    ${groups
+      .map(
+        (s) => `<h3 class="pv-h3">${esc(s.name)}</h3><div class="pv-grid">${s.images
+          .map((src, i) => `<button type="button" class="pv-grid-item" data-room="${s.slug}" data-room-index="${i}" aria-label="${esc(s.name)} – Bild ${i + 1}"><img src="${esc(src)}" alt="" loading="lazy"></button>`)
+          .join("")}</div>`,
+      )
+      .join("")}
+    <div class="pv-actions"><button type="button" class="pv-btn" data-close>Schließen</button></div>`,
+    { wide: true, label: "Galerie" },
+  );
+}
+
 /* ------------------------------------------------------------ misc dialogs */
 function openAreaList() {
   openDialog(
@@ -702,7 +732,11 @@ function initEvents() {
     if ((hit = t("[data-remove]"))) return toggle(hit.dataset.remove!, false);
     if ((hit = t("[data-room]"))) {
       e.preventDefault();
-      return openRoom(hit.dataset.room!);
+      return openRoom(hit.dataset.room!, Number(hit.dataset.roomIndex ?? 0));
+    }
+    if ((hit = t("[data-gallery-all]"))) {
+      e.preventDefault();
+      return openGalleryAll();
     }
     if ((hit = t("[data-flow-next]"))) {
       flow.step = (flow.step + 1) as Step;
