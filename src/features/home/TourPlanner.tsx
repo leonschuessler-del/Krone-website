@@ -22,7 +22,8 @@ import { useBookingStore, type ScheduleDraft } from "@/store/booking-store";
 function scheduleLabel(s: ScheduleDraft): string | null {
   if (!s.date) return null;
   if (s.rentalMode === "daily") return s.endDate && s.endDate !== s.date ? `${formatDateMedium(s.date)} – ${formatDateMedium(s.endDate)}` : `${formatDateMedium(s.date)} · ganztägig`;
-  return s.startTime && s.endTime ? `${formatDateMedium(s.date)} · ${s.startTime}–${s.endTime}` : formatDateMedium(s.date);
+  const day = s.endDate && s.endDate !== s.date ? `${formatDateMedium(s.date)} – ${formatDateMedium(s.endDate)}` : formatDateMedium(s.date);
+  return s.startTime && s.endTime ? `${day} · ${s.startTime}–${s.endTime}` : day;
 }
 
 /**

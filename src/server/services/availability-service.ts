@@ -181,7 +181,7 @@ export async function checkAvailability(
   return {
     requested: {
       date: dates[0]!,
-      endDate: resolved.rentalMode === "daily" ? dates[dates.length - 1]! : null,
+      endDate: dates.length > 1 ? dates[dates.length - 1]! : null,
       rentalMode: resolved.rentalMode,
       start: resolved.kind === "range" ? iso(resolved.start) : null,
       end: resolved.kind === "range" ? iso(resolved.end) : null,

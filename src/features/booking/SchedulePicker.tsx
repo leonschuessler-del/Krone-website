@@ -76,13 +76,15 @@ export function SchedulePicker({ spaces, selectedIds, schedule, onChange, classN
       } else {
         onChange({ endDate: date });
       }
+    } else if (schedule.date && !schedule.endDate && date > schedule.date) {
+      // second click on a later day → the booking runs from the first to this day (e.g. Fri → Sun)
+      onChange({ endDate: date });
     } else {
       onChange({ date, endDate: null });
     }
   };
 
-  const inRange = (date: string) =>
-    schedule.rentalMode === "daily" && schedule.date && schedule.endDate && date >= schedule.date && date <= schedule.endDate;
+  const inRange = (date: string) => schedule.date && schedule.endDate && date >= schedule.date && date <= schedule.endDate;
 
   return (
     <div className={cn("space-y-5", className)} data-testid="schedule-picker">
@@ -180,7 +182,7 @@ export function SchedulePicker({ spaces, selectedIds, schedule, onChange, classN
                 const info = dayMap.get(date);
                 const past = date < today;
                 const status: SpaceAvailabilityStatus = past ? "closed" : (info?.status ?? "unknown");
-                const selected = schedule.date === date || (schedule.rentalMode === "daily" && schedule.endDate === date);
+                const selected = schedule.date === date || schedule.endDate === date;
                 const disabled = past || status === "closed" || (selectedIds.length === 0);
                 const label = `${formatDateLong(date)}: ${STATUS_TEXT_DE[status]}`;
                 return (
@@ -286,7 +288,7 @@ function DayDetail({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-serif text-lg font-semibold">
           {formatDateLong(date)}
-          {schedule.rentalMode === "daily" && schedule.endDate && schedule.endDate !== date && <> – {formatDateLong(schedule.endDate)}</>}
+          {schedule.endDate && schedule.endDate !== date && <> – {formatDateLong(schedule.endDate)}</>}
         </p>
         {overview.state === "loading" && <span className="text-xs text-muted">Verfügbarkeit wird geladen …</span>}
       </div>

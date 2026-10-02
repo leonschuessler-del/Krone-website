@@ -174,3 +174,10 @@ body { font-size: 1rem; }
 .pv-hotel-dates input { height: 2.8rem; border-radius: 0.75rem; border: 1px solid var(--color-stone); padding: 0 0.75rem; font-family: var(--font-serif); font-size: 1.1rem; color: var(--color-ink); }
 .pv-hotel-total { display: flex; justify-content: space-between; align-items: baseline; margin: 0.25rem 0 0; }
 .pv-hotel-total strong { font-family: var(--font-serif); font-size: 1.5rem; }
+
+.pv-dialog-top { z-index: 110; }
+.pv-dialog-top .pv-backdrop { background: rgb(21 18 15 / 0.55); }
+.pv-back { display: inline-flex; align-items: center; height: 2.4rem; padding: 0 0.9rem; border-radius: 999px; border: 1px solid var(--color-stone); background: #fff; font-weight: 600; font-size: 0.85rem; }
+.pv-total-line { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-top: 1.25rem; padding: 0.75rem 1rem; border-radius: 0.9rem; background: var(--color-cream); font-size: 0.9rem; color: var(--color-muted); }
+.pv-total-line strong { font-family: var(--font-serif); font-size: 1.4rem; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.pv-day.is-range { background: var(--color-gold-pale); border-color: var(--color-gold); }

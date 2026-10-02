@@ -255,7 +255,7 @@ export function calculateQuote(input: {
   }
 
   // --- weekend package: further days ---------------------------------------------
-  if (request.rentalMode === "daily" && dates.length > PACKAGE_DAYS && selected.some((s) => s.priceModel === "flat")) {
+  if (dates.length > PACKAGE_DAYS && selected.some((s) => s.priceModel === "flat")) {
     const extraDays = dates.length - PACKAGE_DAYS;
     const amount = extraDays * EXTRA_DAY_FEE;
     rentBySpace.set("extra-days" as SpaceId, amount);

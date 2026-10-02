@@ -9,8 +9,8 @@ const spaces = spaceSeeds.map((s) => ({ ...s }));
 describe("full venue selection (Test 61)", () => {
   it("selects exactly the spaces flagged includedInFullVenue – not every entity", () => {
     const ids = getFullVenueSpaceIds(spaces);
-    // kitchen is an add-on (not a room), hotel rooms are booked separately
-    expect(ids).toEqual(["restaurant", "side-room", "stage", "old-tavern", "winter-garden", "beer-garden"]);
+    // hotel rooms are booked separately
+    expect(ids).toEqual(["restaurant", "kitchen", "side-room", "stage", "old-tavern", "winter-garden", "beer-garden"]);
     expect(ids).not.toContain("hotel");
     expect(isFullVenueSelection(ids, spaces)).toBe(true);
     expect(isFullVenueSelection(ids.slice(1), spaces)).toBe(false);

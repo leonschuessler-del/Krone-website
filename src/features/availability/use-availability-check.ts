@@ -29,7 +29,7 @@ export function useAvailabilityCheck(
         spaceIds,
         rentalMode: schedule.rentalMode,
         date: schedule.date,
-        endDate: schedule.rentalMode === "daily" ? (schedule.endDate ?? schedule.date) : null,
+        endDate: schedule.rentalMode === "daily" ? (schedule.endDate ?? schedule.date) : (schedule.endDate ?? null),
         startTime: schedule.rentalMode === "hourly" ? schedule.startTime : null,
         endTime: schedule.rentalMode === "hourly" ? schedule.endTime : null,
         alternatives,

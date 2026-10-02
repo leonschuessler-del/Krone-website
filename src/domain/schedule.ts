@@ -21,7 +21,8 @@ export const MAX_RENTAL_DAYS = 14;
 
 /**
  * Resolves the customer's schedule into a UTC range.
- *  - hourly with start + end time → exact range (end <= start ⇒ next day)
+ *  - hourly with start + end time → exact range (end <= start ⇒ next day);
+ *    with an endDate the range runs from date+start to endDate+end (a weekend)
  *  - hourly without times → "day overview" (no range yet)
  *  - daily → from the first opening on `date` to the last closing on `endDate`
  */
@@ -30,6 +31,17 @@ export function resolveSchedule(input: ScheduleInput, venueHours: WeeklyHours): 
   if (input.rentalMode === "hourly") {
     if (!input.startTime && !input.endTime) return { kind: "day", dates: [input.date], rentalMode: "hourly" };
     if (!isLocalTime(input.startTime) || !isLocalTime(input.endTime)) throw new ScheduleError("Bitte Start- und Endzeit wählen");
+    const last = input.endDate && isLocalDate(input.endDate) && input.endDate > input.date ? input.endDate : null;
+    if (last) {
+      const span = diffDays(input.date, last);
+      if (span + 1 > MAX_RENTAL_DAYS) throw new ScheduleError(`Buchungen sind online bis ${MAX_RENTAL_DAYS} Tage möglich – bitte anfragen`);
+      const start = zonedToUtc(input.date, timeToMinutes(input.startTime));
+      const end = zonedToUtc(last, timeToMinutes(input.endTime));
+      if (end <= start) throw new ScheduleError("Das Ende liegt vor dem Beginn");
+      const dates: LocalDate[] = [];
+      for (let i = 0; i <= span; i++) dates.push(addDays(input.date, i));
+      return { kind: "range", start, end, dates, rentalMode: "hourly" };
+    }
     const { start, end } = localRangeToInterval(input.date, input.startTime, input.endTime);
     if (end - start > 24 * 3_600_000) throw new ScheduleError("Stundenbuchungen dauern höchstens 24 Stunden – bitte Tagesbuchung wählen");
     return { kind: "range", start, end, dates: [input.date], rentalMode: "hourly" };

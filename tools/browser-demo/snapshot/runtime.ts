@@ -255,6 +255,7 @@ interface StoredRequest {
   ref: string;
   spaceIds: string[];
   date: string;
+  endDate?: string | null;
   from: string;
   to: string;
   name: string;
@@ -305,17 +306,28 @@ function context(): AvailabilityContext {
     isDemo: true,
   }));
   requests.forEach((r, i) => {
-    const iv = interval(r.date, r.from, r.to);
+    const iv = interval(r.date, r.from, r.to, r.endDate ?? null);
     for (const id of r.spaceIds) blocks.push({ id: `req-${i}-${id}`, spaceId: id, start: iv.start, end: iv.end, type: "reserved", reason: `Anfrage ${r.ref}`, bookingId: r.ref, expiresAt: null, isDemo: true });
   });
   return { profiles, blocks, now: Date.now() };
 }
 
 /** end time ≤ start time means "until the next day" (e.g. 18:00 – 01:00) */
-function interval(date: string, from: string, to: string) {
-  const endDate = to <= from ? addDays(date, 1) : date;
-  return { start: zonedDateTimeToUtc(date, from), end: zonedDateTimeToUtc(endDate, to) };
+function interval(date: string, from: string, to: string, endDate: string | null = null) {
+  const last = endDate && endDate > date ? endDate : to <= from ? addDays(date, 1) : date;
+  return { start: zonedDateTimeToUtc(date, from), end: zonedDateTimeToUtc(last, to) };
 }
+function flowDates(): string[] {
+  if (!flow.date) return [];
+  const out = [flow.date];
+  for (let d = addDays(flow.date, 1); flow.endDate && d <= flow.endDate && out.length < 60; d = addDays(d, 1)) out.push(d);
+  return out;
+}
+const fmtRange = (long = true) => {
+  if (!flow.date) return "";
+  const f = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("de-DE", long ? { weekday: "short", day: "numeric", month: "long" } : { day: "numeric", month: "short" });
+  return flow.endDate && flow.endDate !== flow.date ? `${f(flow.date)} – ${f(flow.endDate)}` : long ? fmtDate(flow.date) : f(flow.date);
+};
 
 /* ------------------------------------------------------------ request flow */
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -323,12 +335,13 @@ const flow = {
   step: 1 as Step,
   spaces: new Set<string>(),
   date: null as string | null,
+  endDate: null as string | null,
   from: "18:00",
   to: "23:00",
   month: today.slice(0, 7),
   extras: new Set<string>(),
   guests: 60,
-  form: { event: "", guests: "", name: "", email: "", phone: "", message: "" },
+  form: { event: "", guests: "", firstName: "", lastName: "", email: "", phone: "", message: "" },
   mode: "inquiry" as "inquiry" | "booking",
   terms: false,
   error: "",
@@ -340,15 +353,19 @@ const eur = (c: number | null) => (c === null ? "auf Anfrage" : (c / 100).toLoca
 /** Same price engine as the website: flat package per room (Fri–Sun), add-ons, 19 % VAT. */
 function quote(): Quote {
   const ids = [...flow.spaces];
-  const start = flow.date ? interval(flow.date, flow.from, flow.to) : { start: Date.now(), end: Date.now() + 5 * 3_600_000 };
+  const start = flow.date ? interval(flow.date, flow.from, flow.to, flow.endDate) : { start: Date.now(), end: Date.now() + 5 * 3_600_000 };
   return calculateQuote({
-    request: { spaceIds: ids, start: start.start, end: start.end, rentalMode: "hourly", dates: flow.date ? [flow.date] : [], guestCount: flow.guests || null, extras: [...flow.extras].map((extraId) => ({ extraId, quantity: 1 })) },
+    request: { spaceIds: ids, start: start.start, end: start.end, rentalMode: "hourly", dates: flowDates(), guestCount: flow.guests || null, extras: [...flow.extras].map((extraId) => ({ extraId, quantity: 1 })) },
     spaces: spaces.map((s) => ({ id: s.id, name: s.name, basePrice: s.basePrice, priceModel: s.priceModel, deposit: null, cleaningFee: s.cleaningFee, minimumDurationMinutes: null, bookingMode: "inquiry" as const })),
     rules: [],
     bundles: [],
     extras: extraSeeds.map((e) => ({ id: e.id, name: e.name, priceModel: e.priceModel, unitPrice: e.unitPrice, active: true, isDemo: false })),
     policy: PRICE_POLICY,
   });
+}
+
+function totalLine(q: Quote) {
+  return `<p class="pv-total-line"><span>Gesamt inkl. ${q.vat.rate} % MwSt.${flow.spaces.size ? ` · ${flow.spaces.size} ${flow.spaces.size === 1 ? "Raum" : "Räume"}` : ""}${flow.extras.size ? ` · ${flow.extras.size} Zusatzleistung${flow.extras.size === 1 ? "" : "en"}` : ""}</span><strong>${eur(q.grossTotal)}</strong></p>`;
 }
 
 function priceHtml(q: Quote) {
@@ -396,8 +413,10 @@ function calendarHtml(ctx: AvailabilityContext) {
     const st = past ? "past" : selectionDayStatus(ids, date, ctx).status;
     const cls = past ? "past" : st === "available" ? "free" : st === "partially_available" ? "partial" : "busy";
     const title = past ? "vergangen" : cls === "free" ? "frei" : cls === "partial" ? "teilweise frei" : "belegt";
+    const sel = flow.date === date || flow.endDate === date;
+    const inRange = !!flow.date && !!flow.endDate && date > flow.date && date < flow.endDate;
     cells.push(
-      `<button type="button" class="pv-day is-${cls}${flow.date === date ? " is-sel" : ""}" data-date="${date}" ${past || cls === "busy" ? "disabled" : ""} aria-label="${fmtDate(date)}: ${title}" aria-pressed="${flow.date === date}">${d}</button>`,
+      `<button type="button" class="pv-day is-${cls}${sel ? " is-sel" : ""}${inRange ? " is-range" : ""}" data-date="${date}" ${past || cls === "busy" ? "disabled" : ""} aria-label="${fmtDate(date)}: ${title}" aria-pressed="${sel}">${d}</button>`,
     );
   }
   const monthName = new Date(y, m - 1, 15).toLocaleDateString("de-DE", { month: "long", year: "numeric" });
@@ -406,6 +425,7 @@ function calendarHtml(ctx: AvailabilityContext) {
     <div class="pv-cal-head"><button type="button" data-month="-1" ${canPrev ? "" : "disabled"} aria-label="Vorheriger Monat">‹</button><strong>${monthName}</strong><button type="button" data-month="1" aria-label="Nächster Monat">›</button></div>
     <div class="pv-cal-grid">${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => `<span class="pv-wd">${w}</span>`).join("")}${cells.join("")}</div>
     <p class="pv-legend"><span class="is-free"></span>frei <span class="is-partial"></span>teilweise frei <span class="is-busy"></span>belegt</p>
+    <p class="pv-small">Mehrere Tage? Erst den ersten, dann den letzten Tag antippen (z. B. Freitag → Sonntag).</p>
   </div>`;
 }
 
@@ -423,6 +443,7 @@ function renderFlow() {
           ${s.images[0] ? `<img src="${esc(s.images[0])}" alt="" loading="lazy">` : ""}<span><strong>${esc(nameOf(s.id))}</strong><small>${esc(displayFacts(s).seats)} · ${s.basePrice === null ? "auf Anfrage" : `${s.id === "restaurant" ? "" : "+ "}${eur(s.basePrice)} netto`}</small></span></label>`,
         )
         .join("")}</div>
+      ${totalLine(quote())}
       <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${flow.spaces.size ? "" : "disabled"}>Weiter zum Termin</button></div>`;
   } else if (flow.step === 2) {
     const ids = [...flow.spaces];
@@ -430,13 +451,13 @@ function renderFlow() {
     let ok = false;
     if (flow.date) {
       const day = selectionDayStatus(ids, flow.date, ctx);
-      const res = checkSelection(ids, interval(flow.date, flow.from, flow.to), ctx, { enforceBookableHours: true });
+      const res = checkSelection(ids, interval(flow.date, flow.from, flow.to, flow.endDate), ctx, { enforceBookableHours: !flow.endDate });
       ok = res.bookingAllowed;
       const windows = day.common
         .map((w) => `${new Date(w.start).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" })}–${new Date(w.end).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" })}`)
         .join(", ");
       check = `<div class="pv-check ${ok ? "is-ok" : "is-no"}" role="status">
-        ${ok ? `<strong>✓ Frei.</strong> ${esc(ids.map(nameOf).join(", "))} am ${fmtDate(flow.date)}, ${flow.from}–${flow.to} Uhr.` : `<strong>Nicht möglich.</strong> ${esc(res.results.filter((r) => !r.available).map((r) => `${nameOf(r.spaceId)}: ${r.reason ?? "belegt"}`).join(" · "))}`}
+        ${ok ? `<strong>✓ Frei.</strong> ${esc(ids.map(nameOf).join(", "))}, ${esc(fmtRange())}, ${flow.from}–${flow.to} Uhr.` : `<strong>Nicht möglich.</strong> ${esc(res.results.filter((r) => !r.available).map((r) => `${nameOf(r.spaceId)}: ${r.reason ?? "belegt"}`).join(" · "))}`}
         ${windows ? `<br><small>Gemeinsam frei an diesem Tag: ${windows} Uhr</small>` : ""}
       </div>`;
     }
@@ -445,7 +466,8 @@ function renderFlow() {
       <div class="pv-flow-grid">
         ${calendarHtml(ctx)}
         <div class="pv-time">
-          <p class="pv-label">${flow.date ? esc(fmtDate(flow.date)) : "Bitte einen Tag im Kalender wählen"}</p>
+          <p class="pv-label">${flow.date ? esc(fmtRange()) : "Bitte einen Tag im Kalender wählen"}</p>
+          ${flow.endDate ? `<p class="pv-small">Von ${flow.from} Uhr am ersten bis ${flow.to} Uhr am letzten Tag.</p>` : ""}
           <div class="pv-row">
             <label>Von<select data-time="from">${TIMES.map((t) => `<option ${t === flow.from ? "selected" : ""}>${t}</option>`).join("")}</select></label>
             <label>Bis<select data-time="to">${TIMES.map((t) => `<option ${t === flow.to ? "selected" : ""}>${t}</option>`).join("")}</select></label>
@@ -454,6 +476,7 @@ function renderFlow() {
           ${check}
         </div>
       </div>
+      ${totalLine(quote())}
       <div class="pv-actions"><button type="button" class="pv-btn" data-flow-step="1">Zurück</button><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${ok ? "" : "disabled"}>Weiter zu den Zusatzleistungen</button></div>`;
   } else if (flow.step === 3) {
     const q = quote();
@@ -474,13 +497,15 @@ function renderFlow() {
     const f = flow.form;
     if (!f.guests) f.guests = String(flow.guests);
     body = `<h2 class="pv-h2">Ihre Angaben</h2>
-      <p class="pv-text">${esc([...flow.spaces].map(nameOf).join(", "))} · ${flow.date ? esc(fmtDate(flow.date)) : ""}, ${flow.from}–${flow.to} Uhr</p>
+      <p class="pv-text">${esc([...flow.spaces].map(nameOf).join(", "))} · ${esc(fmtRange())}, ${flow.from}–${flow.to} Uhr</p>
+      ${totalLine(quote())}
       <form class="pv-form" data-flow-form novalidate>
         <label>Anlass<select name="event"><option value="">Bitte wählen</option>${eventTypes.map((e) => `<option value="${e.id}" ${f.event === e.id ? "selected" : ""}>${e.label}</option>`).join("")}</select></label>
         <label>Gäste (ca.)<input name="guests" type="number" min="1" inputmode="numeric" value="${esc(f.guests)}"></label>
-        <label class="pv-span">Name *<input name="name" required autocomplete="name" value="${esc(f.name)}"></label>
+        <label>Vorname *<input name="firstName" required autocomplete="given-name" value="${esc(f.firstName)}"></label>
+        <label>Nachname *<input name="lastName" required autocomplete="family-name" value="${esc(f.lastName)}"></label>
         <label>E-Mail *<input name="email" type="email" required autocomplete="email" value="${esc(f.email)}"></label>
-        <label>Telefon<input name="phone" type="tel" autocomplete="tel" value="${esc(f.phone)}"></label>
+        <label>Telefon *<input name="phone" type="tel" required autocomplete="tel" value="${esc(f.phone)}"></label>
         <label class="pv-span">Nachricht<textarea name="message" rows="3">${esc(f.message)}</textarea></label>
         ${flow.error ? `<p class="pv-error pv-span" role="alert">${esc(flow.error)}</p>` : ""}
         <label class="pv-span pv-check-row"><input type="checkbox" name="terms" ${flow.terms ? "checked" : ""}> Ich habe die <button type="button" class="pv-link" data-legal="datenschutz">Datenschutzerklärung</button> gelesen.</label>
@@ -491,13 +516,13 @@ function renderFlow() {
     const q = quote();
     body = `<div class="pv-done">
       <p class="pv-eyebrow">Anfrage eingegangen</p>
-      <h2 class="pv-h2">Vielen Dank, ${esc(flow.form.name.split(" ")[0] ?? "")}!</h2>
+      <h2 class="pv-h2">Vielen Dank, ${esc(flow.form.firstName)}!</h2>
       <p class="pv-ref">Ihre Anfragenummer <strong>${esc(flow.ref)}</strong></p>
       <p class="pv-text">Ihre Anfrage ist eingegangen und die Räume sind für Sie vorgemerkt. Die Krone meldet sich kurzfristig – bei Zusage telefonisch wegen Schlüsselübergabe und Kaution.</p>
       <p class="pv-text"><strong>Voraussichtlich ${eur(q.grossTotal)}</strong> inkl. MwSt.${flow.extras.size ? ` (mit ${flow.extras.size} Zusatzleistung${flow.extras.size === 1 ? "" : "en"})` : ""}</p>
       <dl class="pv-facts">
         <div><dt>Bereiche</dt><dd>${esc([...flow.spaces].map(nameOf).join(", "))}</dd></div>
-        <div><dt>Termin</dt><dd>${flow.date ? esc(fmtDate(flow.date)) : ""}<br>${flow.from}–${flow.to} Uhr</dd></div>
+        <div><dt>Termin</dt><dd>${esc(fmtRange())}<br>${flow.from}–${flow.to} Uhr</dd></div>
         <div><dt>Anlass</dt><dd>${esc(eventTypes.find((e) => e.id === flow.form.event)?.label ?? "–")}</dd></div>
         <div><dt>Gäste</dt><dd>${esc(flow.form.guests || "–")}</dd></div>
       </dl>
@@ -509,7 +534,7 @@ function renderFlow() {
   openDialog(`<p class="pv-eyebrow">Verfügbarkeit &amp; Anfrage</p>${stepper()}${body}`, { wide: true, label: "Verfügbarkeit und Anfrage" });
   if (flow.date) {
     const short = new Date(`${flow.date}T12:00:00`).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" });
-    document.querySelectorAll<HTMLElement>("[data-flow-at=date] .truncate").forEach((el) => (el.textContent = `${short} · ${flow.from}–${flow.to}`));
+    document.querySelectorAll<HTMLElement>("[data-flow-at=date] .truncate").forEach((el) => (el.textContent = `${flow.endDate ? fmtRange(false) : short} · ${flow.from}–${flow.to}`));
   }
 }
 
@@ -518,21 +543,22 @@ function submitFlow(form: HTMLFormElement, submitter?: HTMLElement | null) {
   for (const k of Object.keys(flow.form) as Array<keyof typeof flow.form>) flow.form[k] = String(fd.get(k) ?? "").trim();
   flow.mode = fd.get("mode") === "booking" ? "booking" : "inquiry";
   flow.terms = !!fd.get("terms");
-  if (!flow.form.name) flow.error = "Bitte geben Sie Ihren Namen an.";
+  if (!flow.form.firstName || !flow.form.lastName) flow.error = "Bitte geben Sie Vor- und Nachnamen an.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(flow.form.email)) flow.error = "Bitte geben Sie eine gültige E-Mail-Adresse an.";
+  else if (flow.form.phone.replace(/\D/g, "").length < 6) flow.error = "Bitte geben Sie eine Telefonnummer an, unter der wir Sie erreichen.";
   else if (!flow.terms) flow.error = "Bitte bestätigen Sie, dass Sie die Datenschutzerklärung gelesen haben.";
   else flow.error = "";
   if (flow.error || !flow.date) return renderFlow();
   // final check right before saving (another request could have taken the slot)
   const ids = [...flow.spaces];
-  const res = checkSelection(ids, interval(flow.date, flow.from, flow.to), context(), { enforceBookableHours: true });
+  const res = checkSelection(ids, interval(flow.date, flow.from, flow.to, flow.endDate), context(), { enforceBookableHours: !flow.endDate });
   if (!res.bookingAllowed) {
     flow.step = 2;
     return renderFlow();
   }
   flow.mode = "inquiry";
   flow.ref = generateBookingNumber("inquiry", Number(flow.date.slice(0, 4)));
-  requests = [...requests, { ref: flow.ref, spaceIds: ids, date: flow.date, from: flow.from, to: flow.to, name: flow.form.name, guests: flow.form.guests, event: flow.form.event }];
+  requests = [...requests, { ref: flow.ref, spaceIds: ids, date: flow.date, endDate: flow.endDate, from: flow.from, to: flow.to, name: `${flow.form.firstName} ${flow.form.lastName}`, guests: flow.form.guests, event: flow.form.event }];
   saveRequests(requests);
   flow.step = 5;
   renderFlow();
@@ -612,6 +638,36 @@ function submitHotel(form: HTMLFormElement) {
   renderHotel();
 }
 
+/* --------------------------------------------------------- legal on top */
+/** Legal text as a layer above the current dialog: "Zurück" returns to the request with every input kept. */
+function openLegal(doc: { title: string; html: string }) {
+  const under = document.querySelector<HTMLElement>(".pv-dialog:not(.pv-dialog-top)");
+  if (under) {
+    // keep what the visitor typed so far
+    under.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("[data-flow-form] [name]").forEach((el) => {
+      if (el.name in flow.form) (flow.form as Record<string, string>)[el.name] = el.value;
+      if (el.name === "terms") flow.terms = (el as HTMLInputElement).checked;
+    });
+    const html = `<div class="pv-legal">${doc.html}</div>`;
+    const layer = document.createElement("div");
+    layer.className = "pv-dialog pv-dialog-top";
+    layer.innerHTML = `<div class="pv-backdrop" data-legal-back></div><div class="pv-card pv-card-wide" role="dialog" aria-modal="true" aria-label="${esc(doc.title)}" tabindex="-1">
+      <button type="button" class="pv-back" data-legal-back>‹ Zurück zur Anfrage</button>${html}
+      <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-legal-back>Zurück zur Anfrage</button></div></div>`;
+    document.body.appendChild(layer);
+    layer.querySelector<HTMLElement>(".pv-card")!.focus();
+    return;
+  }
+  openDialog(`<div class="pv-legal">${doc.html}</div>`, { wide: true, label: doc.title });
+}
+function closeTopLayer() {
+  const top = document.querySelector(".pv-dialog-top");
+  if (top) {
+    top.remove();
+    document.querySelector<HTMLElement>(".pv-dialog .pv-card")?.focus();
+  } else closeDialog();
+}
+
 /* ------------------------------------------------------------ misc dialogs */
 function openAreaList() {
   openDialog(
@@ -637,7 +693,7 @@ function initEvents() {
     const el = e.target as Element;
     const t = (sel: string) => el.closest<HTMLElement>(sel);
     let hit: HTMLElement | null;
-    if ((hit = t("[data-close]"))) return closeDialog();
+    if ((hit = t("[data-close]"))) return hit.closest(".pv-dialog-top") ? closeTopLayer() : closeDialog();
     if ((hit = t("[data-img]"))) return showImage(Number(hit.dataset.img));
     if ((hit = t("[data-room-select]"))) {
       toggle(hit.dataset.roomSelect!);
@@ -658,10 +714,17 @@ function initEvents() {
     }
     if ((hit = t("[data-flow-new]"))) {
       flow.date = null;
+      flow.endDate = null;
       return openFlow({ step: 2 });
     }
     if ((hit = t("[data-date]"))) {
-      flow.date = hit.dataset.date!;
+      const d = hit.dataset.date!;
+      // first click = start, second click on a later day = end, any other click starts over
+      if (flow.date && !flow.endDate && d > flow.date) flow.endDate = d;
+      else {
+        flow.date = d;
+        flow.endDate = null;
+      }
       return renderFlow();
     }
     if ((hit = t("[data-month]"))) {
@@ -676,10 +739,11 @@ function initEvents() {
     }
     if ((hit = t("[data-area-list]"))) return openAreaList();
     if ((hit = t("[data-map-zoom]"))) return openDialog(`<img src="media/floorplan/aerial-2900.webp" alt="Drohnenaufnahme der Krone von oben" class="pv-img-full">`, { wide: true, label: "Karte groß" });
+    if ((hit = t("[data-legal-back]"))) return closeTopLayer();
     if ((hit = t("[data-legal]"))) {
       e.preventDefault();
       const doc = data.legal?.[hit.dataset.legal!];
-      if (doc) return openDialog(`<div class="pv-legal">${doc.html}</div>`, { wide: true, label: doc.title });
+      if (doc) return openLegal(doc);
     }
     if ((hit = t("[data-page]"))) {
       e.preventDefault();
@@ -767,7 +831,8 @@ function initEvents() {
   }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeDialog();
+      if (document.querySelector(".pv-dialog-top")) closeTopLayer();
+      else closeDialog();
       closeMenu();
     }
     if (room && document.querySelector(".pv-dialog .pv-stage") && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {

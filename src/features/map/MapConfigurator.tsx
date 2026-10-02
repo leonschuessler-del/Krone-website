@@ -27,7 +27,8 @@ function scheduleLabel(s: ScheduleDraft): string | null {
   if (s.rentalMode === "daily") {
     return s.endDate && s.endDate !== s.date ? `${formatDateMedium(s.date)} – ${formatDateMedium(s.endDate)}` : `${formatDateMedium(s.date)} · ganztägig`;
   }
-  return s.startTime && s.endTime ? `${formatDateMedium(s.date)} · ${s.startTime}–${s.endTime} Uhr` : formatDateMedium(s.date);
+  const day = s.endDate && s.endDate !== s.date ? `${formatDateMedium(s.date)} – ${formatDateMedium(s.endDate)}` : formatDateMedium(s.date);
+  return s.startTime && s.endTime ? `${day} · ${s.startTime}–${s.endTime} Uhr` : day;
 }
 
 function deriveMapStatus(data: AvailabilityCheckResponse | null): { statuses: Record<string, MapSpaceStatus>; detail: Record<string, string> } {

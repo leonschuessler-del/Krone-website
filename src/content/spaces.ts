@@ -105,10 +105,11 @@ export const spaceSeeds: SpaceSeed[] = [
     color: NEUTRAL,
     mediaFolder: "kitchen",
     sortOrder: 20,
-    // not rented as a room: kitchen use is an add-on (only with a caterer), see content/extras.ts
-    bookable: false,
-    includedInFullVenue: false,
-    shortDescription: "Die Profiküche direkt hinter der Rezeption.",
+    // bookable with the Restaurant – only together with a caterer (price sheet: 300)
+    ...ADD_ON,
+    basePrice: 30000,
+    priceModel: "flat",
+    shortDescription: "Die Profiküche direkt hinter der Rezeption – buchbar zusammen mit einem Caterer.",
     longDescription:
       "Die Küche erreicht man durch die Tür hinter der Rezeption. Sie ist voll ausgestattet mit Herdblock, Kombidämpfern und Spülküche. Ob die Küche bei Ihrer Feier mitgenutzt werden kann, etwa durch einen Caterer, stimmen wir individuell mit Ihnen ab.",
   },

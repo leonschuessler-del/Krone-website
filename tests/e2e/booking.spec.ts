@@ -18,8 +18,8 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   test("Bereiche per Klick und Tastatur auswählen", async ({ page }) => {
     await page.goto("/#karte");
     const map = page.getByTestId("site-map").first();
-    // 6 bookable rooms on the photo (the kitchen is an add-on, hotel rooms are booked separately)
-    await expect(map.locator("[data-space]")).toHaveCount(6);
+    // 7 bookable rooms on the photo (hotel rooms are booked separately)
+    await expect(map.locator("[data-space]")).toHaveCount(7);
 
     await map.locator('[data-space="restaurant"]').click();
     await map.locator('[data-space="stage"]').click();
@@ -63,13 +63,13 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   test("Test 61: Gesamte Location zeigt konkret den blockierten Bereich", async ({ page }) => {
     await page.goto("/#karte");
     await page.getByTestId("full-venue").click();
-    await expect(page.getByTestId("selection-count").first()).toHaveText("6 Bereiche ausgewählt");
+    await expect(page.getByTestId("selection-count").first()).toHaveText("7 Bereiche ausgewählt");
     await page.getByTestId("open-schedule").click();
     await pickDate(page, scenario.winterGardenBookedDate);
     await page.getByTestId("start-time").selectOption("16:00");
     await page.getByTestId("end-time").selectOption("22:00");
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByTestId("availability-summary")).toHaveText("5 von 6 Bereichen verfügbar.");
+    await expect(dialog.getByTestId("availability-summary")).toHaveText("6 von 7 Bereichen verfügbar.");
     await expect(dialog.getByTestId("blocked-space")).toHaveCount(1);
     await expect(dialog.getByTestId("blocked-space")).toContainText("Wintergarten");
   });
