@@ -48,7 +48,7 @@ export function SpaceAvailability({ space, spaces }: { space: SpaceView; spaces:
             const st = useBookingStore.getState();
             st.addSpace(space.id);
             if (schedule.date) st.setSchedule(schedule);
-            router.push("/#karte");
+            router.push("/eventlocation#karte");
           }}
         >
           Weitere Bereiche hinzufügen

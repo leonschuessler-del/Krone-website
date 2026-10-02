@@ -41,13 +41,28 @@ describe("automatic offers", () => {
 
 describe("hotel floor and long stays", () => {
   const stay = { arrival: "2026-11-02", departure: "2026-11-04" };
-  it("multiplies nights × rooms and discounts from 4 nights", () => {
+  it("multiplies nights × rooms – rooms are never discounted", () => {
     expect(stayPricing("double", stay, 2)?.total).toBe(40000);
     const long = stayPricing("double", { arrival: "2026-11-02", departure: "2026-11-06" }, 1)!;
     expect(long.nights).toBe(4);
     expect(long.list).toBe(40000);
-    expect(long.total).toBe(36000);
+    expect(long.total).toBe(40000);
+    expect(long.discountPercent).toBe(0);
     expect(stayPricing("apartment", stay, 1)).toBeNull();
+  });
+  it("the whole floor with an event gets a small per-night discount from the 2nd night", async () => {
+    const { floorStayPricing, floorNudge } = await import("@/domain/hotel");
+    expect(floorStayPricing(1).total).toBe(84900);
+    expect(floorStayPricing(2).total).toBe(Math.round(84900 * 2 * 0.95));
+    expect(floorStayPricing(3).percent).toBe(10);
+    expect(floorStayPricing(1).nextNight?.percent).toBe(5);
+    expect(floorNudge(1)).toMatch(/einer Nacht mehr/);
+    expect(floorNudge(3)).toBeNull();
+  });
+  it("extras are charged per night", async () => {
+    const { stayExtraLines, stayExtrasTotal } = await import("@/domain/hotel");
+    const lines = stayExtraLines({ "extra-bed": 1, dog: 1, "ev-charging": 1 }, 3);
+    expect(stayExtrasTotal(lines)).toBe(3 * 2500 + 3 * 1500);
   });
   it("floor is cheaper than all rooms individually and blocks everything", () => {
     expect(stayPricing("floor", stay, 1)!.perNight).toBeLessThan(8 * 10000 + 2 * 6800);
@@ -59,8 +74,8 @@ describe("hotel floor and long stays", () => {
     expect(freeRooms("floor", { arrival: "2026-11-04", departure: "2026-11-06" }, one)).toBe(1);
     expect(freeRooms("double", stay, one)).toBe(8);
   });
-  it("nudges towards the floor and the 4th night", () => {
-    expect(hotelNudges("double", { arrival: "2026-11-02", departure: "2026-11-05" }, 1, 2).join(" ")).toMatch(/4 Nächten/);
+  it("nudges groups towards the floor, never towards a room discount", () => {
+    expect(hotelNudges("double", { arrival: "2026-11-02", departure: "2026-11-05" }, 1, 2)).toEqual([]);
     expect(hotelNudges("double", stay, 4, 8).join(" ")).toMatch(/ganze Etage/);
     expect(hotelNudges("floor", stay, 1, 20)).toEqual([]);
   });
@@ -85,5 +100,21 @@ describe("multi-room requests", () => {
     const res = [{ roomTypeId: "single", arrivalDate: "2026-11-02", departureDate: "2026-11-04", rooms: 2, status: "confirmed" as const }];
     expect([...fullyBookedNights("single", "2026-11-01", "2026-11-06", res)]).toEqual(["2026-11-02", "2026-11-03"]);
     expect(fullyBookedNights("double", "2026-11-01", "2026-11-06", res).size).toBe(0);
+  });
+});
+
+describe("yield offers from the calendar", () => {
+  it("offers free weekends, midweeks and a week – but never taken dates", async () => {
+    const { yieldOffers } = await import("@/domain/yield");
+    const today = "2026-10-01"; // Thursday
+    const none = yieldOffers({ today, takenDates: new Set() });
+    expect(none.some((o) => o.kind === "weekend" && o.date === "2026-10-02")).toBe(true);
+    expect(none.some((o) => o.kind === "midweek")).toBe(true);
+    expect(none.some((o) => o.kind === "week")).toBe(true);
+    expect(none.some((o) => o.kind === "longterm")).toBe(true);
+    const taken = yieldOffers({ today, takenDates: new Set(["2026-10-03", "2026-10-10", "2026-10-17", "2026-10-24"]) });
+    expect(taken.some((o) => o.kind === "weekend")).toBe(false);
+    expect(taken.some((o) => o.kind === "longterm")).toBe(false);
+    expect(taken.every((o) => o.percent <= 15)).toBe(true);
   });
 });

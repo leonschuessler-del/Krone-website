@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Raumplaner am Ende des Films", () => {
   test("Zur Karte springt in den Planer; Räume auf dem Foto und in der Liste wählen", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/eventlocation");
     await page.getByRole("link", { name: "Direkt zum Raumplaner" }).click();
     const section = page.locator("#rundgang");
     await expect(section).toHaveAttribute("data-planner", "on");
@@ -27,7 +27,7 @@ test.describe("Raumplaner am Ende des Films", () => {
     await page.goto("/impressum");
     await expect(page.getByRole("heading", { level: 1, name: "Impressum" })).toBeVisible();
     await expect(page.getByText("DE 297367201")).toBeVisible();
-    await page.goto("/#karte");
+    await page.goto("/eventlocation#karte");
     await expect(page.locator("#rundgang")).toHaveAttribute("data-planner", "on");
   });
 });

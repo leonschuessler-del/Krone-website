@@ -1,6 +1,7 @@
 import { addDays, isoWeekday, utcToLocal, type LocalDate } from "./time";
 import type { BookingMode, PriceModel, RentalMode, SpaceId } from "./types";
 import { eligibleOffer, extraDaysDetail, extraDaysFee, PACKAGE_DAYS as PKG } from "./offers";
+import { floorStayPricing } from "./hotel";
 
 /**
  * ============================================================================
@@ -342,8 +343,15 @@ export function calculateQuote(input: {
           break;
         }
         case "per_day":
-          amount = extra.unitPrice * days * qty;
-          detail = `${days} Tag(e) × ${euro(extra.unitPrice)}`;
+          if (extra.id === "hotel-floor") {
+            // whole hotel floor with the event: nights = rental days, tiered per night
+            const f = floorStayPricing(days);
+            amount = f.total;
+            detail = `${f.nights} ${f.nights === 1 ? "Nacht" : "Nächte"} × ${euro(f.perNight)}${f.percent ? ` − ${f.percent} %` : ""}`;
+          } else {
+            amount = extra.unitPrice * days * qty;
+            detail = `${days} Tag(e) × ${euro(extra.unitPrice)}`;
+          }
           break;
         case "per_person":
           if (request.guestCount) {

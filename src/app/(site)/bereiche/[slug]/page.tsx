@@ -91,7 +91,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             {space.bookable ? (
               <>
                 <SelectSpaceButton spaceId={space.id} name={space.name} requires={space.requires} size="lg" />
-                <ButtonLink href="/#karte" variant="dark" size="lg">
+                <ButtonLink href="/eventlocation#karte" variant="dark" size="lg">
                   Zum Raumplaner <ArrowRight className="h-4 w-4" />
                 </ButtonLink>
               </>
@@ -100,7 +100,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
                 <BedDouble className="h-4 w-4" /> Zimmer buchen
               </ButtonLink>
             ) : (
-              <ButtonLink href="/#karte" variant="gold" size="lg">
+              <ButtonLink href="/eventlocation#karte" variant="gold" size="lg">
                 Zum Raumplaner <ArrowRight className="h-4 w-4" />
               </ButtonLink>
             )}
@@ -219,7 +219,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             <p className="mt-2 text-sm text-muted">Drohnenaufnahme von oben – Raumgrenzen sinngemäß eingezeichnet.</p>
             {space.bookable && (
               <div className="mt-6">
-                <ButtonLink href="/#karte" variant="secondary">
+                <ButtonLink href="/eventlocation#karte" variant="secondary">
                   Zum Raumplaner
                 </ButtonLink>
               </div>
@@ -257,7 +257,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
               <p className="mt-3 max-w-2xl text-ink-soft">
                 Die Küche wird nicht als Raum vermietet, sondern als Zusatzleistung zu Ihrer Feier gebucht – ausschließlich zusammen mit einem Caterer. Sie wählen sie im Raumplaner bei den Zusatzleistungen aus.
               </p>
-              <ButtonLink href="/#karte" variant="gold" className="mt-6">
+              <ButtonLink href="/eventlocation#karte" variant="gold" className="mt-6">
                 Zum Raumplaner
               </ButtonLink>
             </div>

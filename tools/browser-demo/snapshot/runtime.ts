@@ -51,7 +51,16 @@ interface PreviewSpace {
 
 declare global {
   interface Window {
-    __PREVIEW__: { spaces: PreviewSpace[]; headerTop: string; headerScrolled: string; legal: Record<string, { title: string; html: string }> };
+    __PREVIEW__: {
+      page?: string;
+      spaces: PreviewSpace[];
+      headerTop: string;
+      headerScrolled: string;
+      legal: Record<string, { title: string; html: string }>;
+      sights?: Array<{ id: string; name: string; lat: number; lng: number; minutes: number }>;
+      hotelCoords?: { lat: number; lng: number };
+    };
+    L?: unknown;
   }
 }
 
@@ -83,7 +92,8 @@ function initHeader() {
   let scrolled: boolean | null = null;
   const update = () => {
     const tour = document.getElementById("rundgang");
-    const heroEnd = tour && tour.offsetHeight > 0 ? tour.offsetHeight : 0;
+    const hero = document.querySelector<HTMLElement>("[data-hero]");
+    const heroEnd = tour && tour.offsetHeight > 0 ? tour.offsetHeight : hero && hero.offsetHeight > 0 ? hero.offsetTop + hero.offsetHeight - 80 : 0;
     const next = window.scrollY > (heroEnd > 0 ? heroEnd - 80 : 24);
     if (next === scrolled) return;
     scrolled = next;
@@ -896,6 +906,7 @@ function initEvents() {
       return updateSelectionUi();
     }
     if ((hit = t("[data-space-id]"))) return toggle(hit.dataset.spaceId!);
+    if ((hit = t("[data-testid=map-consent]"))) return loadMap(hit.closest<HTMLElement>("[data-pv-map]"));
     if ((hit = t("[data-pv-menu]"))) return toggleMenu();
     if ((hit = t("[data-pv-sheet]"))) return openAreaList();
     if ((hit = t("[data-lightbox]"))) return openDialog(`<img src="${hit.dataset.lightbox}" alt="" class="pv-img-full">`, { wide: true, label: "Bild" });
@@ -936,6 +947,14 @@ function initEvents() {
     const form = e.target as HTMLFormElement;
     if (form.matches("[data-flow-form]")) return submitFlow(form, (e as SubmitEvent).submitter);
     if (form.matches("[data-hotel-form]")) return submitHotel(form);
+    if (form.matches("[data-pv-bookingbar]")) {
+      location.href = "hotel.html#buchen";
+      return;
+    }
+    if (form.matches("[data-pv-contact]")) {
+      const name = String(new FormData(form).get("name") ?? "").trim();
+      return openDialog(`<p class="pv-eyebrow">Kontakt</p><h2 class="pv-h2">Vielen Dank${name ? `, ${esc(name)}` : ""}!</h2><p class="pv-text">Ihre Nachricht ist angekommen – wir melden uns persönlich, meist innerhalb eines Tages.</p><p class="pv-small">Vorschau: Es wird nichts versendet. Auf der echten Website erhalten Sie sofort eine Bestätigung per E-Mail.</p><div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Schließen</button></div>`, { label: "Kontakt" });
+    }
     openDialog(`<p class="pv-eyebrow">Kontakt</p><h2 class="pv-h2">Danke für Ihre Nachricht!</h2><p class="pv-text">In der fertigen Website geht sie direkt an die Krone. In dieser Vorschau wird nichts versendet.</p><div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Schließen</button></div>`, { label: "Kontakt" });
   });
   // mobile bottom bar only while the map is on screen (as on the website)
@@ -977,7 +996,52 @@ function closeMenu() {
   document.querySelectorAll(".pv-menu").forEach((m) => m.remove());
 }
 
+/* ------------------------------------------------------------ map (OSM) */
+async function loadMap(container: HTMLElement | null) {
+  if (!container) return;
+  const css = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+  const js = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+  if (!document.querySelector(`link[href="${css}"]`)) {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = css;
+    document.head.appendChild(l);
+  }
+  if (!window.L) {
+    await new Promise<void>((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = js;
+      sc.onload = () => res();
+      sc.onerror = () => rej(new Error("leaflet"));
+      document.head.appendChild(sc);
+    }).catch(() => undefined);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const L = window.L as any;
+  if (!L) return;
+  container.innerHTML = "";
+  const kind = container.dataset.pvMap;
+  const home = data.hotelCoords ?? { lat: 49.9014, lng: 9.1869 };
+  const map = L.map(container, { scrollWheelZoom: false }).setView(kind === "sights" ? [49.93, 9.3] : [home.lat, home.lng], kind === "sights" ? 9 : 14);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende' }).addTo(map);
+  const icon = (primary: boolean) =>
+    L.divIcon({
+      className: "",
+      html: `<span style="display:block;width:${primary ? 18 : 12}px;height:${primary ? 18 : 12}px;border-radius:999px;background:${primary ? "#bc8620" : "#1b1816"};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></span>`,
+      iconSize: [primary ? 18 : 12, primary ? 18 : 12],
+      iconAnchor: [primary ? 9 : 6, primary ? 9 : 6],
+    });
+  L.marker([home.lat, home.lng], { icon: icon(true) }).addTo(map).bindPopup("<strong>Landhotel Gasthof Zur Krone</strong><br>Hauptstraße 106, 63849 Leidersbach").openPopup();
+  if (kind === "sights") for (const sgt of data.sights ?? []) L.marker([sgt.lat, sgt.lng], { icon: icon(false) }).addTo(map).bindPopup(`<strong>${esc(sgt.name)}</strong><br>${sgt.minutes} Min. ab Hotel`);
+}
+
 initTour();
 initHeader();
 initEvents();
 updateSelectionUi();
+// arriving from the booking bar: open the room booking right away
+if (location.hash === "#buchen" && document.querySelector("[data-hotel-book]")) {
+  hotel.ref = "";
+  hotel.error = "";
+  setTimeout(() => renderHotel(), 400);
+}

@@ -9,8 +9,17 @@ export function StructuredData() {
   const { address } = siteConfig;
   const data = {
     "@context": "https://schema.org",
-    "@type": ["Hotel", "Restaurant"],
-    name: `${siteConfig.name} Leidersbach`,
+    "@type": ["Hotel", "EventVenue"],
+    name: "Landhotel Gasthof Zur Krone",
+    foundingDate: "1919",
+    checkinTime: "15:30",
+    checkoutTime: "10:00",
+    petsAllowed: true,
+    amenityFeature: [
+      { "@type": "LocationFeatureSpecification", name: "Frühstück inklusive", value: true },
+      { "@type": "LocationFeatureSpecification", name: "Kostenlose Parkplätze", value: true },
+      { "@type": "LocationFeatureSpecification", name: "WLAN", value: true },
+    ],
     description: siteConfig.description,
     url: siteConfig.url,
     address: {

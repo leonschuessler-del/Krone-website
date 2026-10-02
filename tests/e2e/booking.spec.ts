@@ -16,7 +16,7 @@ async function pickDate(page: Page, date: string) {
 
 test.describe("Grundstückskarte & Multi-Select", () => {
   test("Bereiche per Klick und Tastatur auswählen", async ({ page }) => {
-    await page.goto("/#karte");
+    await page.goto("/eventlocation#karte");
     const map = page.getByTestId("site-map").first();
     // 7 bookable rooms on the photo (hotel rooms are booked separately)
     await expect(map.locator("[data-space]")).toHaveCount(7);
@@ -37,7 +37,7 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   });
 
   test("Test 59: blockierter Wintergarten → 2 von 3 verfügbar, entfernen macht buchbar", async ({ page }) => {
-    await page.goto("/#karte");
+    await page.goto("/eventlocation#karte");
     const map = page.getByTestId("site-map").first();
     for (const id of ["restaurant", "stage", "winter-garden"]) await map.locator(`[data-space="${id}"]`).click();
     await page.getByTestId("open-schedule").click();
@@ -61,7 +61,7 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   });
 
   test("Test 61: Gesamte Location zeigt konkret den blockierten Bereich", async ({ page }) => {
-    await page.goto("/#karte");
+    await page.goto("/eventlocation#karte");
     await page.getByTestId("full-venue").click();
     await expect(page.getByTestId("selection-count").first()).toHaveText("7 Bereiche ausgewählt");
     await page.getByTestId("open-schedule").click();
@@ -163,7 +163,7 @@ test("Unverbindliche Anfrage erhält eigene Nummer", async ({ page }) => {
 });
 
 test("Ohne Restaurant geht es nicht – der Planer nimmt es automatisch dazu", async ({ page }) => {
-  await page.goto("/#karte");
+  await page.goto("/eventlocation#karte");
   const map = page.getByTestId("site-map").first();
   await map.locator('[data-space="stage"]').click();
   await expect(map.locator('[data-space="restaurant"]')).toHaveAttribute("aria-checked", "true");
@@ -180,7 +180,7 @@ test("Detailseite: Bereich auswählen und zurück zur Karte – Auswahl bleibt e
 });
 
 test("Wichtige Seiten und Links sind erreichbar", async ({ page, request }) => {
-  for (const path of ["/", "/bereiche", "/bereiche/restaurant", "/bereiche/hotel", "/galerie", "/kontakt", "/faq", "/impressum", "/datenschutz", "/agb", "/mietbedingungen", "/hausordnung", "/buchen", "/sitemap.xml", "/robots.txt", "/map/base.svg"]) {
+  for (const path of ["/", "/hotel", "/eventlocation", "/sehenswuerdigkeiten", "/aktuelles", "/bereiche", "/bereiche/restaurant", "/galerie", "/kontakt", "/faq", "/impressum", "/datenschutz", "/agb", "/mietbedingungen", "/hausordnung", "/buchen", "/sitemap.xml", "/robots.txt", "/map/base.svg"]) {
     const res = await request.get(path);
     expect(res.status(), path).toBe(200);
   }

@@ -25,7 +25,7 @@ export default async function SpacesPage() {
             <h1 className="mt-3 text-5xl md:text-6xl">Räume für jeden Anlass</h1>
             <p className="mt-4 text-lg text-ink-soft">Jeder Bereich ist einzeln oder kombiniert buchbar. Wählen Sie aus – oder stellen Sie Ihre Kombination direkt auf der Karte zusammen.</p>
           </div>
-          <ButtonLink href="/#karte" variant="gold">
+          <ButtonLink href="/eventlocation#karte" variant="gold">
             Auf der Karte wählen
           </ButtonLink>
         </div>

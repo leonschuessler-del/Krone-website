@@ -633,7 +633,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                   <ArrowLeft className="h-4 w-4" /> Zurück
                 </Button>
               ) : (
-                <Link href="/#karte" className="text-sm font-semibold text-muted hover:text-ink">
+                <Link href="/eventlocation#karte" className="text-sm font-semibold text-muted hover:text-ink">
                   Zur Karte
                 </Link>
               )}

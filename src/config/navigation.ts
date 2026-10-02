@@ -3,17 +3,17 @@ export interface NavItem {
   href: string;
 }
 
+/** Main menu – the house first, then what one does there. */
 export const mainNavigation: NavItem[] = [
-  { label: "Start", href: "/" },
-  { label: "Location", href: "/#location" },
-  { label: "Bereiche", href: "/bereiche" },
-  { label: "Hotel", href: "/bereiche/hotel" },
+  { label: "Hotel", href: "/hotel" },
+  { label: "Eventlocation", href: "/eventlocation" },
+  { label: "Umgebung", href: "/sehenswuerdigkeiten" },
+  { label: "Aktuelles", href: "/aktuelles" },
   { label: "Galerie", href: "/galerie" },
-  { label: "Buchen", href: "/buchen" },
   { label: "Kontakt", href: "/kontakt" },
 ];
 
-export const headerCta: NavItem = { label: "Jetzt buchen", href: "/buchen" };
+export const headerCta: NavItem = { label: "Zimmer buchen", href: "/hotel#buchen" };
 
 export const legalNavigation: NavItem[] = [
   { label: "Impressum", href: "/impressum" },
@@ -24,11 +24,16 @@ export const legalNavigation: NavItem[] = [
 ];
 
 export const footerNavigation: NavItem[] = [
-  { label: "Bereiche", href: "/bereiche" },
-  { label: "Raumplaner", href: "/#karte" },
-  { label: "Hotel", href: "/bereiche/hotel" },
+  { label: "Hotel & Zimmer", href: "/hotel" },
+  { label: "Zimmer buchen", href: "/hotel#buchen" },
+  { label: "Eventlocation", href: "/eventlocation" },
+  { label: "Raumplaner", href: "/eventlocation#karte" },
+  { label: "Angebote & Aktuelles", href: "/aktuelles" },
+  { label: "Sehenswürdigkeiten", href: "/sehenswuerdigkeiten" },
   { label: "Galerie", href: "/galerie" },
   { label: "FAQ", href: "/faq" },
-  { label: "Buchen", href: "/buchen" },
-  { label: "Kontakt", href: "/kontakt" },
+  { label: "Kontakt & Anfahrt", href: "/kontakt" },
 ];
+
+/** Routes whose first screen is a full-bleed hero: the header starts transparent there. */
+export const heroRoutes = ["/", "/hotel", "/eventlocation", "/sehenswuerdigkeiten", "/aktuelles"];

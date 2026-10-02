@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
 test("Mobile: Karte oben, Sticky-CTA zeigt Anzahl, Bottom Sheet mit Auswahl", async ({ page }) => {
-  await page.goto("/#karte");
+  await page.goto("/eventlocation#karte");
   const map = page.getByTestId("site-map").first();
   await map.locator('[data-space="restaurant"]').click();
   await map.locator('[data-space="beer-garden"]').click();
@@ -19,7 +19,7 @@ test("Mobile: Karte oben, Sticky-CTA zeigt Anzahl, Bottom Sheet mit Auswahl", as
 test("Mobile: Menü öffnet und navigiert", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Menü öffnen" }).click();
-  await page.getByRole("navigation", { name: "Mobile Navigation" }).getByRole("link", { name: "Bereiche" }).click();
-  await page.waitForURL(/\/bereiche$/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Räume");
+  await page.getByRole("navigation", { name: "Mobile Navigation" }).getByRole("link", { name: "Hotel" }).click();
+  await page.waitForURL(/\/hotel$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Zimmer");
 });

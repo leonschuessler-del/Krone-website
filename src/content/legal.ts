@@ -145,7 +145,15 @@ export const legalDocuments: Record<string, LegalDocument> = {
         body: [
           "Diese Website setzt keine Cookies zu Analyse- oder Werbezwecken und verwendet keine Tracking-Dienste. Ein Cookie-Banner ist deshalb nicht erforderlich.",
           "Damit Ihre Raumauswahl beim Wechsel zwischen den Seiten erhalten bleibt, wird sie im Sitzungsspeicher Ihres Browsers (sessionStorage) abgelegt. Diese Daten verlassen Ihr Gerät nicht und werden beim Schließen des Browserfensters gelöscht (§ 25 Abs. 2 Nr. 2 TDDDG, technisch erforderlich).",
-          "Schriftarten und Medien werden von unserem eigenen Server geladen; es werden keine Daten an externe Schriften- oder Kartendienste übertragen. Die Grundstückskarte ist eine eigene Drohnenaufnahme.",
+          "Schriftarten und Medien werden von unserem eigenen Server geladen; es werden keine Daten an externe Schriftendienste übertragen. Die Grundstückskarte ist eine eigene Drohnenaufnahme.",
+        ],
+      },
+      {
+        id: "karte",
+        heading: "Umgebungskarte (OpenStreetMap)",
+        body: [
+          "Auf den Seiten „Umgebung“ und „Kontakt“ können Sie eine interaktive Karte laden. Die Karte wird erst nach Ihrem Klick auf „Karte laden“ eingebunden; vorher werden keine Daten übertragen. Mit dem Laden werden Kartenkacheln von den Servern der OpenStreetMap Foundation (St John's Innovation Centre, Cowley Road, Cambridge, CB4 0WS, Vereinigtes Königreich) abgerufen. Dabei werden Ihre IP-Adresse und die angezeigten Kartenausschnitte übermittelt.",
+          "Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG), die Sie jederzeit durch erneutes Laden der Seite zurücknehmen. Für das Vereinigte Königreich liegt ein Angemessenheitsbeschluss der EU-Kommission vor. Weitere Informationen: https://wiki.osmfoundation.org/wiki/Privacy_Policy",
         ],
       },
       {
@@ -173,13 +181,71 @@ export const legalDocuments: Record<string, LegalDocument> = {
   agb: {
     slug: "agb",
     title: "Allgemeine Geschäftsbedingungen",
-    intro: "Allgemeine Bedingungen für Leistungen des Landhotels Gasthof „Zur Krone“.",
+    intro: "Allgemeine Geschäftsbedingungen für die Beherbergung im Landhotel Gasthof „Zur Krone“ (Hotel garni). Für die Anmietung von Räumen gelten zusätzlich die Mietbedingungen.",
+    updated: "Oktober 2026 – Entwurf zur rechtlichen Prüfung",
     draft: true,
     sections: [
-      { id: "geltung", heading: "Geltungsbereich", body: [draftNote] },
-      { id: "vertrag", heading: "Vertragsschluss", body: [draftNote] },
-      { id: "preise", heading: "Preise & Zahlung", body: [draftNote] },
-      { id: "haftung", heading: "Haftung", body: [draftNote] },
+      {
+        id: "geltung",
+        heading: "1. Geltungsbereich",
+        body: [
+          "Diese Bedingungen gelten für Verträge über die mietweise Überlassung von Hotelzimmern und des Apartments zur Beherbergung sowie für alle damit zusammenhängenden Leistungen des Hauses (Beherbergungsvertrag).",
+          "Abweichende Bedingungen des Gastes gelten nur, wenn sie ausdrücklich schriftlich vereinbart wurden.",
+        ],
+      },
+      {
+        id: "vertrag",
+        heading: "2. Vertragsschluss",
+        body: [
+          "Eine Reservierungsanfrage über die Website ist unverbindlich. Der Vertrag kommt mit der Bestätigung des Hauses per E-Mail zustande (Reservierungsnummer). Vertragspartner sind das Haus und der Gast; bestellt ein Dritter für den Gast, haftet er gegenüber dem Haus zusammen mit dem Gast als Gesamtschuldner.",
+          "Die Unter- oder Weitervermietung der überlassenen Zimmer sowie deren Nutzung zu anderen als Beherbergungszwecken bedürfen der vorherigen Zustimmung des Hauses in Textform.",
+        ],
+      },
+      {
+        id: "preise",
+        heading: "3. Preise und Zahlung",
+        body: [
+          "Die vereinbarten Preise verstehen sich inklusive der gesetzlichen Mehrwertsteuer und inklusive Frühstück, sofern nichts anderes angegeben ist. Zusatzleistungen (z. B. Zustellbett, Babybett, Haustier) werden gesondert berechnet.",
+          "Die Zahlung erfolgt vor Ort bei Anreise oder Abreise, bar oder mit EC-, Maestro-, Visa- oder Mastercard. Bei Gruppen und längeren Aufenthalten kann das Haus eine angemessene Vorauszahlung verlangen.",
+        ],
+      },
+      {
+        id: "storno",
+        heading: "4. Rücktritt des Gastes (Stornierung)",
+        body: [
+          "Bis zu 2 Tage vor dem Anreisetag kann der Gast kostenlos zurücktreten. Bei einem Rücktritt innerhalb von 2 Tagen vor der Anreise berechnet das Haus 80 % des Gesamtpreises der Buchung; bei Nichtanreise wird der Gesamtpreis berechnet.",
+          "Dem Gast steht der Nachweis frei, dass dem Haus kein oder ein geringerer Schaden entstanden ist. Das Haus bemüht sich, nicht in Anspruch genommene Zimmer anderweitig zu vergeben; gelingt dies, entfällt die Berechnung insoweit.",
+        ],
+      },
+      {
+        id: "anreise",
+        heading: "5. An- und Abreise",
+        body: [
+          "Die Zimmer stehen am Anreisetag ab 15:30 Uhr zur Verfügung; die Anreise ist bis 21:00 Uhr möglich, danach nach Absprache über den Schlüsselsafe. Am Abreisetag sind die Zimmer montags bis freitags bis 10:00 Uhr, samstags und sonntags bis 11:00 Uhr zu räumen.",
+          "Bei verspäteter Räumung kann das Haus für die zusätzliche Nutzung bis 18:00 Uhr 50 %, danach 100 % des Zimmerpreises berechnen.",
+        ],
+      },
+      {
+        id: "haustiere",
+        heading: "6. Haustiere",
+        body: ["Haustiere sind nach vorheriger Absprache gegen den ausgewiesenen Aufpreis willkommen. Der Gast haftet für Schäden, die durch mitgebrachte Tiere entstehen."],
+      },
+      {
+        id: "haftung",
+        heading: "7. Haftung",
+        body: [
+          "Das Haus haftet für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit sowie für vorsätzlich oder grob fahrlässig verursachte Schäden nach den gesetzlichen Vorschriften. Im Übrigen ist die Haftung für leicht fahrlässig verursachte Schäden ausgeschlossen, soweit keine wesentlichen Vertragspflichten betroffen sind.",
+          "Für eingebrachte Sachen haftet das Haus nach den gesetzlichen Bestimmungen (§§ 701 ff. BGB). Fahrzeuge auf dem Parkplatz des Hauses werden nicht verwahrt; eine Haftung besteht nur bei Verschulden des Hauses.",
+        ],
+      },
+      {
+        id: "schluss",
+        heading: "8. Schlussbestimmungen",
+        body: [
+          "Es gilt deutsches Recht. Erfüllungsort ist Leidersbach. Sollten einzelne Bestimmungen unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.",
+          "Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
+        ],
+      },
     ],
   },
   mietbedingungen: {

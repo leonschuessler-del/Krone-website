@@ -6,13 +6,13 @@ import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ButtonLink } from "@/components/ui/Button";
-import { headerCta, mainNavigation } from "@/config/navigation";
+import { headerCta, heroRoutes, mainNavigation } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { useSelectionCount } from "@/store/booking-store";
 
 export function Header() {
   const pathname = usePathname();
-  const overHero = pathname === "/";
+  const overHero = heroRoutes.includes(pathname);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const selectionCount = useSelectionCount();
@@ -63,13 +63,13 @@ export function Header() {
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow,backdrop-filter,color] duration-300",
         transparent
-          ? "bg-transparent text-paper"
-          : "border-b border-sand/70 bg-paper/92 text-ink shadow-[0_8px_30px_-20px_rgb(35_30_27/0.35)] backdrop-blur-md",
+          ? "bg-gradient-to-b from-black/45 to-transparent text-paper"
+          : "border-b border-sand/70 bg-paper/94 text-ink backdrop-blur-md",
       )}
     >
-      <div className="container-page flex h-[4.5rem] items-center justify-between gap-6">
+      <div className="container-page flex h-[4.75rem] items-center justify-between gap-6 md:h-[5.25rem]">
         <Link href="/" className="shrink-0" aria-label="Zur Krone – Startseite">
-          <Logo tone={transparent ? "light" : "dark"} />
+          <Logo />
         </Link>
 
         <nav aria-label="Hauptnavigation" className="hidden items-center gap-1 lg:flex">
@@ -81,14 +81,14 @@ export function Header() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative rounded-full px-3.5 py-2 text-[0.93rem] font-medium transition-colors",
+                  "relative px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.2em] transition-colors",
                   transparent ? "text-paper/85 hover:text-paper" : "text-ink-soft hover:text-ink",
                   active && (transparent ? "text-paper" : "text-ink"),
                 )}
               >
                 {item.label}
                 {active && (
-                  <span className="absolute inset-x-3.5 -bottom-0.5 h-px bg-gradient-to-r from-gold via-gold to-transparent" />
+                  <span className="absolute inset-x-3.5 -bottom-0.5 h-px bg-gold" />
                 )}
               </Link>
             );
@@ -98,7 +98,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ButtonLink
             href={headerCta.href}
-            variant={transparent ? "gold" : "primary"}
+            variant={transparent ? "dark" : "primary"}
             size="sm"
             className="max-sm:hidden"
           >

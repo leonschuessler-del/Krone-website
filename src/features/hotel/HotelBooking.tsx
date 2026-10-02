@@ -3,9 +3,9 @@
 import { BedDouble, CalendarDays, Loader2, Minus, Plus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { FLOOR_ROOMS_SUM, hotelCopy, LONG_STAY_NIGHTS, LONG_STAY_PERCENT, roomInventory, roomTypeSeeds } from "@/content/hotel";
-import { nightCount, stayNudges, stayQuote, validateItems, validateStay, type StayItem } from "@/domain/hotel";
-import { addDays, todayLocal, type LocalDate } from "@/domain/time";
+import { guestRoomTypes, hotelCopy, roomInventory, stayExtras } from "@/content/hotel";
+import { nightCount, stayExtraLines, stayExtrasTotal, stayNudges, stayQuote, validateItems, validateStay, type StayItem } from "@/domain/hotel";
+import { addDays, isLocalDate, todayLocal, type LocalDate } from "@/domain/time";
 import { cn } from "@/lib/cn";
 import { formatDateMedium, formatMoney } from "@/lib/format";
 import { StayCalendar } from "./StayCalendar";
@@ -16,21 +16,29 @@ interface Availability {
   types: Array<{ id: string; name: string; description: string; maxGuests: number; pricePerNight: number | null; total: number | null; free: number; totalRooms: number; fullNights: string[] }>;
 }
 
-const emptyItems = (): Record<string, number> => Object.fromEntries(roomTypeSeeds.map((t) => [t.id, 0]));
+const emptyItems = (): Record<string, number> => Object.fromEntries(guestRoomTypes.map((t) => [t.id, 0]));
+const roomTypeSeeds = guestRoomTypes;
 
 /**
  * Hotel booking like on the big portals: arrival and departure in a calendar,
  * then how many rooms of each type (1 × Einzelzimmer + 2 × Doppelzimmer …),
  * guests, contact → request. The operator confirms (docs/INTEGRATIONS.md).
  */
-export function HotelBooking({ className }: { className?: string }) {
+export function HotelBooking({ className, initial }: { className?: string; initial?: { arrival?: string; departure?: string; guests?: number } }) {
   const today = todayLocal();
-  const [arrival, setArrival] = useState<LocalDate | null>(addDays(today, 7));
-  const [departure, setDeparture] = useState<LocalDate | null>(addDays(today, 9));
+  const initArrival = initial?.arrival && isLocalDate(initial.arrival) && initial.arrival >= today ? initial.arrival : addDays(today, 7);
+  const initDeparture = initial?.departure && isLocalDate(initial.departure) && initial.departure > initArrival ? initial.departure : addDays(initArrival, 2);
+  const [arrival, setArrival] = useState<LocalDate | null>(initArrival);
+  const [departure, setDeparture] = useState<LocalDate | null>(initDeparture);
+  const [extras, setExtras] = useState<Record<string, number>>({});
   const [data, setData] = useState<Availability | null>(null);
   const [loading, setLoading] = useState(false);
-  const [counts, setCounts] = useState<Record<string, number>>(() => ({ ...emptyItems(), double: 1 }));
-  const [guests, setGuests] = useState(2);
+  const [counts, setCounts] = useState<Record<string, number>>(() => {
+    const g = initial?.guests && initial.guests > 0 ? initial.guests : 2;
+    // a sensible start: doubles for pairs, a single for the odd guest
+    return { ...emptyItems(), double: Math.min(8, Math.floor(g / 2)) || (g === 1 ? 0 : 1), single: g % 2 === 1 ? 1 : 0 };
+  });
+  const [guests, setGuests] = useState(initial?.guests && initial.guests > 0 ? Math.min(initial.guests, 30) : 2);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", notes: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -65,6 +73,9 @@ export function HotelBooking({ className }: { className?: string }) {
   const items: StayItem[] = roomTypeSeeds.map((t) => ({ roomTypeId: t.id, rooms: counts[t.id] ?? 0 })).filter((i) => i.rooms > 0);
   const itemIssues = validateItems(items);
   const quote = stay ? stayQuote(items, stay) : null;
+  const extraLines = stayExtraLines(extras, nights);
+  const extrasSum = stayExtrasTotal(extraLines);
+  const grandTotal = quote?.total === null || quote === null ? null : quote.total + extrasSum;
   const maxGuests = Math.max(1, quote?.maxGuests ?? 1);
   const nudges = stay && !issues.length && items.length ? stayNudges(items, stay, guests) : [];
   const shortfall = quote ? items.filter((i) => (data?.types.find((t) => t.id === i.roomTypeId)?.free ?? 99) < i.rooms) : [];
@@ -92,7 +103,7 @@ export function HotelBooking({ className }: { className?: string }) {
     const res = await fetch("/api/hotel/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, arrival: stay.arrival, departure: stay.departure, guests: Math.min(guests, maxGuests), ...form }),
+      body: JSON.stringify({ items, arrival: stay.arrival, departure: stay.departure, guests: Math.min(guests, maxGuests), extras: Object.entries(extras).filter(([, q]) => q > 0).map(([id, quantity]) => ({ id, quantity })), ...form }),
     });
     const body = (await res.json().catch(() => ({}))) as { reservationNumber?: string; total?: number | null; lines?: Array<{ rooms: number; name: string }>; error?: { message?: string }; message?: string };
     setBusy(false);
@@ -149,12 +160,11 @@ export function HotelBooking({ className }: { className?: string }) {
                   <span className="block font-serif text-xl">{t.name}</span>
                   <span className="block text-sm text-ink-soft">{t.description}</span>
                   <span className="mt-1 block text-xs text-muted">
-                    {loading && !live ? "Verfügbarkeit wird geprüft …" : free === null ? `bis ${t.maxGuests} ${t.maxGuests === 1 ? "Gast" : "Gäste"}` : soldOut ? "In diesem Zeitraum belegt" : `${free} von ${live!.totalRooms} frei · bis ${t.maxGuests} ${t.maxGuests === 1 ? "Gast" : "Gäste"}${t.id === "floor" ? "" : " pro Zimmer"}`}
+                    {loading && !live ? "Verfügbarkeit wird geprüft …" : free === null ? `bis ${t.maxGuests} ${t.maxGuests === 1 ? "Gast" : "Gäste"}` : soldOut ? "In diesem Zeitraum belegt" : `${free} von ${live!.totalRooms} frei · bis ${t.maxGuests} ${t.maxGuests === 1 ? "Gast" : "Gäste"}${" pro Zimmer"}`}
                   </span>
                   <span className="mt-1 block text-sm">
                     <span className="font-serif text-lg tabular-nums">{t.basePricePerNight === null ? "auf Anfrage" : formatMoney(t.basePricePerNight)}</span>
                     {t.basePricePerNight !== null && <span className="text-xs text-muted"> pro Nacht, inkl. Frühstück</span>}
-                    {t.id === "floor" && <span className="ml-2 inline-block rounded-full bg-gold/15 px-2 py-0.5 text-[0.65rem] font-semibold text-gold-dark">statt {formatMoney(FLOOR_ROOMS_SUM)} einzeln + Apartment</span>}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-2" role="group" aria-label={`${t.name}: Anzahl`}>
@@ -186,12 +196,36 @@ export function HotelBooking({ className }: { className?: string }) {
             <div key={l.roomTypeId} className="mt-1 flex justify-between"><span>{l.rooms} × {l.name}</span><span className="tabular-nums">{l.pricing ? formatMoney(l.pricing.list) : "auf Anfrage"}</span></div>
           ))}
           {!items.length && <p className="mt-1 text-paper/60">Noch kein Zimmer gewählt.</p>}
-          {quote && quote.discount > 0 && (
-            <div className="mt-1 flex justify-between text-[#a9cf9f]"><span>Langzeit-Vorteil ab {LONG_STAY_NIGHTS} Nächten</span><span className="tabular-nums">−{quote.discountPercent} % · −{formatMoney(quote.discount)}</span></div>
-          )}
-          <div className="mt-2 flex items-baseline justify-between border-t border-white/10 pt-2"><span className="text-paper/70">Gesamt inkl. Frühstück</span><span className="font-serif text-2xl tabular-nums" data-testid="hotel-total">{formatMoney(quote?.total ?? null, items.length ? "auf Anfrage" : "–")}</span></div>
-          {quote && quote.discount === 0 && nights > 0 && nights < LONG_STAY_NIGHTS && <p className="mt-1 text-xs text-paper/50">Ab {LONG_STAY_NIGHTS} Nächten {LONG_STAY_PERCENT} % günstiger.</p>}
+          {extraLines.map((l) => (
+            <div key={l.id} className="mt-1 flex justify-between text-paper/80"><span>{l.quantity} × {l.name} · {l.nights} {l.nights === 1 ? "Nacht" : "Nächte"}</span><span className="tabular-nums">{formatMoney(l.total)}</span></div>
+          ))}
+          <div className="mt-2 flex items-baseline justify-between border-t border-white/10 pt-2"><span className="text-paper/70">Gesamt inkl. Frühstück</span><span className="font-serif text-2xl tabular-nums" data-testid="hotel-total">{formatMoney(grandTotal, items.length ? "auf Anfrage" : "–")}</span></div>
+          <p className="mt-1 text-xs text-paper/50">Inkl. MwSt. und Frühstück. Zahlung vor Ort, kostenlos stornierbar bis 2 Tage vor Anreise.</p>
         </div>
+        <details className="group rounded-xl border border-white/10" data-testid="hotel-extras">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm text-paper/85 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center justify-between"><span>Aufenthalt verfeinern <span className="text-paper/50">· Zustellbett, Babybett, Hund</span></span><span className="text-gold-light transition-transform group-open:rotate-45">+</span></span>
+          </summary>
+          <ul className="divide-y divide-white/10 border-t border-white/10 px-3">
+            {stayExtras.map((e) => {
+              const q = extras[e.id] ?? 0;
+              const max = e.perRoom ? Math.max(1, quote?.rooms ?? 1) : 1;
+              return (
+                <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="min-w-0">
+                    <span className="block text-paper/90">{e.name} <span className="text-paper/50">· {e.pricePerNight === 0 ? "inklusive" : `${formatMoney(e.pricePerNight)} / Nacht`}</span></span>
+                    <span className="block truncate text-xs text-paper/45">{e.description}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <button type="button" aria-label={`${e.name} weniger`} disabled={q === 0} onClick={() => setExtras((x) => ({ ...x, [e.id]: Math.max(0, q - 1) }))} className="grid h-7 w-7 place-items-center rounded-full border border-white/20 disabled:opacity-30"><Minus className="h-3 w-3" /></button>
+                    <span className="w-4 text-center tabular-nums">{q}</span>
+                    <button type="button" aria-label={`${e.name} mehr`} disabled={q >= max} onClick={() => setExtras((x) => ({ ...x, [e.id]: Math.min(max, q + 1) }))} className="grid h-7 w-7 place-items-center rounded-full bg-gold text-anthracite disabled:opacity-30"><Plus className="h-3 w-3" /></button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
         {nudges.map((n) => (
           <p key={n} className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-xs text-gold-light" data-testid="hotel-nudge">
             {n}

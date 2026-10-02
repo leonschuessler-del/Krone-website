@@ -112,7 +112,8 @@ body { font-size: 1rem; }
 .pv-flow-grid { margin-top: 1rem; display: grid; gap: 1.25rem; }
 @media (min-width: 820px) { .pv-flow-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
 .pv-cal { background: var(--color-cream); border-radius: 1rem; padding: 0.9rem; }
-.pv-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; text-transform: capitalize; }
+.pv-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.pv-cal-head > strong { text-transform: capitalize; }
 .pv-cal-head button { width: 2.2rem; height: 2.2rem; border-radius: 999px; font-size: 1.3rem; }
 .pv-cal-head button:disabled { opacity: 0.3; }
 .pv-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem; }
@@ -212,3 +213,8 @@ body { font-size: 1rem; }
 .pv-stepper b { min-width: 1.4rem; text-align: center; font-family: var(--font-serif); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 .pv-stay-sum p { display: flex; justify-content: space-between; margin: 0.15rem 0; font-size: 0.9rem; }
 .pv-stay-sum .pv-good { color: #3f6b3a; }
+
+/* relaunch: hotel CTA replaces the React widget, big buttons, map box */
+.pv-hotel-cta { display: grid; gap: 0.9rem; justify-items: start; padding: 2rem; border: 1px solid var(--color-sand); background: #fff; }
+.pv-btn-lg { height: 3.5rem; padding: 0 2rem; }
+[data-pv-map] .leaflet-container { position: absolute; inset: 0; font-family: var(--font-sans); }

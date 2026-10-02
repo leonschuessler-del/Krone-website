@@ -18,21 +18,23 @@
   --font-sans: var(--font-sans), system-ui, "Segoe UI", Arial, sans-serif;
   --font-fraktur: var(--font-fraktur), Georgia, serif;
 
-  --color-paper: #fbf8f2;
-  --color-cream: #f4eee2;
-  --color-sand: #e8dfcd;
-  --color-stone: #cfc5b3;
-  --color-taupe: #8f8474;
-  --color-ink: #231e1b;
-  --color-ink-soft: #3b332d;
-  --color-anthracite: #1c1917;
-  --color-night: #15120f;
-  --color-muted: #6b6158;
+  --color-paper: #f8f4ec;
+  --color-cream: #f1ebdf;
+  --color-sand: #e4dac6;
+  --color-stone: #c8bda9;
+  --color-taupe: #8a7f6e;
+  --color-ink: #1b1816;
+  --color-ink-soft: #3a332d;
+  --color-anthracite: #161311;
+  --color-night: #0f0d0b;
+  --color-muted: #6a6056;
+  --color-forest: #1f2a24;
 
-  --color-gold: #b8904a;
-  --color-gold-light: #d8bb7e;
-  --color-gold-pale: #efe2c4;
-  --color-gold-dark: #8a6a2f;
+  /* the gold of the original logo */
+  --color-gold: #bc8620;
+  --color-gold-light: #d9b56a;
+  --color-gold-pale: #f1e4c6;
+  --color-gold-dark: #8d6417;
 
   --color-moss: #4f5b3d;
   --color-olive: #7a7d5a;
@@ -90,10 +92,11 @@
   }
   h1, h2, h3, .font-display {
     font-family: var(--font-serif);
-    font-weight: 500;
-    letter-spacing: -0.015em;
+    font-weight: 400;
+    letter-spacing: -0.005em;
     text-wrap: balance;
   }
+  h1 em, h2 em, h3 em { font-style: italic; font-weight: 300; }
   p { text-wrap: pretty; }
   ::selection { background: var(--color-gold-pale); color: var(--color-ink); }
 
@@ -128,11 +131,19 @@
 
   .eyebrow {
     font-family: var(--font-sans);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.28em;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.32em;
     text-transform: uppercase;
     color: var(--color-gold-dark);
+  }
+  /* luxury-hotel button: square, letter-spaced caps */
+  .btn-lux {
+    font-family: var(--font-sans);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.72rem;
+    font-weight: 500;
   }
 
   .gold-rule {

@@ -1,4 +1,4 @@
-import { FLOOR_PRICE_PER_NIGHT, FLOOR_ROOMS_SUM, LONG_STAY_NIGHTS, LONG_STAY_PERCENT, roomInventory, roomTypeSeeds, type RoomTypeSeed } from "@/content/hotel";
+import { FLOOR_NIGHT_TIERS, FLOOR_PRICE_PER_NIGHT, FLOOR_ROOMS_SUM, LONG_STAY_NIGHTS, LONG_STAY_PERCENT, roomInventory, roomTypeSeeds, stayExtras, type RoomTypeSeed } from "@/content/hotel";
 import { addDays, type LocalDate } from "./time";
 
 /**
@@ -162,13 +162,52 @@ export function fullyBookedNights(roomTypeId: string, from: LocalDate, to: Local
   return out;
 }
 
-/** Hints shown in the booking: what would make the stay cheaper or simpler. */
+/**
+ * Whole floor with an event: fixed price per night, a small discount per
+ * night from the second night on (FLOOR_NIGHT_TIERS). Rooms booked
+ * individually never get a discount – only the exclusive floor does.
+ */
+export interface FloorPrice {
+  nights: number;
+  perNight: number;
+  list: number;
+  percent: number;
+  total: number;
+  /** what one more night would cost in total, and the percent it unlocks */
+  nextNight: { total: number; percent: number } | null;
+}
+export function floorStayPricing(nights: number): FloorPrice {
+  const tier = (n: number) => [...FLOOR_NIGHT_TIERS].reverse().find((t) => n >= t.nights)?.percent ?? 0;
+  const calc = (n: number) => {
+    const list = FLOOR_PRICE_PER_NIGHT * n;
+    const percent = tier(n);
+    return { list, percent, total: Math.round(list * (1 - percent / 100)) };
+  };
+  const now = calc(Math.max(1, nights));
+  const next = calc(Math.max(1, nights) + 1);
+  return {
+    nights: Math.max(1, nights),
+    perNight: FLOOR_PRICE_PER_NIGHT,
+    ...now,
+    nextNight: next.percent > now.percent ? { total: next.total, percent: next.percent } : null,
+  };
+}
+
+/** One sentence for the planner: "one more night and the floor costs x % less". */
+export function floorNudge(nights: number): string | null {
+  const p = floorStayPricing(nights);
+  if (!p.nextNight) return null;
+  const extra = p.nextNight.total - p.total;
+  return `Tipp: Mit einer Nacht mehr sinkt der Etagenpreis um ${p.nextNight.percent} % pro Nacht – die zusätzliche Nacht kostet dann nur ${(extra / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}.`;
+}
+
+/** Hints shown in the booking – the hotel page sells comfort, not discounts. */
 export function hotelNudges(roomTypeId: string, stay: StayRequest, rooms: number, guests: number): string[] {
   const out: string[] = [];
   const nights = nightCount(stay.arrival, stay.departure);
-  if (nights === LONG_STAY_NIGHTS - 1) out.push(`Tipp: Ab ${LONG_STAY_NIGHTS} Nächten sparen Sie ${LONG_STAY_PERCENT} % auf alle Zimmer.`);
+  if (LONG_STAY_PERCENT > 0 && nights === LONG_STAY_NIGHTS - 1) out.push(`Tipp: Ab ${LONG_STAY_NIGHTS} Nächten sparen Sie ${LONG_STAY_PERCENT} % auf alle Zimmer.`);
   if (roomTypeId !== "floor" && (rooms >= 4 || guests >= 10)) {
-    out.push(`Tipp: Die ganze Etage – alle 10 Zimmer und das Apartment – gibt es für ${(FLOOR_PRICE_PER_NIGHT / 100).toLocaleString("de-DE")} € pro Nacht (einzeln ${(FLOOR_ROOMS_SUM / 100).toLocaleString("de-DE")} € ohne Apartment).`);
+    out.push(`Tipp: Für Gesellschaften gibt es die ganze Etage – alle 10 Zimmer und das Apartment – exklusiv mit einer Veranstaltung ab ${(FLOOR_PRICE_PER_NIGHT / 100).toLocaleString("de-DE")} € pro Nacht (einzeln ${(FLOOR_ROOMS_SUM / 100).toLocaleString("de-DE")} € ohne Apartment).`);
   }
   return out;
 }
@@ -188,3 +227,23 @@ export function generateReservationNumber(year: number, random: () => number = M
   for (let i = 0; i < 5; i++) s += alphabet[Math.floor(random() * alphabet.length)];
   return `HZ-${year}-${s}`;
 }
+
+/** Extras of a stay (Zustellbett, Hund …): quantity × nights × price. */
+export interface StayExtraLine {
+  id: string;
+  name: string;
+  quantity: number;
+  nights: number;
+  pricePerNight: number;
+  total: number;
+}
+export function stayExtraLines(selected: Readonly<Record<string, number>>, nights: number): StayExtraLine[] {
+  const out: StayExtraLine[] = [];
+  for (const e of stayExtras) {
+    const q = selected[e.id] ?? 0;
+    if (q <= 0) continue;
+    out.push({ id: e.id, name: e.name, quantity: q, nights, pricePerNight: e.pricePerNight, total: e.pricePerNight * q * Math.max(1, nights) });
+  }
+  return out;
+}
+export const stayExtrasTotal = (lines: readonly StayExtraLine[]) => lines.reduce((a, l) => a + l.total, 0);

@@ -1,8 +1,8 @@
 import { and, desc, eq, gt, lt, ne } from "drizzle-orm";
 import { z } from "zod";
 import { siteConfig } from "@/config/site";
-import { roomInventory, roomTypeSeeds } from "@/content/hotel";
-import { freeRooms, fullyBookedNights, generateReservationNumber, nightCount, stayPricing, stayQuote, validateItems, validateStay, type RoomReservationLike } from "@/domain/hotel";
+import { roomInventory, roomTypeSeeds, stayExtras } from "@/content/hotel";
+import { freeRooms, fullyBookedNights, generateReservationNumber, nightCount, stayExtraLines, stayExtrasTotal, stayPricing, stayQuote, validateItems, validateStay, type RoomReservationLike } from "@/domain/hotel";
 import { addDays, isLocalDate, todayLocal, type LocalDate } from "@/domain/time";
 import { env } from "@/lib/env";
 import { formatDateMedium, formatMoney } from "@/lib/format";
@@ -29,6 +29,8 @@ export const hotelReservationSchema = z
     arrival: localDate,
     departure: localDate,
     guests: z.number().int().min(1).max(30),
+    /** extras per night: Zustellbett, Babybett, Hund … (content/hotel.ts) */
+    extras: z.array(z.object({ id: z.enum(stayExtras.map((e) => e.id) as [string, ...string[]]), quantity: z.number().int().min(1).max(8) }).strict()).max(6).optional().default([]),
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
     email: z.string().trim().email().max(200),
@@ -97,6 +99,8 @@ export async function createHotelReservation(db: Database, input: HotelReservati
   if (itemIssues.includes("duplicate")) throw new HotelError(422, "ITEMS", "Jeder Zimmertyp darf nur einmal in der Anfrage stehen.");
   if (itemIssues.includes("floor_mix")) throw new HotelError(422, "ITEMS", "Die ganze Etage enthält bereits alle Zimmer – bitte nicht mit einzelnen Zimmern kombinieren.");
   const quote = stayQuote(input.items, stay);
+  const extraLines = stayExtraLines(Object.fromEntries(input.extras.map((e) => [e.id, e.quantity])), quote.nights);
+  const extrasSum = stayExtrasTotal(extraLines);
   if (input.guests > quote.maxGuests) throw new HotelError(422, "GUESTS", `Für ${input.guests} Gäste reichen die gewählten Zimmer nicht (Platz für ${quote.maxGuests}).`);
 
   const result = await db.transaction(async (txRaw) => {
@@ -124,8 +128,9 @@ export async function createHotelReservation(db: Database, input: HotelReservati
           guests: i === 0 ? input.guests : 0,
           status: "requested" as const,
           reservationNumber,
-          totalPrice: line.pricing?.total ?? null,
-          notes: i === 0 ? input.notes || null : null,
+          // extras are carried on the first line
+          totalPrice: line.pricing ? line.pricing.total + (i === 0 ? extrasSum : 0) : null,
+          notes: i === 0 ? [input.notes, extraLines.length ? `Extras: ${extraLines.map((l) => `${l.quantity} × ${l.name}`).join(", ")}` : ""].filter(Boolean).join("\n") || null : null,
         })),
       )
       .returning();
@@ -135,15 +140,15 @@ export async function createHotelReservation(db: Database, input: HotelReservati
   const ctx = {
     customerName: `${result.customer.firstName} ${result.customer.lastName}`,
     bookingNumber: result.reservationNumber,
-    spaces: quote.lines.map((l) => `${l.rooms} × ${l.name}`),
+    spaces: [...quote.lines.map((l) => `${l.rooms} × ${l.name}`), ...extraLines.map((l) => `${l.quantity} × ${l.name}`)],
     dateLabel: `${formatDateMedium(input.arrival)} – ${formatDateMedium(input.departure)} (${quote.nights} Nächte)`,
-    totalLabel: formatMoney(quote.total, "auf Anfrage"),
+    totalLabel: formatMoney(quote.total === null ? null : quote.total + extrasSum, "auf Anfrage"),
     message: input.notes || undefined,
     phone: siteConfig.contact.phone ?? undefined,
   };
   await sendEmail(db, "hotel_request_received", result.customer.email, ctx);
   await sendEmail(db, "operator_new_hotel_request", operatorEmail() ?? "betreiber@krone.invalid (nicht konfiguriert)", ctx);
-  return { reservationNumber: result.reservationNumber, status: "requested" as const, total: quote.total, lines: quote.lines.map((l) => ({ roomTypeId: l.roomTypeId, rooms: l.rooms, name: l.name })) };
+  return { reservationNumber: result.reservationNumber, status: "requested" as const, total: quote.total === null ? null : quote.total + extrasSum, lines: quote.lines.map((l) => ({ roomTypeId: l.roomTypeId, rooms: l.rooms, name: l.name })) };
 }
 
 export async function listHotelReservations(db: Database) {

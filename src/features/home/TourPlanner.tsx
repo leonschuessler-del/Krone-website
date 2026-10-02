@@ -142,7 +142,7 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
           <p className="text-[0.7rem] text-paper/45">Pauschale Fr–So, ohne Zusatzleistungen · Kaution separat</p>
         </dl>
         <p className="mb-2 text-xs text-paper/55">
-          Übernachtung? <Link href="/bereiche/hotel#zimmer" className="text-gold-light underline-offset-2 hover:underline">Zimmer einzeln buchen</Link>
+          Übernachtung für Ihre Gäste? Die ganze Etage wählen Sie im nächsten Schritt bei den Zusatzleistungen. Einzelne Zimmer gibt es im <Link href="/hotel" className="text-gold-light underline-offset-2 hover:underline">Hotel</Link>.
         </p>
         <div className="flex items-center justify-between gap-3 text-sm">
           <span data-testid="selection-count" className="text-paper/70">
