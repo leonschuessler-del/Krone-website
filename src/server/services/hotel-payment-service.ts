@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/format";
 import type { Database } from "@/server/db/client";
@@ -128,4 +128,98 @@ export async function settleHotelPayment(db: Database, paymentId: string, outcom
 
 export async function listHotelPayments(db: Database) {
   return db.select().from(hotelPayments);
+}
+
+/* ----------------------------------------------------------------------------
+ * Admin actions: refund a paid stay, charge the stored card (no-show / late cancellation)
+ * ------------------------------------------------------------------------- */
+
+async function stripe<T>(path: string, body: URLSearchParams | null, method: "GET" | "POST" = "POST"): Promise<T> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("STRIPE_SECRET_KEY fehlt");
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${key}`, ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
+    body: body ?? undefined,
+  });
+  const data = (await res.json()) as T & { error?: { message?: string } };
+  if (!res.ok) throw new Error(data.error?.message ?? `Stripe HTTP ${res.status}`);
+  return data;
+}
+
+async function lastSucceeded(db: Database, reservationNumber: string, kind: "full" | "guarantee") {
+  const [row] = await db
+    .select()
+    .from(hotelPayments)
+    .where(and(eq(hotelPayments.reservationNumber, reservationNumber), eq(hotelPayments.kind, kind), eq(hotelPayments.status, "succeeded")))
+    .orderBy(desc(hotelPayments.createdAt));
+  return row ?? null;
+}
+
+export class HotelPaymentError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** Refund an online-paid stay (fully by default, or a partial amount in cents). */
+export async function refundHotelPayment(db: Database, reservationNumber: string, amount?: number): Promise<{ refunded: number }> {
+  const payment = await lastSucceeded(db, reservationNumber, "full");
+  if (!payment) throw new HotelPaymentError(404, "Keine bezahlte Online-Zahlung zu dieser Reservierung.");
+  const sum = amount && amount > 0 ? Math.min(amount, payment.amount) : payment.amount;
+  let raw: unknown = { demo: true };
+  if (payment.provider === "stripe") {
+    if (!payment.intentRef) throw new HotelPaymentError(409, "Zu dieser Zahlung ist kein Stripe-Zahlungsvorgang gespeichert.");
+    raw = await stripe("/refunds", new URLSearchParams({ payment_intent: payment.intentRef, amount: String(sum), "metadata[reservationNumber]": reservationNumber }));
+  }
+  await db.update(hotelPayments).set({ status: "refunded", raw, updatedAt: new Date() }).where(eq(hotelPayments.id, payment.id));
+  await db.update(hotelReservations).set({ paymentStatus: "refunded", updatedAt: new Date() }).where(eq(hotelReservations.reservationNumber, reservationNumber));
+  return { refunded: sum };
+}
+
+/** Charge the card stored as guarantee – no-show or cancellation inside the last two days. */
+export async function chargeGuarantee(db: Database, reservationNumber: string, amount: number, reason: string): Promise<{ charged: number; paymentId: string }> {
+  if (!(amount > 0)) throw new HotelPaymentError(422, "Bitte einen Betrag über 0 € angeben.");
+  const guarantee = await lastSucceeded(db, reservationNumber, "guarantee");
+  if (!guarantee) throw new HotelPaymentError(404, "Zu dieser Reservierung ist keine Karte hinterlegt.");
+  const [row] = await db
+    .insert(hotelPayments)
+    .values({ reservationNumber, provider: guarantee.provider, kind: "fee", amount, status: "pending" })
+    .returning();
+  const paymentId = row!.id;
+  try {
+    let raw: unknown = { demo: true, reason };
+    let intentRef: string | null = null;
+    if (guarantee.provider === "stripe") {
+      if (!guarantee.intentRef) throw new HotelPaymentError(409, "Zur Kartenhinterlegung ist kein Stripe-SetupIntent gespeichert.");
+      const setup = await stripe<{ customer?: string | null; payment_method?: string | null }>(`/setup_intents/${encodeURIComponent(guarantee.intentRef)}`, null, "GET");
+      if (!setup.customer || !setup.payment_method) throw new HotelPaymentError(409, "Die hinterlegte Karte ist bei Stripe nicht mehr verfügbar.");
+      const intent = await stripe<{ id: string; status: string }>(
+        "/payment_intents",
+        new URLSearchParams({
+          amount: String(amount),
+          currency: "eur",
+          customer: setup.customer,
+          payment_method: setup.payment_method,
+          off_session: "true",
+          confirm: "true",
+          description: `Zur Krone – ${reason} ${reservationNumber}`,
+          "metadata[reservationNumber]": reservationNumber,
+          "metadata[hotelPaymentId]": paymentId,
+        }),
+      );
+      if (intent.status !== "succeeded") throw new HotelPaymentError(402, `Die Belastung wurde nicht bestätigt (Status ${intent.status}).`);
+      intentRef = intent.id;
+      raw = intent;
+    }
+    await db.update(hotelPayments).set({ status: "succeeded", intentRef, raw, updatedAt: new Date() }).where(eq(hotelPayments.id, paymentId));
+    await db.update(hotelReservations).set({ paymentStatus: "paid", updatedAt: new Date() }).where(eq(hotelReservations.reservationNumber, reservationNumber));
+    return { charged: amount, paymentId };
+  } catch (err) {
+    await db.update(hotelPayments).set({ status: "failed", raw: { error: err instanceof Error ? err.message : String(err) }, updatedAt: new Date() }).where(eq(hotelPayments.id, paymentId));
+    throw err;
+  }
 }

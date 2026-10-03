@@ -232,7 +232,9 @@ async function snapshotRoute(route) {
         }
         for (const v of root.querySelectorAll("video")) {
           v.querySelectorAll("source").forEach((s) => {
-            const src = s.getAttribute("src") ?? "";
+            let src = s.getAttribute("src") ?? "";
+            // the artifact keeps binaries ≤ 15 MB → the preview plays the 720p rendition of the hero film
+            if (src === "/media/hero/krone-film.mp4") src = "/media/hero/krone-film-720.mp4";
             if (src.startsWith("/media/")) s.setAttribute("src", src.slice(1));
             else s.remove();
           });

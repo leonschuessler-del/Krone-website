@@ -188,7 +188,12 @@
     .hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
     .hover-zoom img, .hover-zoom video { transition: transform 1.4s var(--ease-out-soft); }
     .hover-zoom:hover img, .hover-zoom:hover video { transform: scale(1.045); }
-    .hover-nudge:hover img { animation: nudge 0.55s var(--ease-out-soft) 1; }
+    .hover-nudge:hover img { animation: nudge 0.55s var(--ease-out-soft) 1 forwards; }
+  }
+  /* reduced motion: no jump into the zoomed state, the lift keeps only its calm shadow */
+  @media (prefers-reduced-motion: reduce) {
+    .hover-zoom:hover img, .hover-zoom:hover video, .hover-nudge:hover img { transform: none; animation: none; }
+    .hover-lift:hover { transform: none; box-shadow: var(--shadow-soft); }
   }
   @keyframes nudge {
     0% { transform: scale(1) rotate(0); }

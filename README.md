@@ -34,7 +34,7 @@ den Betreiber.
 15. [Checkliste vor dem Produktionsstart](#checkliste-vor-dem-produktionsstart)
 
 Weitere Dokumente: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [docs/ADMIN.md](docs/ADMIN.md) · [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) · [docs/ZAHLUNG.md](docs/ZAHLUNG.md)
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [docs/ADMIN.md](docs/ADMIN.md) · [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) · [docs/ZAHLUNG.md](docs/ZAHLUNG.md) · [docs/MEDIA.md](docs/MEDIA.md) · [docs/FILM.md](docs/FILM.md)
 
 ---
 

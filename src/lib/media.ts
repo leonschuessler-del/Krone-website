@@ -83,18 +83,32 @@ export function getPropertyGallery(): MediaAsset[] {
 
 export interface HeroVideoSources {
   mp4: string | null;
+  /** Smaller rendition (1280×720) for narrow viewports; null when not available. */
+  mp4Small: string | null;
   webm: string | null;
   poster: string | null;
   isReal: boolean;
 }
 
 export function getHeroVideo(): HeroVideoSources {
+  const poster = findFile("/media/hero/poster", IMAGE_EXTENSIONS);
+  // Image film (tools/media/film_cut.py) wins over the older approach-only clip.
+  const film = findFile("/media/hero/krone-film", ["mp4"]);
+  if (film) {
+    return {
+      mp4: film,
+      mp4Small: findFile("/media/hero/krone-film-720", ["mp4"]),
+      webm: findFile("/media/hero/krone-film", ["webm"]),
+      poster,
+      isReal: true,
+    };
+  }
   const mp4 = findFile("/media/hero/krone-property-tour", ["mp4"]);
   const webm = findFile("/media/hero/krone-property-tour", ["webm"]);
-  const poster = findFile("/media/hero/poster", IMAGE_EXTENSIONS);
-  if (mp4 || webm) return { mp4, webm, poster, isReal: true };
+  if (mp4 || webm) return { mp4, mp4Small: null, webm, poster, isReal: true };
   return {
     mp4: findFile("/media/_demo/hero/krone-property-tour", ["mp4"]),
+    mp4Small: null,
     webm: findFile("/media/_demo/hero/krone-property-tour", ["webm"]),
     poster: poster ?? findFile("/media/_demo/hero/poster", IMAGE_EXTENSIONS),
     isReal: false,

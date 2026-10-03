@@ -51,7 +51,7 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     id: "double",
     name: "Doppelzimmer",
     description: "Doppelbett, eigenes Bad, Frühstück inklusive.",
-    details: "Die geschmackvoll eingerichteten Doppelzimmer liegen im ersten Obergeschoss. Holzmöbel, ein ruhiges Farbkonzept und viel Tageslicht – Gasthof-Charme mit moderner Ausstattung.",
+    details: "Holzmöbel, ruhige Farben, viel Tageslicht: Gasthof-Charme mit moderner Ausstattung, im ersten Obergeschoss.",
     bathroom: BATH,
     features: STANDARD,
     maxGuests: 2,
@@ -81,7 +81,7 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     id: "single",
     name: "Einzelzimmer",
     description: "Einzelbett, eigenes Bad, Frühstück inklusive.",
-    details: "Gemütlich eingerichtet mit Schreibtisch und Sitzecke – für Geschäftsreisende und Alleinreisende, die abends ankommen und morgens gestärkt weiterfahren.",
+    details: "Schreibtisch, Sitzecke, Ruhe – für Gäste, die abends ankommen und morgens gestärkt weiterfahren.",
     bathroom: BATH,
     features: STANDARD,
     maxGuests: 1,
@@ -95,10 +95,8 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
   {
     id: "apartment",
     name: "Apartment",
-    description: "Ferienwohnung mit drei Schlafzimmern und eigener Küche, Frühstück inklusive. Preis auf Anfrage.",
-    details:
-      "Die Ferienwohnung liegt im Haupthaus: drei separate Schlafzimmer, Sitz- und Essecke, ausgestattete Küche und ein Südbalkon mit Sitzgelegenheit. " +
-      "Zwei Schlafzimmer mit Doppelbett, eines mit 1,40-m-Bett, jedes mit eigenem TV. Bad mit Dusche und Badewanne sowie separates Gäste-WC.",
+    description: "Drei Schlafzimmer, eigene Küche, Südbalkon – Frühstück inklusive.",
+    details: "Die Ferienwohnung liegt im Haupthaus: drei separate Schlafzimmer – zwei mit Doppelbett, eines mit 1,40-m-Bett, jedes mit eigenem TV. Dazu Sitz- und Essecke, ausgestattete Küche und ein Südbalkon mit Sitzgelegenheit.",
     bathroom: "Bad mit Dusche, Badewanne, WC, Haartrockner und Kosmetikspiegel; separates Gäste-WC.",
     features: ["WLAN kostenlos", "Sat-TV in jedem Zimmer", "Ausgestattete Küche", "Südbalkon", "Sitz- und Essecke", "Schreibtisch"],
     sizeHint: "bis 5 Personen, Extra-Aufbettung auf Anfrage",
@@ -163,7 +161,7 @@ export type StayExtraId = (typeof stayExtras)[number]["id"];
 export const hotelCopy = {
   eyebrow: "Landhotel seit 1919",
   title: "Übernachten in der Krone.",
-  text: "Acht Doppelzimmer, zwei Einzelzimmer und ein Apartment im Obergeschoss – jedes mit eigenem Bad, Frühstück inklusive. Wählen Sie An- und Abreise, wir bestätigen Ihre Reservierung persönlich.",
+  text: "Acht Doppelzimmer, zwei Einzelzimmer, ein Apartment – alle im Obergeschoss, mit eigenem Bad und Frühstück. Sie wählen die Daten, wir bestätigen persönlich.",
   checkIn: "Anreise 15:30–21 Uhr (Schlüsselsafe vorhanden), Abreise Mo–Fr bis 10 Uhr, Sa–So bis 11 Uhr.",
 };
 
@@ -173,7 +171,7 @@ export const hotelStory = {
   title: "Ein Haus mit großer Tradition.",
   paragraphs: [
     "Seit 1919 gehört die „Krone“ in der Dorfmitte von Leidersbach der Familie. Aus dem Wirtshaus mit Eder-Bräu-Schild wurde 1980/81 unter Cäcilia und Franz Schüßler das Landhotel mit Gasthof – das Haus bekam ein Stockwerk und seine Zimmer.",
-    "Von 2015 bis 2025 setzten Boris Schüßler und seine Frau frische Akzente am Herd und am Grill. Seit 2026 ist die Krone Hotel garni und Eventlocation: Frühstück im Haus, Räume für Feste – und die Familie wie eh und je dahinter.",
+    "Von 2015 bis 2025 standen Boris Schüßler und seine Frau am Herd und am Grill. Seit 2026 ist die Krone Hotel garni und Eventlocation – Frühstück im Haus, Räume für Feste, die Familie wie eh und je dahinter.",
   ],
   milestones: [
     { year: "1919", text: "Die Krone kommt in Familienbesitz." },
@@ -192,8 +190,10 @@ export const historyPhotos = [
   { src: "/media/history/fachwerkhaus.webp", year: "Früher", caption: "Fachwerk in Leidersbach – aus dem Familienalbum" },
   { src: "/media/history/krone-eder-braeu.webp", year: "Wirtshaus", caption: "Die Krone mit dem Eder-Bräu-Schild" },
   { src: "/media/history/umbau-strasse.webp", year: "1980/81", caption: "Aufstockung für die Hotelzimmer" },
-  { src: "/media/property/house-front.webp", year: "Heute", caption: "Landhotel Gasthof Zur Krone, Hauptstraße 106" },
 ] as const;
+
+/** The house today – drone photo of the operator (May 2025). */
+export const historyToday = { src: "/media/history/heute.webp", year: "Heute", caption: "Die Krone in der Dorfmitte von Leidersbach – Hauptstraße 106" } as const;
 
 export const breakfast = {
   title: "Frühstück im Haus.",
@@ -203,11 +203,10 @@ export const breakfast = {
 export const hotelFacts = {
   checkIn: ["15:30 – 21:00 Uhr", "Schlüsselsafe vorhanden"],
   checkOut: ["Montag – Freitag 07:00 – 10:00 Uhr", "Samstag – Sonntag 08:00 – 11:00 Uhr"],
-  cancellation:
-    "Bis zu 2 Tage vor der Anreise können Gäste kostenlos stornieren. Bei einer Stornierung in den 2 Tagen vor der Anreise werden 80 % des Gesamtpreises berechnet, bei Nichtanreise der Gesamtpreis der Buchung.",
+  cancellation: "Kostenlos bis 2 Tage vor Anreise. Danach 80 % des Gesamtpreises, bei Nichtanreise der volle Betrag.",
   cards: "EC, Mastercard, Visa, Maestro",
   amenities: ["Extrabett / Kinderbett möglich", "Kostenloses WLAN", "Parkplatz direkt am Hotel", "Frühstück inklusive", "All Bikers Welcome"],
-  pets: "Falls Sie zu Ihrem Aufenthalt Haustiere mitbringen möchten, sprechen Sie uns bitte vorab an.",
+  pets: "Haustiere bitte vorab mit uns absprechen.",
 };
 
 /** Why book here instead of a portal – honest benefits, no discounts. */

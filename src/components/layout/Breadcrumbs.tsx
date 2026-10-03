@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { siteConfig } from "@/config/site";
+import { cn } from "@/lib/cn";
 
 export interface Crumb {
   label: string;
@@ -26,7 +27,7 @@ export function Breadcrumbs({ items, tone = "light" }: { items: Crumb[]; tone?: 
           <li key={c.label} className="flex items-center gap-1">
             {i > 0 && <ChevronRight className="h-3.5 w-3.5 opacity-60" aria-hidden />}
             {c.href && i < items.length - 1 ? (
-              <Link href={c.href} className={tone === "dark" ? "hover:text-paper" : "hover:text-ink"}>
+              <Link href={c.href} className={cn("transition-colors duration-300", tone === "dark" ? "hover:text-paper" : "hover:text-gold-dark")}>
                 {c.label}
               </Link>
             ) : (

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, BedDouble, CircleAlert } from "lucide-react";
+import { ArrowRight, BedDouble, BedSingle, CalendarCheck, CircleAlert, DoorOpen, Euro, Hotel, Hourglass, House, Ruler, Sparkles, TreeDeciduous, Users, Wallet, type LucideIcon } from "lucide-react";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { Gallery } from "@/components/media/Gallery";
 import { MediaPlaceholder } from "@/components/media/MediaPlaceholder";
@@ -10,7 +10,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { SelectSpaceButton } from "@/features/spaces/SelectSpaceButton";
 import { SpaceAvailability } from "@/features/spaces/SpaceAvailability";
-import { hotelCopy, roomTypeSeeds } from "@/content/hotel";
+import { hotelCopy, roomTypeSeeds, type RoomTypeSeed } from "@/content/hotel";
 import { SpaceMiniMap } from "@/features/spaces/SpaceMiniMap";
 import { formatPriceFrom } from "@/features/spaces/price-label";
 import { env } from "@/lib/env";
@@ -24,6 +24,9 @@ const TYPE_LABEL = { indoor: "Innenbereich", outdoor: "Außenbereich", hotel: "H
 const MODE_LABEL = { instant: "Direktbuchung", inquiry: "auf Anfrage", both: "Direktbuchung oder Anfrage" } as const;
 
 const stripPlaceholder = (t: string | null) => t?.replace(/\s*\[PLACEHOLDER[^\]]*\]/g, "").trim() ?? null;
+
+/** Room rows on the hotel plan: glyph by bed kind, the whole floor gets the hotel glyph. */
+const ROOM_ICON: Record<RoomTypeSeed["bedKind"], LucideIcon> = { double: BedDouble, single: BedSingle, multi: House };
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -48,20 +51,21 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
   const images = space.media.hero ? [space.media.hero, ...space.media.gallery.filter((g) => g.src !== space.media.hero!.src)] : space.media.gallery;
 
   const est = displayFacts(space);
-  const facts: Array<{ label: string; value: string; pending?: boolean }> = [
-    { label: "Fläche", value: est.area, pending: space.areaSqm === null && est.area === "Angabe folgt" },
-    { label: space.type === "hotel" ? "Zimmer" : "Sitzplätze", value: est.seats, pending: space.capacitySeated === null && est.seats === "Angabe folgt" },
-    { label: "Stehplätze", value: space.capacityStanding !== null ? String(space.capacityStanding) : "Angabe folgt", pending: space.capacityStanding === null },
-    { label: "Preis", value: formatPriceFrom(space) + (demo && space.basePrice !== null ? " (Demo)" : ""), pending: space.basePrice === null },
+  const facts: Array<{ icon: LucideIcon; label: string; value: string; pending?: boolean }> = [
+    { icon: Ruler, label: "Fläche", value: est.area, pending: space.areaSqm === null && est.area === "Angabe folgt" },
+    { icon: space.type === "hotel" ? BedDouble : Users, label: space.type === "hotel" ? "Zimmer" : "Sitzplätze", value: est.seats, pending: space.capacitySeated === null && est.seats === "Angabe folgt" },
+    { icon: Users, label: "Stehplätze", value: space.capacityStanding !== null ? String(space.capacityStanding) : "Angabe folgt", pending: space.capacityStanding === null },
+    { icon: Euro, label: "Preis", value: formatPriceFrom(space) + (demo && space.basePrice !== null ? " (Demo)" : ""), pending: space.basePrice === null },
     {
+      icon: Hourglass,
       label: "Mindestdauer",
       value: space.minimumDurationMinutes !== null ? formatDuration(space.minimumDurationMinutes) : "Angabe folgt",
       pending: space.minimumDurationMinutes === null,
     },
-    { label: "Kaution", value: formatMoney(space.deposit, "Angabe folgt") + (demo && space.deposit !== null ? " (Demo)" : ""), pending: space.deposit === null },
-    { label: "Endreinigung", value: formatMoney(space.cleaningFee, "Angabe folgt") + (demo && space.cleaningFee !== null ? " (Demo)" : ""), pending: space.cleaningFee === null },
-    { label: "Buchung", value: space.bookable ? MODE_LABEL[space.bookingMode] : "auf Anfrage" },
-    { label: "Art", value: TYPE_LABEL[space.type] },
+    { icon: Wallet, label: "Kaution", value: formatMoney(space.deposit, "Angabe folgt") + (demo && space.deposit !== null ? " (Demo)" : ""), pending: space.deposit === null },
+    { icon: Sparkles, label: "Endreinigung", value: formatMoney(space.cleaningFee, "Angabe folgt") + (demo && space.cleaningFee !== null ? " (Demo)" : ""), pending: space.cleaningFee === null },
+    { icon: CalendarCheck, label: "Buchung", value: space.bookable ? MODE_LABEL[space.bookingMode] : "auf Anfrage" },
+    { icon: space.type === "outdoor" ? TreeDeciduous : DoorOpen, label: "Art", value: TYPE_LABEL[space.type] },
   ];
 
   return (
@@ -114,7 +118,15 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
       <section className="bg-paper py-20" aria-labelledby="about-title">
         <div className="container-page grid gap-12 lg:grid-cols-[1.5fr_1fr]">
           <div>
-            <SectionHeading id="about-title" eyebrow="Beschreibung" title={`Der Bereich ${space.name}`}>
+            <SectionHeading
+              id="about-title"
+              eyebrow="Beschreibung"
+              title={
+                <>
+                  Der Bereich <span className="accent">{space.name}</span>
+                </>
+              }
+            >
               <p>{stripPlaceholder(space.longDescription)}</p>
             </SectionHeading>
             {unverified.has("longDescription") && <p className="mt-3 text-xs uppercase tracking-wider text-muted">Ausführliche Beschreibung folgt</p>}
@@ -131,7 +143,10 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
               <dl className="mt-4 divide-y divide-sand">
                 {facts.map((f) => (
                   <div key={f.label} className="flex items-baseline justify-between gap-4 py-2.5">
-                    <dt className="text-sm text-muted">{f.label}</dt>
+                    <dt className="flex items-center gap-2 text-sm text-muted">
+                      <f.icon className="h-3.5 w-3.5 shrink-0 text-gold-dark" strokeWidth={1.5} aria-hidden />
+                      {f.label}
+                    </dt>
                     <dd className={f.pending ? "text-sm text-muted" : "font-semibold"}>{f.value}</dd>
                   </div>
                 ))}
@@ -180,17 +195,23 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
         <section className="bg-paper py-20" aria-labelledby="plan-title">
           <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:items-center">
             <SectionHeading id="plan-title" eyebrow="1. Obergeschoss" title="Elf Zimmer über dem Gasthof">
-              <p>Das Hotel liegt im Obergeschoss über Restaurant, Nebenzimmer und Bühne: acht Doppelzimmer, zwei Einzelzimmer und ein Apartment mit eigener Küche, dazu ein Aufenthaltsraum mit Balkon. Alle Zimmer haben ein eigenes Bad; Frühstück ist inklusive.</p>
+              <p>Der Grundriss zeigt die Etage über Restaurant, Nebenzimmer und Bühne: acht Doppelzimmer, zwei Einzelzimmer, das Apartment mit eigener Küche und der Aufenthaltsraum mit Balkon.</p>
               <ul className="mt-5 divide-y divide-sand rounded-2xl border border-sand bg-white text-sm">
-                {roomTypeSeeds.map((t) => (
-                  <li key={t.id} className="flex items-baseline justify-between gap-4 px-4 py-3">
-                    <span>
-                      <span className="font-serif text-lg">{t.name}</span>
-                      <span className="block text-xs text-muted">{t.description}</span>
-                    </span>
-                    <span className="shrink-0 font-semibold tabular-nums">{t.basePricePerNight === null ? "auf Anfrage" : `${formatMoney(t.basePricePerNight)} / Nacht`}</span>
-                  </li>
-                ))}
+                {roomTypeSeeds.map((t) => {
+                  const Icon = t.id === "floor" ? Hotel : ROOM_ICON[t.bedKind];
+                  return (
+                    <li key={t.id} className="flex items-baseline justify-between gap-4 px-4 py-3">
+                      <span>
+                        <span className="font-serif text-lg">
+                          <Icon className="mr-2 inline h-4 w-4 -translate-y-px text-gold-dark" strokeWidth={1.5} aria-hidden />
+                          {t.name}
+                        </span>
+                        <span className="block text-xs text-muted">{t.description}</span>
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums">{t.basePricePerNight === null ? "auf Anfrage" : `${formatMoney(t.basePricePerNight)} / Nacht`}</span>
+                    </li>
+                  );
+                })}
               </ul>
               <p className="mt-2 text-sm text-muted">Grundriss nach dem Bauplan des Hauses.</p>
               <div className="mt-6">
@@ -212,7 +233,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
           <SectionHeading id="location-title" eyebrow="Lage" title="Wo auf dem Grundstück?">
             <p>
               {space.shape
-                ? `Der Bereich „${space.name}“ ist auf der Grundstückskarte hervorgehoben. Klicken Sie auf einen anderen Bereich, um ihn zu entdecken.`
+                ? `„${space.name}“ ist auf der Karte hervorgehoben – tippen Sie einen anderen Bereich an, um ihn zu entdecken.`
                 : "Die genaue Abgrenzung dieses Bereichs auf dem Grundstück wird noch eingezeichnet."}
             </p>
             <p className="mt-2 text-sm text-muted">Drohnenaufnahme von oben – Raumgrenzen sinngemäß eingezeichnet.</p>
@@ -261,7 +282,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             <div className="card-surface p-8">
               <h2 className="font-serif text-3xl">Küche als Zusatzleistung</h2>
               <p className="mt-3 max-w-2xl text-ink-soft">
-                Die Küche wird nicht als Raum vermietet, sondern als Zusatzleistung zu Ihrer Feier gebucht – ausschließlich zusammen mit einem Caterer. Sie wählen sie im Raumplaner bei den Zusatzleistungen aus.
+                Die Küche ist kein eigener Mietraum, sondern eine Zusatzleistung zu Ihrer Feier – ausschließlich mit einem Caterer. Sie wählen sie im Raumplaner unter Zusatzleistungen.
               </p>
               <ButtonLink href="/eventlocation#karte" variant="gold" className="mt-6">
                 Zum Raumplaner
@@ -280,8 +301,8 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
           <ul className="mt-6 flex flex-wrap gap-2">
             {others.map((o) => (
               <li key={o.id}>
-                <Link href={o.href} className="inline-flex items-center gap-2 rounded-full border border-sand bg-white px-4 py-2 font-semibold hover:border-ink/40">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: o.color }} /> {o.name}
+                <Link href={o.href} className="inline-flex items-center gap-2 rounded-full border border-sand bg-white px-4 py-2 font-semibold transition-colors duration-300 hover:border-gold hover:text-gold-dark">
+                  <span className="font-serif text-xs text-gold-dark">{o.code}</span> {o.name}
                 </Link>
               </li>
             ))}

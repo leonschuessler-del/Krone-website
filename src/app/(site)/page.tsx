@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BedDouble, Coffee, Car, Wifi, PawPrint, Bike } from "lucide-react";
+import { ArrowRight, BedDouble, Coffee, Car, Wifi, PawPrint, Motorbike } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { siteConfig } from "@/config/site";
-import { breakfast, directBenefits, guestRoomTypes, historyPhotos, hotelStory } from "@/content/hotel";
+import { breakfast, directBenefits, guestRoomTypes, historyPhotos, historyToday, hotelStory } from "@/content/hotel";
+import { BENEFIT_ICON } from "@/features/hotel/benefit-icons";
 import { arrival, HOTEL_COORDS, sights } from "@/content/sights";
 import { StructuredData } from "@/features/home/StructuredData";
 import { HeroVideo } from "@/features/home/HeroVideo";
@@ -48,48 +49,79 @@ export default async function HomePage() {
           <div className="max-w-3xl animate-fade-up text-shadow-hero">
             <p className="eyebrow !text-gold-light">Landhotel · Leidersbach im Spessart · seit 1919</p>
             <h1 id="hero-title" className="mt-6 text-[3.2rem] font-light leading-[0.98] md:text-[5rem] lg:text-[6.2rem]">
-              Ankommen, <em>wo man bleibt.</em>
+              Ankommen, <em>wo man <span className="accent">bleibt</span>.</em>
             </h1>
             <p className="mt-6 max-w-xl text-lg font-light leading-relaxed text-paper/85 md:text-xl">
-              Zehn Zimmer und ein Apartment über den Dächern eines Dorfes, der Spessartwald hinter dem Haus, Aschaffenburg und Frankfurt in Reichweite. Frühstück und Parken inklusive.
+              Zehn Zimmer und ein Apartment über den Dächern eines Dorfes, der Spessartwald hinter dem Haus, Aschaffenburg und Frankfurt in Reichweite.
             </p>
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[0.72rem] uppercase tracking-[0.18em] text-paper/85" aria-label="Inklusive">
+              {[
+                { icon: Coffee, t: "Frühstück inklusive" },
+                { icon: Car, t: "Parken inklusive" },
+                { icon: Wifi, t: "WLAN kostenlos" },
+              ].map((f) => (
+                <li key={f.t} className="inline-flex items-center gap-2">
+                  <f.icon className="h-3.5 w-3.5 text-gold-light" strokeWidth={1.5} aria-hidden /> {f.t}
+                </li>
+              ))}
+            </ul>
           </div>
           <BookingBar tone="dark" className="mt-10 md:mt-14" />
         </div>
       </section>
 
-      {/* Intro / story */}
-      <section className="bg-paper py-24 md:py-32" aria-labelledby="story-title">
-        <div className="container-page grid gap-14 lg:grid-cols-[1.1fr_1fr] lg:items-center">
-          {/* Wandel: four photos from the family album to today */}
-          <ol className="grid grid-cols-2 gap-3 sm:gap-4" aria-label="Die Krone im Wandel" data-testid="history-strip">
-            {historyPhotos.filter((h) => mediaExists(h.src)).map((h, i) => (
-              <li key={h.src} className={cn("group relative overflow-hidden bg-cream", i === 3 ? "col-span-2 aspect-[16/8]" : "aspect-[4/3]")}>
-                <Image src={h.src} alt={h.caption} fill sizes="(min-width:1024px) 28vw, 50vw" className={cn("object-cover transition-transform duration-[1.6s] ease-out group-hover:scale-[1.04]", i < 2 && "sepia-[.25]")} />
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-anthracite/80 to-transparent px-3 pb-2.5 pt-8 text-paper text-shadow-hero">
-                  <span className="block font-serif text-lg leading-none text-gold-light">{h.year}</span>
-                  <span className="mt-1 block text-[0.72rem] leading-snug text-paper/90">{h.caption}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-          <div>
-            <SectionHeading id="story-title" eyebrow={hotelStory.eyebrow} title={hotelStory.title}>
-              {hotelStory.paragraphs.slice(0, 2).map((p) => (
-                <p key={p}>{p}</p>
-              ))}
-            </SectionHeading>
-            <ol className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6 border-t border-sand pt-8 sm:grid-cols-4">
+      {/* Intro / story – one field: the house today, the family album laid on top, the chronicle */}
+      <section className="bg-cream py-20 md:py-28" aria-labelledby="story-title">
+        <div className="container-page">
+          <div className="relative overflow-hidden border border-sand bg-white shadow-[var(--shadow-soft)]" data-testid="history-block">
+            <div className="grid gap-8 px-6 pt-10 md:px-12 md:pt-14 lg:grid-cols-[1fr_1.1fr] lg:items-end">
+              <SectionHeading id="story-title" eyebrow={hotelStory.eyebrow} title={<>Ein Haus mit <span className="accent">großer</span> Tradition.</>} />
+              <div className="space-y-4 text-[1.0625rem] leading-[1.75] text-ink-soft lg:pb-2">
+                {hotelStory.paragraphs.map((p) => (
+                  <p key={p}>{p}</p>
+                ))}
+              </div>
+            </div>
+
+            {/* today, large – with the three old photographs laid over its lower edge */}
+            <figure className="relative mt-10 md:mt-12">
+              <div className="group hover-zoom relative aspect-[16/9] overflow-hidden md:aspect-[2.5/1]">
+                <Image src={historyToday.src} alt={historyToday.caption} fill sizes="(min-width:1280px) 1200px, 100vw" className="object-cover" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-anthracite/60 via-transparent to-anthracite/55" />
+                <figcaption className="absolute right-5 top-5 text-right text-paper text-shadow-hero md:right-10 md:top-8">
+                  <span className="block font-serif text-2xl leading-none text-gold-light md:text-3xl">{historyToday.year}</span>
+                  <span className="mt-1 block text-[0.72rem] uppercase tracking-[0.18em] text-paper/90">{historyToday.caption}</span>
+                </figcaption>
+              </div>
+              <ol className="relative z-10 -mt-10 grid grid-cols-3 gap-3 px-6 sm:gap-5 md:-mt-20 md:px-12" aria-label="Aus dem Familienalbum">
+                {historyPhotos.filter((h) => mediaExists(h.src)).map((h, i) => (
+                  <li key={h.src} className={cn("hover-nudge bg-paper p-1.5 shadow-[var(--shadow-lift)] transition-transform duration-500 ease-[var(--ease-out-soft)] hover:rotate-0 sm:p-2.5", ["-rotate-[1.6deg]", "rotate-[1deg]", "-rotate-[0.7deg]"][i])}>
+                    <div className="relative aspect-[4/3] overflow-hidden bg-cream">
+                      <Image src={h.src} alt={h.caption} fill sizes="(min-width:1024px) 20vw, 33vw" className={cn("object-cover", i < 2 && "sepia-[.3]")} />
+                    </div>
+                    <p className="px-1 pb-1 pt-2 sm:pt-3">
+                      <span className="block font-serif text-base leading-none text-gold-dark sm:text-lg">{h.year}</span>
+                      <span className="mt-1 hidden text-[0.7rem] leading-snug text-ink-soft sm:block">{h.caption}</span>
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </figure>
+
+            {/* chronicle */}
+            <ol className="mx-6 mb-10 mt-10 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4 md:mx-12 md:mb-12 md:mt-12" aria-label="Chronik">
               {hotelStory.milestones.map((m) => (
-                <li key={m.year}>
+                <li key={m.year} className="relative border-t border-gold/40 pt-6 before:absolute before:-top-[5px] before:left-0 before:h-2.5 before:w-2.5 before:rounded-full before:bg-gold">
                   <span className="font-serif text-3xl text-gold-dark">{m.year}</span>
                   <p className="mt-1 text-sm leading-snug text-ink-soft">{m.text}</p>
                 </li>
               ))}
             </ol>
-            <ButtonLink href="/hotel" variant="secondary" className="mt-10">
-              Das Hotel <ArrowRight className="h-4 w-4" />
-            </ButtonLink>
+            <div className="px-6 pb-10 md:px-12 md:pb-12">
+              <ButtonLink href="/hotel" variant="secondary">
+                Das Hotel <ArrowRight className="h-4 w-4" />
+              </ButtonLink>
+            </div>
           </div>
         </div>
       </section>
@@ -98,7 +130,7 @@ export default async function HomePage() {
       <section id="zimmer" className="bg-cream py-24 md:py-32" aria-labelledby="rooms-title">
         <div className="container-page">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <SectionHeading id="rooms-title" eyebrow="Zimmer & Apartment" title="Schlafen wie zu Hause, nur ruhiger.">
+            <SectionHeading id="rooms-title" eyebrow="Zimmer & Apartment" title={<>Schlafen wie zu Hause, nur <span className="accent">ruhiger</span>.</>}>
               <p>Holz, helle Stoffe, eigenes Bad – und morgens der Duft von frischen Brötchen. Alle Zimmer liegen im ersten Obergeschoss, das Apartment hat drei Schlafzimmer und eine eigene Küche.</p>
             </SectionHeading>
             <ButtonLink href="/hotel/buchen" variant="primary">
@@ -117,7 +149,7 @@ export default async function HomePage() {
               { icon: Wifi, t: "WLAN kostenlos" },
               { icon: BedDouble, t: "Eigenes Bad" },
               { icon: PawPrint, t: "Hunde willkommen" },
-              { icon: Bike, t: "All Bikers Welcome" },
+              { icon: Motorbike, t: "All Bikers Welcome" },
             ].map((f) => (
               <li key={f.t} className="flex items-center gap-3 bg-paper px-5 py-4 text-sm">
                 <f.icon className="h-4 w-4 text-gold-dark" strokeWidth={1.5} aria-hidden /> {f.t}
@@ -130,16 +162,21 @@ export default async function HomePage() {
       {/* Breakfast + direct benefits */}
       <section className="panel-dark py-24 md:py-28" aria-labelledby="benefits-title">
         <div className="container-page grid gap-14 lg:grid-cols-[1fr_1fr] lg:items-center">
-          <SectionHeading id="benefits-title" tone="dark" eyebrow="Direkt beim Haus" title="Warum Sie hier buchen sollten.">
-            <p>{breakfast.text} Und wer direkt beim Haus bucht, bekommt die Konditionen, die ein Portal nicht geben kann.</p>
+          <SectionHeading id="benefits-title" tone="dark" eyebrow="Direkt beim Haus" title={<>Warum Sie <span className="accent">hier</span> buchen sollten.</>}>
+            <p>{breakfast.text}</p>
+            <p>Direkt beim Haus gebucht: Konditionen, die kein Portal geben kann.</p>
           </SectionHeading>
           <ul className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-            {directBenefits.map((b) => (
-              <li key={b.title} className="bg-anthracite/80 p-7">
-                <h3 className="font-serif text-2xl text-paper">{b.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-paper/65">{b.text}</p>
-              </li>
-            ))}
+            {directBenefits.map((b) => {
+              const Icon = BENEFIT_ICON[b.title];
+              return (
+                <li key={b.title} className="bg-anthracite/80 p-7 transition-colors duration-300 hover:bg-anthracite/60">
+                  {Icon && <Icon className="h-6 w-6 text-gold-light" strokeWidth={1.4} aria-hidden />}
+                  <h3 className="mt-4 font-serif text-2xl text-paper">{b.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-paper/65">{b.text}</p>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>
@@ -157,7 +194,7 @@ export default async function HomePage() {
               Raum für <em>besondere Momente.</em>
             </h2>
             <p className="mt-6 text-lg font-light leading-relaxed text-paper/80">
-              Restaurant, Nebenzimmer, Bühne, Wintergarten und Biergarten – bis zu 160 Gäste feiern in der ehemaligen Gaststätte, mit Profiküche für Ihren Caterer und dem ganzen Hotel für die Nacht danach.
+              Restaurant, Nebenzimmer, Bühne, Wintergarten und Biergarten: Platz für bis zu 160 Gäste in der ehemaligen Gaststätte. Profiküche für Ihren Caterer – und das ganze Hotel für die Nacht danach.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <ButtonLink href="/eventlocation" variant="gold" size="lg">

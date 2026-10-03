@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { roomInventory, roomTypeSeeds } from "@/content/hotel";
 import { nightCount } from "@/domain/hotel";
+import { HotelPaymentActions } from "@/features/admin/hotel/HotelPaymentActions";
 import { HotelReservationActions } from "@/features/admin/hotel/HotelReservationActions";
 import { Badge, Card, EmptyState, PageHeader, tableClass, tdClass, thClass } from "@/features/admin/ui";
 import { formatDateMedium, formatMoney } from "@/lib/format";
@@ -84,6 +85,7 @@ export default async function HotelAdminPage() {
                     </td>
                     <td className={tdClass}>
                       <HotelReservationActions id={r.id} status={r.status} />
+                      <HotelPaymentActions id={r.id} paymentStatus={r.paymentStatus} total={r.total} arrival={r.arrivalDate} />
                     </td>
                   </tr>
                 ))}

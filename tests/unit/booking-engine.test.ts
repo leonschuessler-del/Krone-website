@@ -17,6 +17,7 @@ import {
   type Cart,
 } from "@/domain/booking-engine";
 import { engineRoomTypes } from "@/domain/booking-engine";
+import { cancellationFee } from "@/domain/hotel";
 import { isLocalDate } from "@/domain/time";
 
 const live = (over: Partial<Record<string, Partial<AvailabilityType>>> = {}): AvailabilityType[] =>
@@ -113,5 +114,14 @@ describe("search ↔ url", () => {
     const s = searchFromParams(p, isLocalDate, { adults: 2 });
     expect(s).toEqual({ arrival: "2026-11-02", departure: "2026-11-05", guests: { adults: 2, children: 1 }, code: "FIRMA" });
     expect(searchFromParams(new URLSearchParams("gaeste=3&anreise=nope"), isLocalDate, { adults: 2 }).guests.adults).toBe(3);
+  });
+});
+
+describe("cancellation fee", () => {
+  it("is free until two days before arrival, 80 % inside, 100 % for a no-show", () => {
+    expect(cancellationFee(30000, "2026-11-10", "2026-11-08")).toEqual({ percent: 0, amount: 0 });
+    expect(cancellationFee(30000, "2026-11-10", "2026-11-09")).toEqual({ percent: 80, amount: 24000 });
+    expect(cancellationFee(30000, "2026-11-10", "2026-11-10")).toEqual({ percent: 80, amount: 24000 });
+    expect(cancellationFee(30000, "2026-11-10", "2026-11-10", true)).toEqual({ percent: 100, amount: 30000 });
   });
 });

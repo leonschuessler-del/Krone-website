@@ -1,5 +1,5 @@
 import { FLOOR_NIGHT_TIERS, FLOOR_PRICE_PER_NIGHT, FLOOR_ROOMS_SUM, LONG_STAY_NIGHTS, LONG_STAY_PERCENT, roomInventory, roomTypeSeeds, stayExtras, type RoomTypeSeed } from "@/content/hotel";
-import { addDays, type LocalDate } from "./time";
+import { addDays, diffDays, type LocalDate } from "./time";
 
 /**
  * Hotel logic: nights, prices and room availability per inventory group.
@@ -302,4 +302,16 @@ export function suggestRooms(guests: number): RoomSuggestion[] {
   if (g <= 5) push("apartment", "Apartment", [{ roomTypeId: "apartment", rooms: 1 }], "Drei Schlafzimmer, eigene Küche, Südbalkon – Preis auf Anfrage.", "apartment");
   // cheapest first, "on request" last
   return out.sort((a, b) => (a.perNight ?? Infinity) - (b.perNight ?? Infinity));
+}
+
+/**
+ * Cancellation fee of the house (hotelFacts.cancellation): free until two days
+ * before arrival, 80 % of the total inside the last two days, 100 % for a
+ * no-show. Pure – used by the admin to propose the amount to charge.
+ */
+export function cancellationFee(total: number, arrival: LocalDate, cancelledOn: LocalDate, noShow = false): { percent: number; amount: number } {
+  if (noShow) return { percent: 100, amount: total };
+  const daysBefore = diffDays(cancelledOn, arrival);
+  const percent = daysBefore >= 2 ? 0 : 80;
+  return { percent, amount: Math.round((total * percent) / 100) };
 }

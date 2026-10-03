@@ -84,7 +84,7 @@ export function ContactForm({ defaultSubject = "" }: { defaultSubject?: string }
       </label>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
       <label className="flex items-start gap-3 sm:col-span-2">
-        <input type="checkbox" name="privacy" required className="mt-1 h-5 w-5 accent-[#b8904a]" />
+        <input type="checkbox" name="privacy" required className="mt-1 h-5 w-5 accent-gold-dark" />
         <span className="text-sm text-ink-soft">
           Ich habe die{" "}
           <Link href="/datenschutz" className="font-semibold text-gold-dark underline underline-offset-4">

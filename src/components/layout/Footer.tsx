@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Mail, MapPin, Phone } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { footerNavigation, legalNavigation } from "@/config/navigation";
 import { formatAddressLine, siteConfig } from "@/config/site";
@@ -23,7 +24,7 @@ export function Footer() {
           <ul className="mt-5 space-y-2.5 text-[0.95rem]">
             {footerNavigation.map((item) => (
               <li key={item.href}>
-                <Link className="text-paper/75 transition-colors hover:text-paper" href={item.href}>
+                <Link className="text-paper/75 transition-colors duration-300 hover:text-gold-light" href={item.href}>
                   {item.label}
                 </Link>
               </li>
@@ -34,24 +35,29 @@ export function Footer() {
         <div>
           <h2 className="eyebrow !text-gold-light">Kontakt</h2>
           <address className="mt-5 space-y-2 text-[0.95rem] not-italic text-paper/75">
-            <p className="text-paper">
-              Landhotel Gasthof „Zur Krone“
-              <br />
-              {formatAddressLine()}
+            <p className="flex gap-2.5 text-paper">
+              <MapPin className="mt-1 h-4 w-4 shrink-0 text-gold-light" aria-hidden />
+              <span>
+                Landhotel Gasthof „Zur Krone“
+                <br />
+                {formatAddressLine()}
+              </span>
             </p>
             {siteConfig.address.street === null && <p className="text-xs text-paper/45">Straße folgt</p>}
-            <p>
+            <p className="flex gap-2.5">
+              <Phone className="mt-1 h-4 w-4 shrink-0 text-gold-light" aria-hidden />
               {contact.phone ? (
-                <a href={`tel:${contact.phone.replace(/[\s-]/g, "")}`} className="hover:text-paper">
+                <a href={`tel:${contact.phone.replace(/[\s-]/g, "")}`} className="transition-colors duration-300 hover:text-gold-light">
                   Telefon {contact.phone}
                 </a>
               ) : (
                 <span className="text-paper/45">Telefon: Angabe folgt</span>
               )}
             </p>
-            <p>
+            <p className="flex gap-2.5">
+              <Mail className="mt-1 h-4 w-4 shrink-0 text-gold-light" aria-hidden />
               {contact.email ? (
-                <a href={`mailto:${contact.email}`} className="hover:text-paper">
+                <a href={`mailto:${contact.email}`} className="transition-colors duration-300 hover:text-gold-light">
                   {contact.email}
                 </a>
               ) : (
@@ -71,7 +77,7 @@ export function Footer() {
           <ul className="mt-5 space-y-2.5 text-[0.95rem]">
             {legalNavigation.map((item) => (
               <li key={item.href}>
-                <Link className="text-paper/75 transition-colors hover:text-paper" href={item.href}>
+                <Link className="text-paper/75 transition-colors duration-300 hover:text-gold-light" href={item.href}>
                   {item.label}
                 </Link>
               </li>
@@ -81,7 +87,7 @@ export function Footer() {
             <ul className="mt-6 flex gap-4 text-sm">
               {socialLinks.map((s) => (
                 <li key={s.id}>
-                  <a href={s.url!} rel="noopener noreferrer" target="_blank" className="text-paper/75 hover:text-paper">
+                  <a href={s.url!} rel="noopener noreferrer" target="_blank" className="text-paper/75 transition-colors duration-300 hover:text-gold-light">
                     {s.label}
                   </a>
                 </li>

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Ruler, Users } from "lucide-react";
 import { Gallery } from "@/components/media/Gallery";
 import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { displayFacts } from "@/content/space-estimates";
 import { getHeroVideo, getPropertyGallery, getSpaceMedia, mediaExists } from "@/lib/media";
 import { listSpaceViews } from "@/server/services/space-service";
 
@@ -34,10 +35,10 @@ export default async function GalleryPage() {
   const hotel = getSpaceMedia("hotel", "Hotel");
   const hero = mediaExists("/media/property/house-front.webp") ? "/media/property/house-front.webp" : (property[0]?.src ?? null);
   const chapters = [
-    { id: "hotel", name: "Hotel & Zimmer", images: hotel.hero ? [hotel.hero, ...hotel.gallery.filter((g) => g.src !== hotel.hero!.src)] : hotel.gallery, href: "/hotel" },
+    { id: "hotel", name: "Hotel & Zimmer", images: hotel.hero ? [hotel.hero, ...hotel.gallery.filter((g) => g.src !== hotel.hero!.src)] : hotel.gallery, href: "/hotel", facts: null },
     ...spaces
       .filter((s) => s.id !== "hotel")
-      .map((s) => ({ id: s.id, name: s.name, images: s.media.hero ? [s.media.hero, ...s.media.gallery.filter((g) => g.src !== s.media.hero!.src)] : s.media.gallery, href: s.href })),
+      .map((s) => ({ id: s.id, name: s.name, images: s.media.hero ? [s.media.hero, ...s.media.gallery.filter((g) => g.src !== s.media.hero!.src)] : s.media.gallery, href: s.href, facts: displayFacts(s) })),
   ];
   return (
     <article>
@@ -57,7 +58,10 @@ export default async function GalleryPage() {
       {(film.webm || film.mp4) && (
         <section className="bg-anthracite py-16 md:py-24" aria-labelledby="film-title">
           <div className="container-page">
-            <p className="eyebrow !text-gold-light">Film</p>
+            <p className="eyebrow flex items-center gap-3 !text-gold-light">
+              <span className="gold-rule" aria-hidden />
+              Film
+            </p>
             <h2 id="film-title" className="mt-3 font-serif text-4xl text-paper">
               Von oben gesehen.
             </h2>
@@ -86,6 +90,20 @@ export default async function GalleryPage() {
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <SectionHeading id={`g-${c.id}`} eyebrow={`${String(i + 1).padStart(2, "0")} / ${String(chapters.length).padStart(2, "0")}`} title={c.name}>
                 <p>{CHAPTER_TEXT[c.id] ?? ""}</p>
+                {c.facts && (
+                  <p className="mt-3 flex flex-wrap gap-x-5 text-sm text-muted">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Ruler className="h-3.5 w-3.5 text-gold-dark" strokeWidth={1.5} aria-hidden />
+                      {c.facts.area}
+                    </span>
+                    {c.facts.seats && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-gold-dark" strokeWidth={1.5} aria-hidden />
+                        {c.facts.seats}
+                      </span>
+                    )}
+                  </p>
+                )}
               </SectionHeading>
               <ButtonLink href={c.href} variant="secondary">
                 {c.id === "hotel" ? "Zum Hotel" : "Zum Raum"} <ArrowRight className="h-4 w-4" />

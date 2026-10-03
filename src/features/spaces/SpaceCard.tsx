@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, Euro, Ruler, Users } from "lucide-react";
 import { SpaceImage } from "@/components/media/SpaceImage";
 import { displayFacts } from "@/content/space-estimates";
 import type { SpaceView } from "./types";
@@ -9,9 +9,9 @@ import { formatPriceFrom } from "./price-label";
 export function SpaceCard({ space, demo }: { space: SpaceView; demo: boolean }) {
   const price = formatPriceFrom(space);
   return (
-    <article className="group card-surface flex flex-col overflow-hidden transition-[box-shadow,transform] duration-300 hover:-translate-y-1 hover:shadow-lift" data-testid={`space-card-${space.id}`}>
+    <article className="group card-surface hover-lift hover-zoom flex flex-col overflow-hidden" data-testid={`space-card-${space.id}`}>
       <Link href={space.href} className="relative block aspect-[3/2] overflow-hidden" tabIndex={-1} aria-hidden="true">
-        <div className="h-full w-full transition-transform duration-700 group-hover:scale-[1.04]">
+        <div className="h-full w-full">
           <SpaceImage space={space} sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw" />
         </div>
         {space.media.hero && !space.media.hero.isReal && (
@@ -28,34 +28,46 @@ export function SpaceCard({ space, demo }: { space: SpaceView; demo: boolean }) 
       </Link>
       <div className="flex flex-1 flex-col p-5">
         <h3 className="font-serif text-2xl">
-          <Link href={space.href} className="hover:text-gold-dark">
+          <Link href={space.href} className="transition-colors hover:text-gold-dark">
             {space.name}
           </Link>
         </h3>
         <p className="mt-1.5 line-clamp-2 text-[0.95rem] text-ink-soft">{space.shortDescription}</p>
         <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
           <div>
-            <dt className="text-xs uppercase tracking-wider text-muted">Fläche</dt>
+            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
+              <Ruler className="h-3 w-3 text-gold-dark" aria-hidden />
+              Fläche
+            </dt>
             <dd className="font-semibold">{displayFacts(space).area}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider text-muted">Plätze</dt>
+            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
+              <Users className="h-3 w-3 text-gold-dark" aria-hidden />
+              Plätze
+            </dt>
             <dd className="font-semibold">{displayFacts(space).seats}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider text-muted">Preis</dt>
+            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
+              <Euro className="h-3 w-3 text-gold-dark" aria-hidden />
+              Preis
+            </dt>
             <dd className="font-semibold">
               {price}
               {demo && space.basePrice !== null && <span className="ml-1 text-[0.65rem] font-semibold uppercase tracking-wider text-warning">Demo</span>}
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider text-muted">Verfügbarkeit</dt>
+            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
+              <CalendarCheck className="h-3 w-3 text-gold-dark" aria-hidden />
+              Verfügbarkeit
+            </dt>
             <dd className="font-semibold">{space.bookable ? "im Kalender" : "auf Anfrage"}</dd>
           </div>
         </dl>
         <div className="mt-auto flex items-center gap-2 pt-5">
-          <Link href={space.href} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-full border border-ink/20 text-sm font-semibold transition-colors hover:border-ink/50">
+          <Link href={space.href} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-full border border-ink/20 text-sm font-semibold transition-colors hover:border-gold hover:text-gold-dark">
             Details <ArrowUpRight className="h-4 w-4" />
           </Link>
           {space.bookable ? (

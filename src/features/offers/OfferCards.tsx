@@ -30,7 +30,7 @@ export function OfferCards({ offers, limit }: { offers: YieldOffer[]; limit?: nu
         const now = o.kind === "week" ? list + 30000 : Math.round(list * (1 - o.percent / 100));
         const before = o.kind === "week" ? list + 4 * 10000 : list;
         return (
-          <li key={o.id} className="flex flex-col border border-sand bg-white" data-offer-kind={o.kind}>
+          <li key={o.id} className="hover-lift flex flex-col border border-sand bg-white" data-offer-kind={o.kind}>
             <div className="flex items-center justify-between border-b border-sand px-6 py-4">
               <span className="flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-cream text-gold-dark"><Icon className="h-5 w-5" strokeWidth={1.6} aria-hidden /></span>
@@ -66,9 +66,9 @@ export function OfferCards({ offers, limit }: { offers: YieldOffer[]; limit?: nu
             <p className="px-6 pt-4 text-sm leading-relaxed text-ink-soft">{o.text}</p>
             <div className="mt-auto flex items-center justify-between px-6 py-5 text-xs uppercase tracking-[0.18em] text-muted">
               <span className="inline-flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" aria-hidden /> {o.kind === "longterm" ? "ohne Frist" : o.expiresInDays <= 1 ? "nur noch heute" : `noch ${o.expiresInDays} Tage`}
+                <Clock className="h-3.5 w-3.5 text-gold-dark" aria-hidden /> {o.kind === "longterm" ? "ohne Frist" : o.expiresInDays <= 1 ? "nur noch heute" : `noch ${o.expiresInDays} Tage`}
               </span>
-              <Link href={o.kind === "longterm" ? "/aktuelles#mietmodelle" : "/eventlocation#karte"} className="inline-flex items-center gap-1 text-ink hover:text-gold-dark">
+              <Link href={o.kind === "longterm" ? "/aktuelles#mietmodelle" : "/eventlocation#karte"} className="inline-flex items-center gap-1 text-ink transition-colors hover:text-gold-dark [&>svg]:transition-transform hover:[&>svg]:translate-x-0.5">
                 {o.kind === "longterm" ? "Mietmodelle" : "Anfragen"} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             </div>

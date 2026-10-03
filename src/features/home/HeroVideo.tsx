@@ -12,21 +12,34 @@ import type { HeroVideoSources } from "@/lib/media";
  * site plan is shown (slow camera drift) – visually leading into the map.
  */
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+/** Below this width the smaller 720p rendition is used (phones, Data volume). */
+const SMALL_QUERY = "(max-width: 767px)";
 
-function subscribeReducedMotion(onChange: () => void) {
-  const mq = window.matchMedia(REDUCED_QUERY);
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
+function subscribeMedia(query: string) {
+  return (onChange: () => void) => {
+    const mq = window.matchMedia(query);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  };
 }
+
+const subscribeReducedMotion = subscribeMedia(REDUCED_QUERY);
+const subscribeSmallViewport = subscribeMedia(SMALL_QUERY);
 
 function getReducedMotion(): boolean {
   const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
   return window.matchMedia(REDUCED_QUERY).matches || saveData;
 }
 
+function getSmallViewport(): boolean {
+  return window.matchMedia(SMALL_QUERY).matches;
+}
+
 export function HeroVideo({ sources }: { sources: HeroVideoSources }) {
   const ref = useRef<HTMLVideoElement>(null);
   const reduced = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => false);
+  const small = useSyncExternalStore(subscribeSmallViewport, getSmallViewport, () => false);
+  const mp4 = small && sources.mp4Small ? sources.mp4Small : sources.mp4;
   const hasVideo = Boolean(sources.mp4 || sources.webm);
 
   useEffect(() => {
@@ -41,11 +54,13 @@ export function HeroVideo({ sources }: { sources: HeroVideoSources }) {
     );
     io.observe(video);
     return () => io.disconnect();
-  }, [reduced, hasVideo]);
+  }, [reduced, hasVideo, mp4]);
 
   if (hasVideo && !reduced) {
     return (
       <video
+        // a <source> src is only read when the element loads → remount when the rendition changes
+        key={mp4 ?? "video"}
         ref={ref}
         className="absolute inset-0 h-full w-full object-cover"
         muted
@@ -57,7 +72,7 @@ export function HeroVideo({ sources }: { sources: HeroVideoSources }) {
         disablePictureInPicture
       >
         {sources.webm && <source src={sources.webm} type="video/webm" />}
-        {sources.mp4 && <source src={sources.mp4} type="video/mp4" />}
+        {mp4 && <source src={mp4} type="video/mp4" />}
       </video>
     );
   }

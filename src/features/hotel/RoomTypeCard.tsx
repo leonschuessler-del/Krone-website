@@ -9,10 +9,10 @@ import { formatMoney } from "@/lib/format";
 export function RoomTypeCard({ type, href, compact = false }: { type: RoomTypeSeed; href?: string; compact?: boolean }) {
   const img = mediaExists(type.image) ? type.image : null;
   return (
-    <Link href={href ?? `/hotel/buchen?zimmer=${type.id}`} className="group flex flex-col bg-white" data-testid={`roomcard-${type.id}`}>
+    <Link href={href ?? `/hotel/buchen?zimmer=${type.id}`} className="group hover-lift hover-zoom flex flex-col bg-white" data-testid={`roomcard-${type.id}`}>
       <div className="relative aspect-[4/3] overflow-hidden bg-cream">
         {img ? (
-          <Image src={img} alt={type.name} fill sizes="(min-width:1024px) 33vw, 100vw" className="object-cover transition-transform duration-[1.4s] ease-out group-hover:scale-[1.04]" />
+          <Image src={img} alt={type.name} fill sizes="(min-width:1024px) 33vw, 100vw" className="object-cover" />
         ) : (
           <div className="grid h-full place-items-center text-[0.65rem] uppercase tracking-[0.28em] text-muted">Bild folgt</div>
         )}
@@ -34,9 +34,9 @@ export function RoomTypeCard({ type, href, compact = false }: { type: RoomTypeSe
         <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-soft">{type.description}</p>
         <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted">
           <span className="inline-flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" aria-hidden /> bis {type.maxGuests} {type.maxGuests === 1 ? "Gast" : "Gäste"}
+            <Users className="h-3.5 w-3.5 text-gold-dark" aria-hidden /> bis {type.maxGuests} {type.maxGuests === 1 ? "Gast" : "Gäste"}
           </span>
-          <span className="inline-flex items-center gap-1 text-ink group-hover:text-gold-dark">
+          <span className="inline-flex items-center gap-1 text-ink transition-colors duration-300 group-hover:text-gold-dark [&>svg]:transition-transform group-hover:[&>svg]:translate-x-0.5">
             {type.basePricePerNight === null ? "Anfragen" : "Buchen"} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </span>
         </div>

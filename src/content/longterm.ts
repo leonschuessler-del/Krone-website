@@ -87,7 +87,7 @@ export const longtermCopy = {
   eyebrow: "Dauerhaft mieten",
   title: "Räume, die sich jeden Monat lohnen.",
   text:
-    "Das Erdgeschoss der Krone steht nicht nur für Feste bereit. Wer regelmäßig Platz braucht – jede Woche, jeden Tag oder gleich für ein Jahr – zahlt eine feste Monatsmiete statt einzelner Tage. " +
-    "Je länger die Laufzeit, desto günstiger der Monat.",
+    "Das Erdgeschoss der Krone ist nicht nur für Feste da. Wer regelmäßig Platz braucht, zahlt eine feste Monatsmiete statt einzelner Tage – " +
+    "und je länger die Laufzeit, desto günstiger der Monat.",
   footnote: "Alle Monatsmieten sind Vorschläge, zzgl. MwSt. und Nebenkosten. Konditionen werden im Gespräch festgelegt.",
 };

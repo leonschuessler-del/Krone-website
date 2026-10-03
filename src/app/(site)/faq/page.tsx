@@ -21,7 +21,13 @@ export default function FaqPage() {
     <div className="bg-cream pb-24 pt-28 md:pt-32">
       <div className="container-page max-w-4xl">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: "FAQ" }]} />
-        <h1 className="mt-6 text-5xl md:text-6xl">Häufige Fragen</h1>
+        <p className="eyebrow mt-6 flex items-center gap-3">
+          <span className="gold-rule" aria-hidden />
+          Gut zu wissen
+        </p>
+        <h1 className="mt-5 text-5xl md:text-6xl">
+          Häufige <em>Fragen.</em>
+        </h1>
         <div className="mt-10">
           <FaqList items={faqItems} />
         </div>

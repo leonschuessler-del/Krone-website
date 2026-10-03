@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarDays, Check } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Info } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -139,7 +139,10 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
             <dt className="font-semibold">Gesamt</dt>
             <dd data-pv-gross className="font-serif text-2xl tabular-nums" data-testid="planner-total">{formatMoney(estimate?.grossTotal ?? null, "auf Anfrage")}</dd>
           </div>
-          <p className="text-[0.7rem] text-paper/45">Pauschale Fr–So, ohne Zusatzleistungen · Kaution separat</p>
+          <p className="flex items-center gap-1.5 text-[0.7rem] text-paper/45">
+            <Info className="h-3 w-3 shrink-0 text-gold-light" aria-hidden />
+            Pauschale Fr–So, ohne Zusatzleistungen · Kaution separat
+          </p>
         </dl>
         <p className="mb-2 text-xs text-paper/55">
           Übernachtung für Ihre Gäste? Die ganze Etage wählen Sie im nächsten Schritt bei den Zusatzleistungen. Einzelne Zimmer gibt es im <Link href="/hotel" className="text-gold-light underline-offset-2 hover:underline">Hotel</Link>.

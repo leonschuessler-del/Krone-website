@@ -420,7 +420,8 @@ export const hotelPayments = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     reservationNumber: text("reservation_number").notNull(),
     provider: text("provider").$type<"demo" | "stripe">().notNull(),
-    kind: text("kind").$type<"full" | "guarantee">().notNull(),
+    /** full = stay paid now, guarantee = card stored, fee = no-show / late-cancellation charge on the stored card */
+    kind: text("kind").$type<"full" | "guarantee" | "fee">().notNull(),
     /** cents; 0 for a guarantee */
     amount: integer("amount").notNull(),
     currency: text("currency").notNull().default("EUR"),

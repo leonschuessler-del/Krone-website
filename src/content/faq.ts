@@ -15,19 +15,19 @@ export const faqItems: FaqItem[] = [
     id: "combine",
     question: "Kann ich mehrere Bereiche kombinieren?",
     answer:
-      "Ja. Auf der Grundstückskarte können Sie beliebig viele Bereiche gleichzeitig auswählen – zum Beispiel Restaurant, Bühne und Wintergarten. Die Verfügbarkeit wird für jeden Bereich einzeln geprüft; buchbar ist die Zeit, in der alle gewählten Bereiche frei sind.",
+      "Ja. Auf der Karte wählen Sie beliebig viele Bereiche – etwa Restaurant, Bühne und Wintergarten. Buchbar ist die Zeit, in der alle gewählten Bereiche frei sind.",
   },
   {
     id: "full-venue",
     question: "Kann ich die gesamte Location mieten?",
     answer:
-      "Mit „Gesamte Location“ wählen Sie mit einem Klick alle dafür vorgesehenen Bereiche aus. Sie sehen trotzdem jeden Bereich einzeln in Ihrer Zusammenfassung. Die Konditionen für die gesamte Location werden individuell abgestimmt.",
+      "„Gesamte Location“ wählt mit einem Klick alle dafür vorgesehenen Bereiche; in der Zusammenfassung bleibt jeder einzeln sichtbar. Die Konditionen stimmen wir individuell ab.",
   },
   {
     id: "free-dates",
     question: "Wie sehe ich freie Termine?",
     answer:
-      "Wählen Sie Ihre Bereiche und öffnen Sie „Verfügbarkeit prüfen“. Der Kalender zeigt Ihnen gemeinsame freie Tage – auf Wunsch auch die Verfügbarkeit je Bereich. Sobald Sie ein Datum wählen, färbt sich auch die Karte entsprechend ein.",
+      "Bereiche wählen, „Verfügbarkeit prüfen“ öffnen: Der Kalender zeigt die gemeinsamen freien Tage, auf Wunsch je Bereich. Mit einem Datum färbt sich auch die Karte ein.",
   },
   {
     id: "hotel",
@@ -54,6 +54,6 @@ export const faqItems: FaqItem[] = [
     id: "inquiry",
     question: "Kann ich auch unverbindlich anfragen?",
     answer:
-      "Ja. Jede Auswahl kann auch als unverbindliche Anfrage gesendet werden. Manche Kombinationen – etwa die gesamte Location – werden grundsätzlich individuell kalkuliert und sind nur per Anfrage möglich.",
+      "Ja, jede Auswahl lässt sich unverbindlich anfragen. Manche Kombinationen – etwa die gesamte Location – kalkulieren wir grundsätzlich individuell, also nur auf Anfrage.",
   },
 ];

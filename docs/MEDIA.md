@@ -30,7 +30,7 @@ es bringt keine zusätzliche Schärfe, nur größere Dateien.
 | `public/media/<bereich>/hero.webp`, `gallery-NN.webp` | Titel- und Galeriebilder je Bereich |
 | `public/media/<bereich>/tour.mp4`, `poster.webp` | Raumvideo auf der Detailseite (1920×1080) |
 | `public/media/property/gallery-NN.webp` | Außen-/Drohnenbilder |
-| `public/media/hero/krone-film.mp4`, `krone-film-720.mp4`, `poster.webp` | Imagefilm für den Hero der Startseite (≈ 70 s, 1920×1080 bzw. 1280×720 für Handys, 30 fps, stumm, nahtloser Loop). 16 Shots aus Drohnen- und iPhone-Material, Schnitt und Grading reproduzierbar mit `tools/media/film_cut.py`, Shotliste in `docs/FILM.md` |
+| `public/media/hero/krone-film.mp4`, `krone-film-720.mp4`, `poster.webp` | Imagefilm für den Hero der Startseite (72,6 s, 1920×1080 bzw. 1280×720 für Handys, 30 fps, stumm, nahtloser Loop). 16 Shots aus Drohnen- und iPhone-Material, Schnitt und Grading reproduzierbar mit `tools/media/film_cut.py`, Shotliste in `docs/FILM.md` |
 | `public/media/hero/krone-property-tour.mp4` | Anflug (älterer Hero-Clip, Fallback wenn `krone-film.mp4` fehlt) |
 | `public/media/floorplan/aerial-*.webp` | Drohnenfoto senkrecht von oben (Karte): ganzes Grundstück inkl. Hof und Parkplatz; Nachbargebäude entsättigt, abgedunkelt und schraffiert |
 | `public/media/hotel/grundriss-og.svg` | Grundriss Obergeschoss (nach Bauplan) |

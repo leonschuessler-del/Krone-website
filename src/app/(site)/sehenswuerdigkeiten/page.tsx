@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { Car } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { arrival, HOTEL_COORDS, ringLabels, sights } from "@/content/sights";
+import { HOTEL_COORDS, ringLabels, sights } from "@/content/sights";
+import { ArrivalGrid } from "@/features/sights/ArrivalGrid";
 import { LeafletMap } from "@/features/sights/LeafletMap";
 import { SightCard } from "@/features/sights/SightCard";
 import { getPropertyGallery, mediaExists } from "@/lib/media";
@@ -28,7 +30,7 @@ export default function SightsPage() {
         <div className="container-page relative pb-16 pt-40 text-shadow-hero">
           <p className="eyebrow !text-gold-light">Umgebung</p>
           <h1 className="mt-5 max-w-3xl text-[3rem] font-light leading-[0.98] md:text-[4.8rem]">
-            Spessart vor der Tür, <em>die Welt eine Stunde weit.</em>
+            Spessart vor der Tür, <em>die Welt eine <span className="accent">Stunde</span> weit.</em>
           </h1>
           <p className="mt-6 max-w-xl text-lg font-light text-paper/85">Ein Wasserschloss, Weinberge am Main, eine Residenzstadt und eine Skyline: Leidersbach liegt ruhig – und mitten drin.</p>
         </div>
@@ -36,10 +38,20 @@ export default function SightsPage() {
 
       {rings.map((ring, ri) => {
         const list = sights.filter((s) => s.ring === ring);
+        // the ring label ("Eine halbe Stunde") explained with the real range of driving times
+        const mins = list.map((s) => s.minutes);
+        const [lo, hi] = [Math.min(...mins), Math.max(...mins)];
         return (
           <section key={ring} className={ri % 2 ? "bg-cream py-24" : "bg-paper py-24"} aria-labelledby={`ring-${ring}`}>
             <div className="container-page">
-              <SectionHeading id={`ring-${ring}`} eyebrow={`${String(ri + 1).padStart(2, "0")} / 03`} title={ringLabels[ring]} className="mb-12" />
+              <SectionHeading id={`ring-${ring}`} eyebrow={`${String(ri + 1).padStart(2, "0")} / 03`} title={ringLabels[ring]} className="mb-12">
+                {mins.length > 0 && (
+                  <p className="inline-flex items-center gap-2 text-sm">
+                    <Car className="h-4 w-4 text-gold-dark" strokeWidth={1.5} aria-hidden />
+                    {lo === hi ? lo : `${lo}–${hi}`} Minuten mit dem Auto
+                  </p>
+                )}
+              </SectionHeading>
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {list.map((s, i) => (
                   <SightCard key={s.id} sight={s} index={i} />
@@ -67,14 +79,7 @@ export default function SightsPage() {
               Kontakt & Adresse
             </ButtonLink>
           </SectionHeading>
-          <dl className="grid gap-px overflow-hidden border border-sand bg-sand sm:grid-cols-2">
-            {arrival.map((a) => (
-              <div key={a.label} className="bg-white p-6">
-                <dt className="text-[0.65rem] font-medium uppercase tracking-[0.25em] text-gold-dark">{a.label}</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-ink-soft">{a.text}</dd>
-              </div>
-            ))}
-          </dl>
+          <ArrivalGrid />
         </div>
       </section>
     </article>

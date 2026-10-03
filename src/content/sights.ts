@@ -10,6 +10,8 @@ export interface Sight {
   place: string;
   /** "vor der Haustür" | "eine halbe Stunde" | "einen Ausflug wert" */
   ring: "nah" | "mittel" | "fern";
+  /** category – drives the quiet glyph on the card and in the placeholder */
+  kind: "schloss" | "kloster" | "natur" | "rad" | "wein" | "stadt" | "metropole" | "shopping";
   distanceKm: number;
   minutes: number;
   text: string;
@@ -26,6 +28,7 @@ export const HOTEL_COORDS = { lat: 49.9014, lng: 9.1869 };
 export const sights: Sight[] = [
   {
     id: "mespelbrunn",
+    kind: "schloss",
     name: "Schloss Mespelbrunn",
     place: "Mespelbrunn",
     ring: "nah",
@@ -39,6 +42,7 @@ export const sights: Sight[] = [
   },
   {
     id: "himmelthal",
+    kind: "kloster",
     name: "Kloster Himmelthal",
     place: "Elsenfeld-Rück",
     ring: "nah",
@@ -51,6 +55,7 @@ export const sights: Sight[] = [
   },
   {
     id: "spessart",
+    kind: "natur",
     name: "Spessartwald & Eselsweg",
     place: "ab Leidersbach",
     ring: "nah",
@@ -64,6 +69,7 @@ export const sights: Sight[] = [
   },
   {
     id: "mainradweg",
+    kind: "rad",
     name: "Mainradweg",
     place: "Sulzbach / Niedernberg",
     ring: "nah",
@@ -76,18 +82,20 @@ export const sights: Sight[] = [
   },
   {
     id: "aschaffenburg",
+    kind: "schloss",
     name: "Aschaffenburg",
     place: "Schloss Johannisburg, Pompejanum, Park Schönbusch",
     ring: "mittel",
     distanceKm: 14,
     minutes: 20,
-    text: "Das Renaissance-Schloss über dem Main, die römische Villa Ludwigs I. mit Weinberg und der englische Landschaftspark Schönbusch – alles in einer Stadt mit Cafés und Altstadtgassen.",
+    text: "Renaissance-Schloss über dem Main, die römische Villa Ludwigs I. mit Weinberg, der englische Landschaftspark Schönbusch – dazu Cafés und Altstadtgassen.",
     url: "https://www.schloesser-aschaffenburg.de",
     lat: 49.9757,
     lng: 9.1426,
   },
   {
     id: "churfranken",
+    kind: "wein",
     name: "Churfranken & Klingenberger Rotwein",
     place: "Klingenberg, Erlenbach, Großheubach",
     ring: "mittel",
@@ -100,18 +108,20 @@ export const sights: Sight[] = [
   },
   {
     id: "engelberg",
+    kind: "kloster",
     name: "Kloster Engelberg",
     place: "Großheubach",
     ring: "mittel",
     distanceKm: 30,
     minutes: 30,
-    text: "Franziskanerkloster hoch über dem Main mit Wallfahrtskirche, Weinterrassen und Klosterschänke – der Blick über das Maintal gehört zu den schönsten der Region.",
+    text: "Franziskanerkloster hoch über dem Main: Wallfahrtskirche, Weinterrassen, Klosterschänke – und einer der schönsten Blicke über das Maintal.",
     url: "https://www.kloster-engelberg.de",
     lat: 49.7372,
     lng: 9.2125,
   },
   {
     id: "miltenberg",
+    kind: "stadt",
     name: "Miltenberg",
     place: "Altstadt am Main",
     ring: "mittel",
@@ -124,6 +134,7 @@ export const sights: Sight[] = [
   },
   {
     id: "seligenstadt",
+    kind: "kloster",
     name: "Seligenstadt",
     place: "Einhard-Basilika",
     ring: "mittel",
@@ -136,12 +147,13 @@ export const sights: Sight[] = [
   },
   {
     id: "frankfurt",
+    kind: "metropole",
     name: "Frankfurt am Main",
     place: "Skyline, Römer, Museumsufer",
     ring: "fern",
     distanceKm: 62,
     minutes: 50,
-    text: "Die Skyline, der Römerberg, das Museumsufer – die Metropole liegt eine knappe Stunde entfernt und doch weit weg von der Ruhe im Spessart.",
+    text: "Skyline, Römerberg, Museumsufer: die Metropole, eine knappe Stunde entfernt – und abends wieder die Ruhe im Spessart.",
     tip: "Abends zurück ins Dorf: Parken und Frühstück sind hier inklusive.",
     url: "https://www.frankfurt-tourismus.de",
     lat: 50.1109,
@@ -149,6 +161,7 @@ export const sights: Sight[] = [
   },
   {
     id: "wuerzburg",
+    kind: "stadt",
     name: "Würzburg",
     place: "Residenz (UNESCO-Welterbe)",
     ring: "fern",
@@ -161,6 +174,7 @@ export const sights: Sight[] = [
   },
   {
     id: "wertheim",
+    kind: "shopping",
     name: "Wertheim Village",
     place: "Designer-Outlet an der A3",
     ring: "fern",
@@ -181,9 +195,9 @@ export const ringLabels: Record<Sight["ring"], string> = {
 
 /** How to get here. */
 export const arrival = [
-  { label: "A3 aus Richtung Frankfurt", text: "Ausfahrt Aschaffenburg-West, B469 Richtung Miltenberg, Ausfahrt Niedernberg/Leidersbach, über Sulzbach nach Leidersbach." },
-  { label: "A3 aus Richtung Würzburg", text: "Ausfahrt Weibersbrunn, über Hessenthal, Mespelbrunn und Heimbuchenthal nach Leidersbach." },
-  { label: "Flughafen Frankfurt", text: "ca. 59 km, 40 Minuten." },
-  { label: "Bahn", text: "Aschaffenburg Hauptbahnhof (ICE), ca. 13 km; Buslinie 62 bis Leidersbach." },
-  { label: "Parken", text: "Kostenlose Stellplätze direkt am Haus." },
+  { id: "a3-frankfurt", label: "A3 aus Richtung Frankfurt", text: "Ausfahrt Aschaffenburg-West · B469 Richtung Miltenberg · Ausfahrt Niedernberg/Leidersbach · über Sulzbach." },
+  { id: "a3-wuerzburg", label: "A3 aus Richtung Würzburg", text: "Ausfahrt Weibersbrunn · Hessenthal · Mespelbrunn · Heimbuchenthal." },
+  { id: "airport", label: "Flughafen Frankfurt", text: "ca. 59 km, 40 Minuten." },
+  { id: "rail", label: "Bahn", text: "Aschaffenburg Hauptbahnhof (ICE), ca. 13 km; Buslinie 62 bis Leidersbach." },
+  { id: "parking", label: "Parken", text: "Kostenlose Stellplätze direkt am Haus." },
 ];

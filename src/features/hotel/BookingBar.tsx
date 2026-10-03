@@ -18,7 +18,11 @@ export function BookingBar({ className, tone = "light" }: { className?: string; 
   const [departure, setDeparture] = useState(addDays(today, 9));
   const [guests, setGuests] = useState(2);
   const dark = tone === "dark";
-  const field = cn("flex flex-1 flex-col gap-1 border-b px-4 py-3 md:border-b-0 md:border-r", dark ? "border-white/15" : "border-sand");
+  // Hover invites the click, keyboard focus travels as a gold underline onto the field (the inputs keep outline-none).
+  const field = cn(
+    "flex flex-1 flex-col gap-1 border-b px-4 py-3 transition-[background-color,box-shadow] duration-300 focus-within:shadow-[inset_0_-2px_0_var(--color-gold)] md:border-b-0 md:border-r",
+    dark ? "border-white/15 hover:bg-white/[0.04] focus-within:bg-white/[0.07]" : "border-sand hover:bg-cream/40 focus-within:bg-cream/60",
+  );
   const label = cn("flex items-center gap-1.5 text-[0.62rem] font-medium uppercase tracking-[0.25em]", dark ? "text-paper/60" : "text-muted");
   const input = cn("bg-transparent font-serif text-xl outline-none", dark ? "text-paper [color-scheme:dark]" : "text-ink");
   return (

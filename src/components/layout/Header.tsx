@@ -68,7 +68,7 @@ export function Header() {
       )}
     >
       <div className="container-page flex h-[4.75rem] items-center justify-between gap-6 md:h-[5.25rem]">
-        <Link href="/" className="shrink-0" aria-label="Zur Krone – Startseite">
+        <Link href="/" className="shrink-0 transition-opacity hover:opacity-90" aria-label="Zur Krone – Startseite">
           <Logo />
         </Link>
 
@@ -139,7 +139,8 @@ export function Header() {
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className="border-b border-sand py-4 font-serif text-2xl text-ink"
+              aria-current={item.href === activeHref ? "page" : undefined}
+              className="border-b border-sand py-4 font-serif text-2xl text-ink transition-colors hover:text-gold-dark active:text-gold-dark aria-[current=page]:text-gold-dark"
             >
               {item.label}
             </Link>

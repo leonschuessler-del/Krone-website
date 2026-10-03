@@ -8,6 +8,7 @@ type Size = "sm" | "md" | "lg";
 const base =
   "inline-flex items-center justify-center gap-2 rounded-none btn-lux whitespace-nowrap " +
   "transition-[background-color,color,border-color,box-shadow,transform] duration-200 ease-[var(--ease-out-soft)] " +
+  "[&>svg]:transition-transform [&>svg]:duration-300 hover:[&>svg:last-child:not(:first-child)]:translate-x-0.5 " +
   "disabled:pointer-events-none disabled:opacity-45 active:translate-y-px select-none";
 
 const variants: Record<Variant, string> = {

@@ -46,7 +46,7 @@ export function Gallery({ images, className, label = "Galerie" }: { images: Medi
       <ul className="rail -mx-5 flex gap-3 overflow-x-auto px-5 pb-2 md:hidden" aria-label={label}>
         {images.map((img, i) => (
           <li key={img.src} className="relative aspect-[4/3] w-[82%] shrink-0 overflow-hidden rounded-2xl">
-            <button type="button" className="absolute inset-0" onClick={() => open(i)} aria-label={`${img.alt} vergrößern`}>
+            <button type="button" className="absolute inset-0 focus-visible:-outline-offset-4" onClick={() => open(i)} aria-label={`${img.alt} vergrößern`}>
               <Image src={img.src} alt={img.alt} fill sizes="82vw" className="object-cover" loading="lazy" />
             </button>
           </li>
@@ -55,16 +55,9 @@ export function Gallery({ images, className, label = "Galerie" }: { images: Medi
       {/* Desktop grid */}
       <ul className="hidden auto-rows-[200px] grid-cols-4 gap-3 md:grid lg:auto-rows-[230px]" aria-label={label}>
         {images.map((img, i) => (
-          <li key={img.src} className={cn("group relative overflow-hidden rounded-2xl", i === 0 && "col-span-2 row-span-2")}>
-            <button type="button" className="absolute inset-0" onClick={() => open(i)} aria-label={`${img.alt} vergrößern`}>
-              <Image
-                src={img.src}
-                alt={img.alt}
-                fill
-                sizes={i === 0 ? "50vw" : "25vw"}
-                className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-                loading="lazy"
-              />
+          <li key={img.src} className={cn("hover-zoom relative overflow-hidden rounded-2xl", i === 0 && "col-span-2 row-span-2")}>
+            <button type="button" className="absolute inset-0 focus-visible:-outline-offset-4" onClick={() => open(i)} aria-label={`${img.alt} vergrößern`}>
+              <Image src={img.src} alt={img.alt} fill sizes={i === 0 ? "50vw" : "25vw"} className="object-cover" loading="lazy" />
             </button>
           </li>
         ))}
@@ -95,15 +88,15 @@ export function Gallery({ images, className, label = "Galerie" }: { images: Medi
             <p className="absolute bottom-5 left-1/2 -translate-x-1/2 text-sm text-paper/70">
               {current.alt} · {index! + 1} / {images.length}
             </p>
-            <button type="button" onClick={close} className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Schließen">
+            <button type="button" onClick={close} className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 transition-colors duration-200 hover:bg-white/20 focus-visible:outline-gold-light" aria-label="Schließen">
               <X className="h-5 w-5" />
             </button>
             {images.length > 1 && (
               <>
-                <button type="button" onClick={() => step(-1)} className="absolute left-3 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Vorheriges Bild">
+                <button type="button" onClick={() => step(-1)} className="absolute left-3 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/10 transition-colors duration-200 hover:bg-white/20 focus-visible:outline-gold-light" aria-label="Vorheriges Bild">
                   <ChevronLeft className="h-6 w-6" />
                 </button>
-                <button type="button" onClick={() => step(1)} className="absolute right-3 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20" aria-label="Nächstes Bild">
+                <button type="button" onClick={() => step(1)} className="absolute right-3 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/10 transition-colors duration-200 hover:bg-white/20 focus-visible:outline-gold-light" aria-label="Nächstes Bild">
                   <ChevronRight className="h-6 w-6" />
                 </button>
               </>

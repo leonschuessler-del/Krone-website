@@ -1,27 +1,13 @@
-# Imagefilm / Scroll-Rundgang
+# Hero-Film der Startseite
 
-Die Startseite zeigt einen **scrollgesteuerten Rundgang** durch alle Räume
-(siehe `src/config/tour.ts`). Solange kein Film vorhanden ist, wird er aus der
-Grundstücksgrafik und den Raumbildern erzeugt (Storyboard-Modus).
+`krone-film.mp4` (1920×1080, 30 fps, stumm, ≈ 73 s, nahtloser Loop), `krone-film-720.mp4`
+(1280×720 für Handys) und `poster.webp` (erstes Bild). Nur echtes Material des Betreibers
+(Drohne, iPhone) – keine KI-Bilder, kein Stock. Schnitt, Grading und Encode sind mit
+`tools/media/film_cut.py` reproduzierbar; Shotliste und Ablauf in `docs/FILM.md`.
 
-## Echten Film einsetzen (Video-Modus)
+`krone-property-tour.mp4` ist der ältere reine Anflug-Clip und dient nur noch als Fallback,
+wenn `krone-film.mp4` fehlt (`src/lib/media.ts`, `getHeroVideo`).
 
-1. Film ablegen: `krone-property-tour.mp4` (16:9, 1920×1080, stumm) und
-   `poster.webp` (erstes Bild).
-2. Für flüssiges Scrollen („Scrubbing“) mit kurzem Keyframe-Abstand kodieren:
-
-   ```bash
-   ffmpeg -i film.mov -c:v libx264 -preset slow -crf 22 -g 8 -keyint_min 8 \
-          -pix_fmt yuv420p -movflags +faststart -an krone-property-tour.mp4
-   ```
-
-   Zielgröße: möglichst < 25 MB (z. B. 45–70 s, 1080p).
-3. In `src/config/tour.ts`: `video.enabled = true`, `video.duration` (Sekunden)
-   und bei jedem Kapitel `videoTime` = Startsekunde des Raums im Film setzen.
-
-## Dramaturgie (Empfehlung)
-
-Drohnenflug → gesamte Immobilie → Zoom Richtung Gebäude → Restaurant → (Theke)
-→ Bühne → Nebenzimmer → Alte Wirtschaft → Küche → Wintergarten → Biergarten →
-Hotel → Rückkehr zur Vogelperspektive (senkrechte Draufsicht). Endet der Film in
-der Draufsicht, geht er nahtlos in den interaktiven Grundriss über.
+Der Player (`src/features/home/HeroVideo.tsx`) lädt den Film erst, wenn der Hero sichtbar ist,
+nimmt unter 768 px die 720p-Fassung und zeigt bei „Bewegung reduzieren“ oder Datensparmodus nur
+das Poster.
