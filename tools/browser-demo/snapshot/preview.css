@@ -218,3 +218,22 @@ body { font-size: 1rem; }
 .pv-hotel-cta { display: grid; gap: 0.9rem; justify-items: start; padding: 2rem; border: 1px solid var(--color-sand); background: #fff; }
 .pv-btn-lg { height: 3.5rem; padding: 0 2rem; }
 [data-pv-map] .leaflet-container { position: absolute; inset: 0; font-family: var(--font-sans); }
+
+/* hotel dialog: guests on top, suggestions, big counters */
+.pv-stay-guests select { font-family: var(--font-serif); font-size: 1.1rem; border: 0; background: transparent; padding: 0; color: var(--color-ink); }
+.pv-suggest-title { margin-top: 1.25rem; }
+.pv-suggest { display: grid; gap: 0.6rem; margin-top: 0.6rem; }
+@media (min-width: 640px) { .pv-suggest { grid-template-columns: 1fr 1fr; } }
+.pv-suggest-card { text-align: left; border: 1px solid var(--color-sand); background: #fff; border-radius: 1rem; padding: 0.9rem 1rem; display: grid; gap: 0.2rem; cursor: pointer; }
+.pv-suggest-card.is-on { border-color: var(--color-gold); box-shadow: 0 0 0 2px rgb(188 134 32 / 0.25); }
+.pv-suggest-card strong { font-family: var(--font-serif); font-size: 1.15rem; }
+.pv-suggest-card span { font-size: 0.8rem; color: var(--color-muted); }
+.pv-suggest-card b { font-family: var(--font-serif); font-size: 1.25rem; justify-self: end; }
+.pv-suggest-card b small { font-family: var(--font-sans); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-muted); }
+.pv-tag { display: inline-block; justify-self: start; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--color-cream); color: var(--color-gold-dark); }
+.pv-tag.is-best { background: #e5eddf; color: #3f6b3a; }
+.pv-stepper { gap: 0.25rem; padding: 0.25rem; border-radius: 999px; border: 1px solid var(--color-sand); background: var(--color-cream); }
+.pv-room.is-on .pv-stepper { border-color: var(--color-gold); background: var(--color-gold-pale); }
+.pv-stepper button { width: 2.6rem; height: 2.6rem; border: 0; }
+.pv-stepper b { min-width: 2.2rem; font-size: 1.7rem; font-weight: 600; }
+.leaflet-container { font-family: var(--font-sans); }

@@ -137,6 +137,8 @@
     text-transform: uppercase;
     color: var(--color-gold-dark);
   }
+  /* Rule: text on photos is always readable – soft shadow on top of the scrim */
+  .text-shadow-hero, .text-shadow-hero * { text-shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 8px 30px rgb(0 0 0 / 0.35); }
   /* luxury-hotel button: square, letter-spaced caps */
   .btn-lux {
     font-family: var(--font-sans);

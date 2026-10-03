@@ -247,3 +247,59 @@ export function stayExtraLines(selected: Readonly<Record<string, number>>, night
   return out;
 }
 export const stayExtrasTotal = (lines: readonly StayExtraLine[]) => lines.reduce((a, l) => a + l.total, 0);
+
+/**
+ * Room suggestions for a number of guests – what the big booking sites do:
+ * the cheapest combination first, then sensible alternatives (more comfort,
+ * more privacy, the apartment). Uses only the four guest room types; a double
+ * room takes up to 2 guests, extra beds are offered as extras.
+ */
+export interface RoomSuggestion {
+  id: string;
+  title: string;
+  items: StayItem[];
+  /** total per night in cents, null = on request */
+  perNight: number | null;
+  note: string;
+  tag?: "günstigste" | "komfort" | "apartment";
+}
+export function suggestRooms(guests: number): RoomSuggestion[] {
+  const g = Math.max(1, Math.min(22, guests));
+  const price = (items: StayItem[]) => {
+    let sum = 0;
+    for (const i of items) {
+      const t = roomTypeById(i.roomTypeId);
+      if (!t || t.basePricePerNight === null) return null;
+      sum += t.basePricePerNight * i.rooms;
+    }
+    return sum;
+  };
+  const out: RoomSuggestion[] = [];
+  const push = (id: string, title: string, items: StayItem[], note: string, tag?: RoomSuggestion["tag"]) => {
+    const total = items.reduce((a, i) => a + i.rooms, 0);
+    if (!total) return;
+    out.push({ id, title, items, perNight: price(items), note, tag });
+  };
+  const singles = Math.min(2, g);
+  if (g === 1) {
+    push("single", "Einzelzimmer", [{ roomTypeId: "single", rooms: 1 }], "Das klassische Zimmer für eine Person.", "günstigste");
+    push("double-single", "Doppelzimmer zur Einzelnutzung", [{ roomTypeId: "double-single", rooms: 1 }], "Mehr Platz, das ganze Doppelzimmer für Sie.", "komfort");
+  } else {
+    const doubles = Math.floor(g / 2);
+    const odd = g % 2;
+    const base: StayItem[] = [];
+    if (doubles) base.push({ roomTypeId: "double", rooms: Math.min(8, doubles) });
+    if (odd) base.push({ roomTypeId: "single", rooms: 1 });
+    push("doubles", doubles === 1 && !odd ? "Doppelzimmer" : `${doubles} × Doppelzimmer${odd ? " + 1 Einzelzimmer" : ""}`, base, odd ? "Paare im Doppelzimmer, eine Person im Einzelzimmer." : "Je zwei Gäste teilen sich ein Doppelzimmer.", "günstigste");
+    if (odd && doubles) {
+      push("doubles-ds", `${doubles} × Doppelzimmer + 1 Doppelzimmer zur Einzelnutzung`, [{ roomTypeId: "double", rooms: Math.min(8, doubles) }, { roomTypeId: "double-single", rooms: 1 }], "Alle im gleichen Zimmertyp, mehr Platz für die einzelne Person.", "komfort");
+    }
+    if (g <= 4 && g >= 3) {
+      push("double-extra", "1 Doppelzimmer mit Zustellbett", [{ roomTypeId: "double", rooms: 1 }], `Familie in einem Zimmer: Zustellbett${g === 4 ? "en" : ""} als Extra (25 € pro Nacht).`, "komfort");
+    }
+    if (g >= 2 && g <= singles + 0 && g <= 2) push("singles", "2 × Einzelzimmer", [{ roomTypeId: "single", rooms: 2 }], "Jeder sein eigenes Zimmer.", "komfort");
+  }
+  if (g <= 5) push("apartment", "Apartment", [{ roomTypeId: "apartment", rooms: 1 }], "Drei Schlafzimmer, eigene Küche, Südbalkon – Preis auf Anfrage.", "apartment");
+  // cheapest first, "on request" last
+  return out.sort((a, b) => (a.perNight ?? Infinity) - (b.perNight ?? Infinity));
+}

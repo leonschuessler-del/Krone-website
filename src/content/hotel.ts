@@ -55,7 +55,7 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     basePricePerNight: 10000,
     inventoryGroup: "double",
     sortOrder: 10,
-    image: "/media/hotel/gallery-02.webp",
+    image: "/media/hotel/hero.webp",
   },
   {
     id: "double-single",
@@ -68,7 +68,7 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     basePricePerNight: 7400,
     inventoryGroup: "double",
     sortOrder: 20,
-    image: "/media/hotel/gallery-03.webp",
+    image: "/media/hotel/gallery-02.webp",
   },
   {
     id: "single",
@@ -81,7 +81,7 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     basePricePerNight: 6800,
     inventoryGroup: "single",
     sortOrder: 30,
-    image: "/media/hotel/gallery-01.webp",
+    image: "/media/hotel/gallery-03.webp",
   },
   {
     id: "apartment",
@@ -97,7 +97,7 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     basePricePerNight: null,
     inventoryGroup: "apartment",
     sortOrder: 40,
-    image: "/media/hotel/gallery-05.webp",
+    image: "/media/hotel/gallery-04.webp",
   },
   {
     id: "floor",

@@ -17,12 +17,13 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 const ROOT = path.resolve(here, "../../..");
 
 const ROUTES = [
-  { path: "/", file: "index.html", title: "Zur Krone – Landhotel Leidersbach" },
+  { path: "/", file: "index.html", title: "Zur Krone – Landhotel Leidersbach", map: "home" },
   { path: "/hotel", file: "hotel.html", title: "Hotel & Zimmer · Zur Krone" },
   { path: "/eventlocation", file: "eventlocation.html", title: "Eventlocation · Zur Krone", tour: true },
   { path: "/sehenswuerdigkeiten", file: "umgebung.html", title: "Umgebung · Zur Krone", map: "sights" },
   { path: "/aktuelles", file: "aktuelles.html", title: "Aktuelles & Angebote · Zur Krone" },
   { path: "/kontakt", file: "kontakt.html", title: "Kontakt · Zur Krone", map: "hotel" },
+  { path: "/galerie", file: "galerie.html", title: "Galerie · Zur Krone" },
 ];
 
 // 1) runtime bundle (real tour timeline + config + domain logic)
@@ -37,7 +38,7 @@ const bundle = await build({
   absWorkingDir: ROOT,
 });
 const runtimeJs = bundle.outputFiles[0].text;
-const previewCss = fs.readFileSync(path.join(here, "preview.css"), "utf8");
+const previewCss = fs.readFileSync(path.join(ROOT, "node_modules/leaflet/dist/leaflet.css"), "utf8").replace(/url\(images\/[^)]+\)/g, "none") + "\n" + fs.readFileSync(path.join(here, "preview.css"), "utf8");
 
 // 2) data
 const toDataUrl = async (url) => {
@@ -131,7 +132,8 @@ async function snapshotRoute(route) {
           cache.set(
             url,
             fetch(url)
-              .then((r) => r.blob())
+              .then((r) => { if (!r.ok) throw new Error("fetch " + r.status + " " + url); return r.blob(); })
+              .catch((e) => { throw new Error("dataUrl failed for " + url + ": " + e.message); })
               .then(
                 (b) =>
                   new Promise((res) => {
@@ -173,10 +175,7 @@ async function snapshotRoute(route) {
           target = "eventlocation.html#karte";
           a.dataset.room = m[1];
         } else if (p === "/bereiche") target = "eventlocation.html#bereiche";
-        else if (p.startsWith("/galerie")) {
-          target = "eventlocation.html#galerie";
-          a.dataset.galleryAll = "";
-        } else if (p.startsWith("/faq")) target = "eventlocation.html#faq";
+        else if (p.startsWith("/faq")) target = "eventlocation.html#faq";
         else if (p.startsWith("/buchen")) {
           target = "eventlocation.html#karte";
           a.dataset.flow = "";
@@ -317,7 +316,11 @@ async function snapshotRoute(route) {
       // --- contact form → preview confirmation
       doc.querySelectorAll("main form:not([data-testid=booking-bar])").forEach((f) => f.setAttribute("data-pv-contact", ""));
       // --- map consent → runtime loads Leaflet
-      doc.querySelectorAll("[data-testid=map]").forEach((m) => m.setAttribute("data-pv-map", route.map ?? "hotel"));
+      doc.querySelectorAll("[data-testid=map]").forEach((m) => {
+        m.setAttribute("data-pv-map", route.map ?? "hotel");
+        m.className = m.className.replace(/\bleaflet-[\w-]+/g, "").replace(/\s+/g, " ").trim();
+        m.replaceChildren();
+      });
       // gallery lightbox
       doc.querySelectorAll("button[aria-label$='vergrößern']").forEach((b) => {
         const img = b.parentElement?.querySelector("img") ?? b.querySelector("img");
@@ -356,7 +359,9 @@ async function snapshotRoute(route) {
 
 const pill = `<div class="pv-pill" aria-hidden="true">Vorschau · Demo-Inhalte</div>`;
 const written = [];
+const ONLY = process.env.SNAPSHOT_ONLY?.split(",").filter(Boolean);
 for (const route of ROUTES) {
+  if (ONLY?.length && !ONLY.includes(route.file)) continue;
   const result = await snapshotRoute(route);
   const payload = {
     page: route.file,

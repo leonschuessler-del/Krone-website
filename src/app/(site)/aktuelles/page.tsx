@@ -37,8 +37,8 @@ export default async function NewsPage() {
     <article>
       <header className="relative isolate flex min-h-[64svh] items-end overflow-hidden bg-anthracite text-paper" data-hero>
         {hero && <Image src={hero.src} alt="" fill priority sizes="100vw" className="object-cover opacity-60" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-anthracite/85 via-anthracite/20 to-anthracite/40" />
-        <div className="container-page relative pb-16 pt-40">
+        <div className="absolute inset-0 bg-gradient-to-t from-anthracite via-anthracite/55 to-anthracite/35" /><div className="absolute inset-0 bg-gradient-to-r from-anthracite/70 via-transparent to-transparent" />
+        <div className="container-page relative pb-16 pt-40 text-shadow-hero">
           <p className="eyebrow !text-gold-light">Aktuelles & Angebote</p>
           <h1 className="mt-5 max-w-3xl text-[3rem] font-light leading-[0.98] md:text-[4.8rem]">
             Gute Termine, <em>bessere Preise.</em>

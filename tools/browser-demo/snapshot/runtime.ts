@@ -16,8 +16,10 @@ import { eventTypes } from "@/content/event-types";
 import { demoSettings } from "@/content/settings";
 import { displayFacts, ESTIMATE_NOTE } from "@/content/space-estimates";
 import { extraSeeds } from "@/content/extras";
-import { hotelCopy, roomInventory, roomTypeSeeds } from "@/content/hotel";
-import { freeRooms, fullyBookedNights, generateReservationNumber, nightCount, stayNudges, stayQuote, validateItems, validateStay, type RoomReservationLike } from "@/domain/hotel";
+import L from "leaflet";
+import { guestRoomTypes, hotelCopy, roomInventory } from "@/content/hotel";
+const roomTypeSeeds = guestRoomTypes;
+import { freeRooms, fullyBookedNights, generateReservationNumber, nightCount, stayNudges, stayQuote, suggestRooms, validateItems, validateStay, type RoomReservationLike, type StayItem } from "@/domain/hotel";
 import { calculateQuote, type Quote } from "@/domain/pricing";
 import { checkSelection, selectionDayStatus, type AvailabilityContext, type SpaceAvailabilityProfile } from "@/domain/availability";
 import { generateBookingNumber } from "@/domain/booking";
@@ -60,7 +62,7 @@ declare global {
       sights?: Array<{ id: string; name: string; lat: number; lng: number; minutes: number }>;
       hotelCoords?: { lat: number; lng: number };
     };
-    L?: unknown;
+
   }
 }
 
@@ -604,7 +606,7 @@ let stays = loadStays();
 const hotel: { arrival: string | null; departure: string | null; counts: Record<string, number>; guests: number; name: string; email: string; error: string; ref: string; month: string; lines: Array<{ rooms: number; name: string }>; total: number | null } = {
   arrival: addDays(today, 7),
   departure: addDays(today, 9),
-  counts: { double: 1 },
+  counts: {},
   guests: 2,
   name: "",
   email: "",
@@ -663,8 +665,6 @@ function renderHotel() {
   const nights = stay ? nightCount(stay.arrival, stay.departure) : 0;
   const items = hotelItems();
   const quote = stay ? stayQuote(items, stay) : null;
-  const maxGuests = Math.max(1, quote?.maxGuests ?? 1);
-  if (hotel.guests > maxGuests) hotel.guests = maxGuests;
   const nudges = stay && !issues.length && items.length ? stayNudges(items, stay, hotel.guests) : [];
   const shortfall = stay ? items.some((i) => freeRooms(i.roomTypeId, stay, stays) < i.rooms) : false;
   if (hotel.ref) {
@@ -682,13 +682,25 @@ function renderHotel() {
   const [y, m] = hotel.month.split("-").map(Number) as [number, number];
   const next = new Date(y, m, 15);
   const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+  const suggestions = suggestRooms(hotel.guests);
+  const applied = (its: StayItem[]) => roomTypeSeeds.every((t) => (hotel.counts[t.id] ?? 0) === (its.find((i) => i.roomTypeId === t.id)?.rooms ?? 0));
   openDialog(`<p class="pv-eyebrow">${esc(hotelCopy.eyebrow)}</p><h2 class="pv-h2">${esc(hotelCopy.title)}</h2><p class="pv-text">${esc(hotelCopy.text)}</p>
-    <div class="pv-row pv-stay-dates"><div class="pv-stay-date${hotel.arrival && !hotel.departure ? "" : " is-active"}"><small>Anreise</small><strong data-hotel-arrival>${hotel.arrival ? esc(fmtDate(hotel.arrival)) : "–"}</strong></div><div class="pv-stay-date${hotel.arrival && !hotel.departure ? " is-active" : ""}"><small>Abreise</small><strong data-hotel-departure>${hotel.departure ? esc(fmtDate(hotel.departure)) : "–"}</strong></div></div>
+    <div class="pv-row pv-stay-dates"><div class="pv-stay-date${hotel.arrival && !hotel.departure ? "" : " is-active"}"><small>Anreise</small><strong data-hotel-arrival>${hotel.arrival ? esc(fmtDate(hotel.arrival)) : "–"}</strong></div><div class="pv-stay-date${hotel.arrival && !hotel.departure ? " is-active" : ""}"><small>Abreise</small><strong data-hotel-departure>${hotel.departure ? esc(fmtDate(hotel.departure)) : "–"}</strong></div>
+      <label class="pv-stay-date pv-stay-guests"><small>Gäste</small><select data-hotel="guests-top">${Array.from({ length: 22 }, (_, i) => `<option ${i + 1 === hotel.guests ? "selected" : ""}>${i + 1}</option>`).join("")}</select></label></div>
     <div class="pv-cal pv-stay-cal">
       <div class="pv-cal-head"><button type="button" data-stay-month="-1" ${hotel.month > today.slice(0, 7) ? "" : "disabled"} aria-label="Vorheriger Monat">‹</button><span class="pv-small">${!hotel.arrival ? "Anreisetag wählen" : !hotel.departure ? "Jetzt den Abreisetag wählen" : "Erneut tippen, um neu zu wählen"}</span><button type="button" data-stay-month="1" aria-label="Nächster Monat">›</button></div>
       <div class="pv-stay-months">${stayCalendarHtml(hotel.month, full)}${stayCalendarHtml(nextKey, full)}</div>
     </div>
     <p class="pv-small">${!stay ? "Erst Anreise, dann Abreise antippen." : issues.includes("past") ? "Die Anreise liegt in der Vergangenheit." : `${nights} ${nights === 1 ? "Nacht" : "Nächte"} · ${esc(hotelCopy.checkIn)}`}</p>
+    <p class="pv-eyebrow pv-suggest-title">✦ Unser Vorschlag für ${hotel.guests} ${hotel.guests === 1 ? "Gast" : "Gäste"}</p>
+    <div class="pv-suggest">${suggestions
+      .map(
+        (sg) => `<button type="button" class="pv-suggest-card${applied(sg.items) ? " is-on" : ""}" data-suggest="${esc(JSON.stringify(sg.items))}" data-testid="suggest-${sg.id}">
+          ${sg.tag ? `<small class="pv-tag ${sg.tag === "günstigste" ? "is-best" : ""}">${sg.tag === "günstigste" ? "Günstigste Wahl" : sg.tag === "komfort" ? "Mehr Komfort" : "Für Familien"}</small>` : ""}
+          <strong>${esc(sg.title)}</strong><span>${esc(sg.note)}</span><b>${sg.perNight === null ? "auf Anfrage" : `${eur(sg.perNight)} <small>/ Nacht</small>`}</b></button>`,
+      )
+      .join("")}</div>
+    <p class="pv-small">Oder stellen Sie Ihre Zimmer unten selbst zusammen.</p>
     <div class="pv-choices pv-choices-list pv-room-list">${roomTypeSeeds
       .map((r) => {
         const f = stay ? freeRooms(r.id, stay, stays) : roomInventory[r.inventoryGroup] ?? 1;
@@ -698,14 +710,14 @@ function renderHotel() {
       })
       .join("")}</div>
     <form class="pv-form" data-hotel-form novalidate>
-      <label>Gäste<select name="guests" data-hotel="guests">${Array.from({ length: maxGuests }, (_, i) => `<option ${i + 1 === hotel.guests ? "selected" : ""}>${i + 1}</option>`).join("")}</select></label>
+      <p class="pv-span pv-small">${hotel.guests} ${hotel.guests === 1 ? "Gast" : "Gäste"}${quote && hotel.guests > quote.maxGuests ? ` – die gewählten Zimmer bieten Platz für ${quote.maxGuests}, bitte ein Zimmer ergänzen.` : ""}</p>
       <label>Name *<input name="name" required value="${esc(hotel.name)}"></label>
       <label>E-Mail *<input name="email" type="email" required value="${esc(hotel.email)}"></label>
       <div class="pv-span pv-stay-sum">${quote ? quote.lines.map((l) => `<p><span>${l.rooms} × ${esc(l.name)}</span><span>${l.pricing ? eur(l.pricing.list) : "auf Anfrage"}</span></p>`).join("") : ""}${!items.length ? `<p class="pv-small">Noch kein Zimmer gewählt.</p>` : ""}${quote && quote.discount > 0 ? `<p class="pv-good"><span>Langzeit-Vorteil −${quote.discountPercent} %</span><span>−${eur(quote.discount)}</span></p>` : ""}</div>
       <p class="pv-span pv-price-total pv-hotel-total"><span>Gesamt inkl. Frühstück${nights ? ` · ${nights} ${nights === 1 ? "Nacht" : "Nächte"}` : ""}</span><strong>${items.length ? eur(quote?.total ?? null) : "–"}</strong></p>
       ${nudges.map((n) => `<p class="pv-span pv-tip">${esc(n)}</p>`).join("")}
       ${hotel.error ? `<p class="pv-error pv-span" role="alert">${esc(hotel.error)}</p>` : ""}
-      <div class="pv-actions pv-span"><button type="submit" class="pv-btn pv-btn-gold" ${!stay || issues.length || !items.length || shortfall || validateItems(items).length ? "disabled" : ""}>${items.length > 1 ? `${quote?.rooms ?? 0} Zimmer anfragen` : "Zimmer anfragen"}</button></div>
+      <div class="pv-actions pv-span"><button type="submit" class="pv-btn pv-btn-gold" ${!stay || issues.length || !items.length || shortfall || validateItems(items).length || (quote && hotel.guests > quote.maxGuests) ? "disabled" : ""}>${items.length > 1 ? `${quote?.rooms ?? 0} Zimmer anfragen` : "Zimmer anfragen"}</button></div>
       <p class="pv-small pv-span">Unverbindlich – die Krone bestätigt persönlich. Bezahlt wird vor Ort.</p>
     </form>`, { wide: true, label: "Zimmer buchen" });
 }
@@ -714,7 +726,6 @@ function submitHotel(form: HTMLFormElement) {
   const fd = new FormData(form);
   hotel.name = String(fd.get("name") ?? "").trim();
   hotel.email = String(fd.get("email") ?? "").trim();
-  hotel.guests = Number(fd.get("guests")) || 1;
   const stay = hotelStay();
   const items = hotelItems();
   if (!stay) hotel.error = "Bitte wählen Sie An- und Abreise im Kalender.";
@@ -880,6 +891,11 @@ function initEvents() {
       hotel.month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       return renderHotel();
     }
+    if ((hit = t("[data-suggest]"))) {
+      const its = JSON.parse(hit.dataset.suggest!) as StayItem[];
+      hotel.counts = Object.fromEntries(its.map((i) => [i.roomTypeId, i.rooms]));
+      return renderHotel();
+    }
     if ((hit = t("[data-room-plus]"))) {
       hotelSetCount(hit.dataset.roomPlus!, (hotel.counts[hit.dataset.roomPlus!] ?? 0) + 1);
       return renderHotel();
@@ -906,7 +922,6 @@ function initEvents() {
       return updateSelectionUi();
     }
     if ((hit = t("[data-space-id]"))) return toggle(hit.dataset.spaceId!);
-    if ((hit = t("[data-testid=map-consent]"))) return loadMap(hit.closest<HTMLElement>("[data-pv-map]"));
     if ((hit = t("[data-pv-menu]"))) return toggleMenu();
     if ((hit = t("[data-pv-sheet]"))) return openAreaList();
     if ((hit = t("[data-lightbox]"))) return openDialog(`<img src="${hit.dataset.lightbox}" alt="" class="pv-img-full">`, { wide: true, label: "Bild" });
@@ -933,8 +948,9 @@ function initEvents() {
       return renderFlow();
     }
     if (el.dataset.toggleList) return toggle(el.dataset.toggleList, (el as HTMLInputElement).checked);
-    if (el.dataset.hotel === "guests") {
+    if (el.dataset.hotel === "guests-top") {
       hotel.guests = Number(el.value) || 1;
+      hotel.counts = {};
       return renderHotel();
     }
     if (el.dataset.time === "from" || el.dataset.time === "to") {
@@ -997,33 +1013,9 @@ function closeMenu() {
 }
 
 /* ------------------------------------------------------------ map (OSM) */
-async function loadMap(container: HTMLElement | null) {
-  if (!container) return;
-  const css = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
-  const js = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
-  if (!document.querySelector(`link[href="${css}"]`)) {
-    const l = document.createElement("link");
-    l.rel = "stylesheet";
-    l.href = css;
-    document.head.appendChild(l);
-  }
-  if (!window.L) {
-    await new Promise<void>((res, rej) => {
-      const sc = document.createElement("script");
-      sc.src = js;
-      sc.onload = () => res();
-      sc.onerror = () => rej(new Error("leaflet"));
-      document.head.appendChild(sc);
-    }).catch(() => undefined);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const L = window.L as any;
-  if (!L) return;
-  container.innerHTML = "";
-  const kind = container.dataset.pvMap;
+/** Leaflet is bundled; tiles come from OpenStreetMap once the map is near the viewport. */
+function initMaps() {
   const home = data.hotelCoords ?? { lat: 49.9014, lng: 9.1869 };
-  const map = L.map(container, { scrollWheelZoom: false }).setView(kind === "sights" ? [49.93, 9.3] : [home.lat, home.lng], kind === "sights" ? 9 : 14);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende' }).addTo(map);
   const icon = (primary: boolean) =>
     L.divIcon({
       className: "",
@@ -1031,13 +1023,35 @@ async function loadMap(container: HTMLElement | null) {
       iconSize: [primary ? 18 : 12, primary ? 18 : 12],
       iconAnchor: [primary ? 9 : 6, primary ? 9 : 6],
     });
-  L.marker([home.lat, home.lng], { icon: icon(true) }).addTo(map).bindPopup("<strong>Landhotel Gasthof Zur Krone</strong><br>Hauptstraße 106, 63849 Leidersbach").openPopup();
-  if (kind === "sights") for (const sgt of data.sights ?? []) L.marker([sgt.lat, sgt.lng], { icon: icon(false) }).addTo(map).bindPopup(`<strong>${esc(sgt.name)}</strong><br>${sgt.minutes} Min. ab Hotel`);
+  const mount = (container: HTMLElement) => {
+    const kind = container.dataset.pvMap;
+    container.innerHTML = "";
+    const wide = kind === "sights";
+    const map = L.map(container, { scrollWheelZoom: false }).setView(wide ? [49.93, 9.3] : kind === "home" ? [49.97, 9.05] : [home.lat, home.lng], wide || kind === "home" ? 9 : 14);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende' }).addTo(map);
+    L.marker([home.lat, home.lng], { icon: icon(true) }).addTo(map).bindPopup("<strong>Landhotel Gasthof Zur Krone</strong><br>Hauptstraße 106, 63849 Leidersbach").openPopup();
+    const list = kind === "sights" ? (data.sights ?? []) : kind === "home" ? (data.sights ?? []).filter((x) => ["mespelbrunn", "aschaffenburg", "frankfurt"].includes(x.id)) : [];
+    for (const sgt of list) L.marker([sgt.lat, sgt.lng], { icon: icon(false) }).addTo(map).bindPopup(`<strong>${esc(sgt.name)}</strong><br>${sgt.minutes} Min. ab Hotel`);
+  };
+  const containers = [...document.querySelectorAll<HTMLElement>("[data-pv-map]")];
+  if (!containers.length) return;
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        io.unobserve(e.target);
+        mount(e.target as HTMLElement);
+      }
+    },
+    { rootMargin: "400px" },
+  );
+  containers.forEach((c) => io.observe(c));
 }
 
 initTour();
 initHeader();
 initEvents();
+initMaps();
 updateSelectionUi();
 // arriving from the booking bar: open the room booking right away
 if (location.hash === "#buchen" && document.querySelector("[data-hotel-book]")) {

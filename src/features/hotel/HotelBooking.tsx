@@ -1,10 +1,10 @@
 "use client";
 
-import { BedDouble, CalendarDays, Loader2, Minus, Plus, Users } from "lucide-react";
+import { BedDouble, CalendarDays, Check, Loader2, Minus, Plus, Sparkles, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { guestRoomTypes, hotelCopy, roomInventory, stayExtras } from "@/content/hotel";
-import { nightCount, stayExtraLines, stayExtrasTotal, stayNudges, stayQuote, validateItems, validateStay, type StayItem } from "@/domain/hotel";
+import { nightCount, stayExtraLines, stayExtrasTotal, stayNudges, stayQuote, suggestRooms, validateItems, validateStay, type StayItem } from "@/domain/hotel";
 import { addDays, isLocalDate, todayLocal, type LocalDate } from "@/domain/time";
 import { cn } from "@/lib/cn";
 import { formatDateMedium, formatMoney } from "@/lib/format";
@@ -33,11 +33,9 @@ export function HotelBooking({ className, initial }: { className?: string; initi
   const [extras, setExtras] = useState<Record<string, number>>({});
   const [data, setData] = useState<Availability | null>(null);
   const [loading, setLoading] = useState(false);
-  const [counts, setCounts] = useState<Record<string, number>>(() => {
-    const g = initial?.guests && initial.guests > 0 ? initial.guests : 2;
-    // a sensible start: doubles for pairs, a single for the odd guest
-    return { ...emptyItems(), double: Math.min(8, Math.floor(g / 2)) || (g === 1 ? 0 : 1), single: g % 2 === 1 ? 1 : 0 };
-  });
+  // nothing is pre-selected: the guest picks a suggestion or builds the stay by hand
+  const [counts, setCounts] = useState<Record<string, number>>(() => emptyItems());
+  const [sort, setSort] = useState<"price" | "relevance">("price");
   const [guests, setGuests] = useState(initial?.guests && initial.guests > 0 ? Math.min(initial.guests, 30) : 2);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", notes: "" });
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +50,19 @@ export function HotelBooking({ className, initial }: { className?: string; initi
     const a = arrival ?? today;
     const d = departure ?? addDays(a, 1);
     const ctrl = new AbortController();
-    setLoading(true);
-    fetch(`/api/hotel/availability?arrival=${a}&departure=${d}`, { signal: ctrl.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<Availability>) : null))
-      .then((x) => x && setData(x))
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
-    return () => ctrl.abort();
+    // deferred so the loading flag is not set synchronously inside the effect
+    const t = setTimeout(() => {
+      setLoading(true);
+      fetch(`/api/hotel/availability?arrival=${a}&departure=${d}`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? (r.json() as Promise<Availability>) : null))
+        .then((x) => x && setData(x))
+        .catch(() => undefined)
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arrival, departure]);
 
@@ -79,6 +83,10 @@ export function HotelBooking({ className, initial }: { className?: string; initi
   const maxGuests = Math.max(1, quote?.maxGuests ?? 1);
   const nudges = stay && !issues.length && items.length ? stayNudges(items, stay, guests) : [];
   const shortfall = quote ? items.filter((i) => (data?.types.find((t) => t.id === i.roomTypeId)?.free ?? 99) < i.rooms) : [];
+
+  const suggestions = suggestRooms(guests);
+  const applySuggestion = (items: StayItem[]) => setCounts({ ...emptyItems(), ...Object.fromEntries(items.map((i) => [i.roomTypeId, i.rooms])) });
+  const isApplied = (items: StayItem[]) => roomTypeSeeds.every((t) => (counts[t.id] ?? 0) === (items.find((i) => i.roomTypeId === t.id)?.rooms ?? 0));
 
   function setCount(id: string, n: number) {
     const type = roomTypeSeeds.find((t) => t.id === id)!;
@@ -103,7 +111,7 @@ export function HotelBooking({ className, initial }: { className?: string; initi
     const res = await fetch("/api/hotel/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, arrival: stay.arrival, departure: stay.departure, guests: Math.min(guests, maxGuests), extras: Object.entries(extras).filter(([, q]) => q > 0).map(([id, quantity]) => ({ id, quantity })), ...form }),
+      body: JSON.stringify({ items, arrival: stay.arrival, departure: stay.departure, guests, extras: Object.entries(extras).filter(([, q]) => q > 0).map(([id, quantity]) => ({ id, quantity })), ...form }),
     });
     const body = (await res.json().catch(() => ({}))) as { reservationNumber?: string; total?: number | null; lines?: Array<{ rooms: number; name: string }>; error?: { message?: string }; message?: string };
     setBusy(false);
@@ -131,7 +139,7 @@ export function HotelBooking({ className, initial }: { className?: string; initi
   return (
     <div className={cn("grid gap-6 lg:grid-cols-[1.4fr_1fr]", className)} data-testid="hotel-booking">
       <div className="space-y-5">
-        <div className="grid gap-3 sm:grid-cols-2" data-testid="hotel-dates">
+        <div className="grid gap-3 sm:grid-cols-3" data-testid="hotel-dates">
           <div className={cn("rounded-2xl border bg-white p-4", arrival && !departure ? "border-sand" : "border-gold")}>
             <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted"><CalendarDays className="h-3.5 w-3.5" /> Anreise</span>
             <p className="mt-2 font-serif text-xl" data-testid="hotel-arrival">{arrival ? formatDateMedium(arrival) : "–"}</p>
@@ -140,11 +148,55 @@ export function HotelBooking({ className, initial }: { className?: string; initi
             <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted"><CalendarDays className="h-3.5 w-3.5" /> Abreise</span>
             <p className="mt-2 font-serif text-xl" data-testid="hotel-departure">{departure ? formatDateMedium(departure) : "–"}</p>
           </div>
+          <label className="rounded-2xl border border-sand bg-white p-4">
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted"><Users className="h-3.5 w-3.5" /> Gäste</span>
+            <select value={guests} onChange={(e) => { setGuests(Number(e.target.value)); setCounts(emptyItems()); }} className="mt-1.5 w-full bg-transparent font-serif text-xl outline-none" data-testid="hotel-guests-top">
+              {Array.from({ length: 22 }, (_, i) => i + 1).map((g) => <option key={g} value={g}>{g} {g === 1 ? "Gast" : "Gäste"}</option>)}
+            </select>
+          </label>
         </div>
         <StayCalendar arrival={arrival} departure={departure} fullNights={fullNights} onChange={(n) => { setArrival(n.arrival); setDeparture(n.departure); }} />
         <p className="text-sm text-muted">
           {!stay ? "Tippen Sie im Kalender zuerst auf die Anreise, dann auf die Abreise." : issues.includes("past") ? "Die Anreise liegt in der Vergangenheit." : `${nights} ${nights === 1 ? "Nacht" : "Nächte"} · ${hotelCopy.checkIn}`}
         </p>
+
+        {/* suggestions – the booking portals' "we picked for you" */}
+        <div data-testid="hotel-suggestions">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold-dark"><Sparkles className="h-3.5 w-3.5" /> Unser Vorschlag für {guests} {guests === 1 ? "Gast" : "Gäste"}</p>
+            <div className="flex gap-1 text-xs">
+              {(["price", "relevance"] as const).map((k) => (
+                <button key={k} type="button" onClick={() => setSort(k)} className={cn("rounded-full px-3 py-1", sort === k ? "bg-ink text-paper" : "border border-sand text-muted")}>
+                  {k === "price" ? "Preis" : "Relevanz"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ul className="mt-3 grid gap-3 md:grid-cols-2">
+            {(sort === "price" ? suggestions : [...suggestions].sort((a, b) => (a.tag === "günstigste" ? -1 : b.tag === "günstigste" ? 1 : a.tag === "komfort" ? -1 : 1))).map((sg) => {
+              const on = isApplied(sg.items);
+              return (
+                <li key={sg.id}>
+                  <button type="button" onClick={() => applySuggestion(sg.items)} aria-pressed={on} className={cn("flex w-full items-start justify-between gap-4 rounded-2xl border bg-white p-4 text-left transition-colors", on ? "border-gold ring-2 ring-gold/30" : "border-sand hover:border-ink/30")} data-testid={`suggest-${sg.id}`}>
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2">
+                        {sg.tag && <span className={cn("rounded-full px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em]", sg.tag === "günstigste" ? "bg-success-pale text-success" : "bg-cream text-gold-dark")}>{sg.tag === "günstigste" ? "Günstigste Wahl" : sg.tag === "komfort" ? "Mehr Komfort" : "Für Familien"}</span>}
+                      </span>
+                      <span className="mt-1.5 block font-serif text-lg leading-tight">{sg.title}</span>
+                      <span className="mt-1 block text-xs text-muted">{sg.note}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block font-serif text-xl tabular-nums">{sg.perNight === null ? "auf Anfrage" : formatMoney(sg.perNight)}</span>
+                      <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-muted">{sg.perNight === null ? "" : "pro Nacht"}</span>
+                      {on && <Check className="ml-auto mt-1 h-4 w-4 text-gold-dark" aria-hidden />}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 text-xs text-muted">Oder stellen Sie Ihre Zimmer unten selbst zusammen.</p>
+        </div>
 
         <ul className="grid gap-3" aria-label="Zimmer wählen">
           {roomTypeSeeds.map((t) => {
@@ -167,12 +219,12 @@ export function HotelBooking({ className, initial }: { className?: string; initi
                     {t.basePricePerNight !== null && <span className="text-xs text-muted"> pro Nacht, inkl. Frühstück</span>}
                   </span>
                 </span>
-                <span className="flex shrink-0 items-center gap-2" role="group" aria-label={`${t.name}: Anzahl`}>
-                  <button type="button" onClick={() => setCount(t.id, n - 1)} disabled={n === 0} aria-label={`${t.name} entfernen`} className="grid h-9 w-9 place-items-center rounded-full border border-sand disabled:opacity-30" data-testid={`minus-${t.id}`}>
+                <span className={cn("flex shrink-0 items-center gap-1 rounded-full border p-1", n > 0 ? "border-gold bg-gold-pale/60" : "border-sand bg-cream")} role="group" aria-label={`${t.name}: Anzahl`}>
+                  <button type="button" onClick={() => setCount(t.id, n - 1)} disabled={n === 0} aria-label={`${t.name} entfernen`} className="grid h-11 w-11 place-items-center rounded-full bg-white text-ink disabled:opacity-30" data-testid={`minus-${t.id}`}>
                     <Minus className="h-4 w-4" />
                   </button>
-                  <span className="w-5 text-center font-serif text-xl tabular-nums" data-testid={`count-${t.id}`}>{n}</span>
-                  <button type="button" onClick={() => setCount(t.id, n + 1)} disabled={soldOut || n >= max} aria-label={`${t.name} hinzufügen`} className="grid h-9 w-9 place-items-center rounded-full bg-anthracite text-paper disabled:opacity-30" data-testid={`plus-${t.id}`}>
+                  <span className="w-10 text-center font-serif text-[1.7rem] font-semibold tabular-nums" data-testid={`count-${t.id}`}>{n}</span>
+                  <button type="button" onClick={() => setCount(t.id, n + 1)} disabled={soldOut || n >= max} aria-label={`${t.name} hinzufügen`} className="grid h-11 w-11 place-items-center rounded-full bg-anthracite text-paper disabled:opacity-30" data-testid={`plus-${t.id}`}>
                     <Plus className="h-4 w-4" />
                   </button>
                 </span>
@@ -184,12 +236,7 @@ export function HotelBooking({ className, initial }: { className?: string; initi
 
       <form onSubmit={submit} className="panel-dark flex flex-col gap-4 rounded-[1.5rem] p-6 text-paper md:p-7" data-testid="hotel-form">
         <p className="eyebrow !text-gold-light">Ihre Reservierung</p>
-        <label className="text-sm">
-          <span className="flex items-center gap-1 text-paper/70"><Users className="h-3.5 w-3.5" /> Gäste</span>
-          <select value={Math.min(guests, maxGuests)} onChange={(e) => setGuests(Number(e.target.value))} className="mt-1 h-11 w-full rounded-xl border border-white/15 bg-white/5 px-3 text-paper" data-testid="hotel-guests">
-            {Array.from({ length: maxGuests }, (_, i) => i + 1).map((g) => <option key={g} value={g} className="text-ink">{g}</option>)}
-          </select>
-        </label>
+        <p className="text-sm text-paper/80">{guests} {guests === 1 ? "Gast" : "Gäste"}{quote && items.length > 0 && guests > quote.maxGuests ? <span className="block text-xs text-[#f0a79c]">Die gewählten Zimmer bieten Platz für {quote.maxGuests} – bitte ein Zimmer ergänzen.</span> : null}</p>
         <div className="rounded-xl bg-white/5 p-3 text-sm" data-testid="hotel-summary">
           <div className="flex justify-between text-paper/70"><span>{stay ? `${formatDateMedium(stay.arrival)} – ${formatDateMedium(stay.departure)}` : "Zeitraum wählen"}</span><span>{nights} {nights === 1 ? "Nacht" : "Nächte"}</span></div>
           {quote?.lines.map((l) => (
@@ -199,7 +246,7 @@ export function HotelBooking({ className, initial }: { className?: string; initi
           {extraLines.map((l) => (
             <div key={l.id} className="mt-1 flex justify-between text-paper/80"><span>{l.quantity} × {l.name} · {l.nights} {l.nights === 1 ? "Nacht" : "Nächte"}</span><span className="tabular-nums">{formatMoney(l.total)}</span></div>
           ))}
-          <div className="mt-2 flex items-baseline justify-between border-t border-white/10 pt-2"><span className="text-paper/70">Gesamt inkl. Frühstück</span><span className="font-serif text-2xl tabular-nums" data-testid="hotel-total">{formatMoney(grandTotal, items.length ? "auf Anfrage" : "–")}</span></div>
+          <div className="mt-2 flex items-baseline justify-between border-t border-white/10 pt-2"><span className="text-paper/70">Gesamt inkl. Frühstück</span><span className="font-serif text-2xl tabular-nums" data-testid="hotel-total">{items.length ? formatMoney(grandTotal, "auf Anfrage") : "–"}</span></div>
           <p className="mt-1 text-xs text-paper/50">Inkl. MwSt. und Frühstück. Zahlung vor Ort, kostenlos stornierbar bis 2 Tage vor Anreise.</p>
         </div>
         <details className="group rounded-xl border border-white/10" data-testid="hotel-extras">
@@ -239,7 +286,7 @@ export function HotelBooking({ className, initial }: { className?: string; initi
         <input type="tel" placeholder="Telefon (optional)" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-11 rounded-xl border border-white/15 bg-white/5 px-3 placeholder:text-paper/40" />
         <textarea rows={2} placeholder="Wünsche (optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 placeholder:text-paper/40" />
         {error && <p className="rounded-xl bg-danger/20 px-3 py-2 text-sm text-[#f0a79c]" role="alert">{error}</p>}
-        <Button type="submit" variant="gold" disabled={busy || !stay || issues.length > 0 || !items.length || itemIssues.length > 0 || shortfall.length > 0} data-testid="hotel-submit">
+        <Button type="submit" variant="gold" disabled={busy || !stay || issues.length > 0 || !items.length || itemIssues.length > 0 || shortfall.length > 0 || guests > maxGuests} data-testid="hotel-submit">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />} {items.length > 1 ? `${quote?.rooms ?? 0} Zimmer anfragen` : "Zimmer anfragen"}
         </Button>
         <p className="text-xs text-paper/55">Unverbindliche Anfrage – wir bestätigen persönlich. Bezahlt wird vor Ort. Mit dem Absenden akzeptieren Sie unsere Datenschutzerklärung.</p>

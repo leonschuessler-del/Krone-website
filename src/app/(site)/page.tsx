@@ -6,13 +6,14 @@ import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { siteConfig } from "@/config/site";
 import { breakfast, directBenefits, guestRoomTypes, hotelStory } from "@/content/hotel";
-import { arrival, sights } from "@/content/sights";
+import { arrival, HOTEL_COORDS, sights } from "@/content/sights";
 import { StructuredData } from "@/features/home/StructuredData";
 import { HeroVideo } from "@/features/home/HeroVideo";
 import { BookingBar } from "@/features/hotel/BookingBar";
 import { RoomTypeCard } from "@/features/hotel/RoomTypeCard";
 import { OfferCards } from "@/features/offers/OfferCards";
 import { SightCard } from "@/features/sights/SightCard";
+import { LeafletMap } from "@/features/sights/LeafletMap";
 import { getHeroVideo, getPropertyGallery, mediaExists } from "@/lib/media";
 import { getDb } from "@/server/db/client";
 import { listYieldOffers } from "@/server/services/offers-service";
@@ -30,7 +31,7 @@ export default async function HomePage() {
   const property = getPropertyGallery();
   const offers = await listYieldOffers(await getDb()).catch(() => []);
   const teaserSights = ["mespelbrunn", "aschaffenburg", "frankfurt"].map((id) => sights.find((s) => s.id === id)!).filter(Boolean);
-  const eventImage = property[0] ?? null;
+  const eventImage = mediaExists("/media/restaurant/hero.webp") ? { src: "/media/restaurant/hero.webp" } : (property[0] ?? null);
   const houseImage = mediaExists("/media/property/house-front.webp") ? { src: "/media/property/house-front.webp" } : (property[1] ?? property[0] ?? null);
 
   return (
@@ -40,9 +41,11 @@ export default async function HomePage() {
       {/* Hero: the house from above, one quiet line, the booking bar */}
       <section className="relative isolate flex min-h-[100svh] flex-col justify-end overflow-hidden bg-anthracite text-paper" aria-labelledby="hero-title" data-hero>
         <HeroVideo sources={film} />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-anthracite/85 via-anthracite/20 to-anthracite/30" />
+        {/* readability: every word on a photo sits on a dark scrim */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-anthracite via-anthracite/55 to-anthracite/35" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-anthracite/70 via-transparent to-transparent" />
         <div className="container-page relative pb-10 pt-40 md:pb-16">
-          <div className="max-w-3xl animate-fade-up">
+          <div className="max-w-3xl animate-fade-up text-shadow-hero">
             <p className="eyebrow !text-gold-light">Landhotel · Leidersbach im Spessart · seit 1919</p>
             <h1 id="hero-title" className="mt-6 text-[3.2rem] font-light leading-[0.98] md:text-[5rem] lg:text-[6.2rem]">
               Ankommen, <em>wo man bleibt.</em>
@@ -135,8 +138,8 @@ export default async function HomePage() {
       {/* Event location */}
       <section className="relative isolate overflow-hidden bg-anthracite text-paper" aria-labelledby="event-title">
         <div className="absolute inset-0">
-          {eventImage && <Image src={eventImage.src} alt="" fill sizes="100vw" className="object-cover opacity-60" />}
-          <div className="absolute inset-0 bg-gradient-to-r from-anthracite via-anthracite/60 to-transparent" />
+          {eventImage && <Image src={eventImage.src} alt="" fill sizes="100vw" className="object-cover opacity-75" />}
+          <div className="absolute inset-0 bg-gradient-to-r from-anthracite via-anthracite/75 to-anthracite/20" />
         </div>
         <div className="container-page relative py-28 md:py-40">
           <div className="max-w-2xl">
@@ -195,18 +198,26 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Location / arrival */}
+      {/* Location / arrival with the map */}
       <section className="bg-paper py-24" aria-labelledby="arrival-title">
-        <div className="container-page grid gap-12 lg:grid-cols-[1fr_1.4fr]">
-          <SectionHeading id="arrival-title" eyebrow="Lage & Anfahrt" title="Mitten im Dorf, nah an allem.">
-            <p>
-              {siteConfig.address.street}, {siteConfig.address.postalCode} {siteConfig.address.city}. Zwei Autobahnabfahrten, ein ICE-Bahnhof und der Frankfurter Flughafen in 40 Minuten.
-            </p>
-            <Link href="/kontakt" className="mt-6 inline-flex items-center gap-2 text-sm font-medium uppercase tracking-[0.18em] text-ink hover:text-gold-dark">
-              Karte & Kontakt <ArrowRight className="h-4 w-4" />
-            </Link>
-          </SectionHeading>
-          <dl className="grid gap-px overflow-hidden border border-sand bg-sand sm:grid-cols-2">
+        <div className="container-page">
+          <div className="grid gap-12 lg:grid-cols-[1fr_1.4fr]">
+            <SectionHeading id="arrival-title" eyebrow="Lage & Anfahrt" title="Mitten im Dorf, nah an allem.">
+              <p>
+                {siteConfig.address.street}, {siteConfig.address.postalCode} {siteConfig.address.city}. Zwei Autobahnabfahrten, ein ICE-Bahnhof und der Frankfurter Flughafen in 40 Minuten.
+              </p>
+              <Link href="/kontakt" className="mt-6 inline-flex items-center gap-2 text-sm font-medium uppercase tracking-[0.18em] text-ink hover:text-gold-dark">
+                Kontakt & Anfahrt <ArrowRight className="h-4 w-4" />
+              </Link>
+            </SectionHeading>
+            <LeafletMap
+              markers={[{ id: "hotel", name: "Landhotel Gasthof Zur Krone", lat: HOTEL_COORDS.lat, lng: HOTEL_COORDS.lng, text: "Hauptstraße 106, 63849 Leidersbach", primary: true }, ...teaserSights.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, minutes: s.minutes }))]}
+              center={{ lat: 49.97, lng: 9.05 }}
+              zoom={9}
+              height="h-[26rem]"
+            />
+          </div>
+          <dl className="mt-10 grid gap-px overflow-hidden border border-sand bg-sand sm:grid-cols-2 lg:grid-cols-5">
             {arrival.map((a) => (
               <div key={a.label} className="bg-white p-6">
                 <dt className="text-[0.65rem] font-medium uppercase tracking-[0.25em] text-gold-dark">{a.label}</dt>

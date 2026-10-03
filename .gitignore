@@ -25,3 +25,8 @@ blob-report/
 .DS_Store
 *.log
 .vercel
+
+# third-party agent skills installed locally (npx skills add), not part of the site
+.agents/
+.claude/skills/higgsfield-*
+skills-lock.json

@@ -152,8 +152,8 @@ export const legalDocuments: Record<string, LegalDocument> = {
         id: "karte",
         heading: "Umgebungskarte (OpenStreetMap)",
         body: [
-          "Auf den Seiten „Umgebung“ und „Kontakt“ können Sie eine interaktive Karte laden. Die Karte wird erst nach Ihrem Klick auf „Karte laden“ eingebunden; vorher werden keine Daten übertragen. Mit dem Laden werden Kartenkacheln von den Servern der OpenStreetMap Foundation (St John's Innovation Centre, Cowley Road, Cambridge, CB4 0WS, Vereinigtes Königreich) abgerufen. Dabei werden Ihre IP-Adresse und die angezeigten Kartenausschnitte übermittelt.",
-          "Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG), die Sie jederzeit durch erneutes Laden der Seite zurücknehmen. Für das Vereinigte Königreich liegt ein Angemessenheitsbeschluss der EU-Kommission vor. Weitere Informationen: https://wiki.osmfoundation.org/wiki/Privacy_Policy",
+          "Auf der Startseite sowie den Seiten „Umgebung“ und „Kontakt“ zeigen wir eine interaktive Karte. Die Kartensoftware (Leaflet) liegt auf unserem eigenen Server; die Kartenkacheln werden von den Servern der OpenStreetMap Foundation (St John's Innovation Centre, Cowley Road, Cambridge, CB4 0WS, Vereinigtes Königreich) abgerufen, sobald die Karte in Ihr Sichtfeld scrollt. Dabei werden Ihre IP-Adresse und die angezeigten Kartenausschnitte übermittelt.",
+          "Rechtsgrundlage ist unser berechtigtes Interesse an einer verständlichen Darstellung von Lage und Anfahrt (Art. 6 Abs. 1 lit. f DSGVO). OpenStreetMap setzt keine Cookies zu Werbezwecken und erstellt keine Nutzerprofile; für das Vereinigte Königreich liegt ein Angemessenheitsbeschluss der EU-Kommission vor. Weitere Informationen: https://wiki.osmfoundation.org/wiki/Privacy_Policy. [Hinweis für die Rechtsprüfung: alternativ Einwilligung per „Karte laden“-Schaltfläche – die Komponente unterstützt beides.]",
         ],
       },
       {

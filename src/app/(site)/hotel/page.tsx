@@ -25,8 +25,8 @@ export default async function HotelPage({ searchParams }: { searchParams: Promis
       {/* Hero */}
       <header className="relative isolate flex min-h-[86svh] items-end overflow-hidden bg-anthracite text-paper" data-hero>
         {media.hero && <Image src={media.hero.src} alt={media.hero.alt} fill priority sizes="100vw" className="object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-anthracite/85 via-anthracite/25 to-anthracite/30" />
-        <div className="container-page relative pb-16 pt-40">
+        <div className="absolute inset-0 bg-gradient-to-t from-anthracite via-anthracite/55 to-anthracite/35" /><div className="absolute inset-0 bg-gradient-to-r from-anthracite/70 via-transparent to-transparent" />
+        <div className="container-page relative pb-16 pt-40 text-shadow-hero">
           <p className="eyebrow !text-gold-light">{hotelCopy.eyebrow}</p>
           <h1 className="mt-5 max-w-3xl text-[3rem] font-light leading-[0.98] md:text-[4.8rem]">
             Zimmer mit <em>Frühstück und Ruhe.</em>

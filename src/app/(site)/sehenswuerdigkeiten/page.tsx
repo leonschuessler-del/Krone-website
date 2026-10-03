@@ -5,7 +5,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { arrival, HOTEL_COORDS, ringLabels, sights } from "@/content/sights";
 import { LeafletMap } from "@/features/sights/LeafletMap";
 import { SightCard } from "@/features/sights/SightCard";
-import { getPropertyGallery } from "@/lib/media";
+import { getPropertyGallery, mediaExists } from "@/lib/media";
 
 export const metadata: Metadata = {
   title: "Umgebung & Sehenswürdigkeiten – Spessart, Aschaffenburg, Frankfurt",
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default function SightsPage() {
-  const hero = getPropertyGallery()[0] ?? null;
+  const hero = mediaExists("/media/property/house-front.webp") ? { src: "/media/property/house-front.webp" } : (getPropertyGallery()[0] ?? null);
   const rings: Array<keyof typeof ringLabels> = ["nah", "mittel", "fern"];
   const markers = [
     { id: "hotel", name: "Landhotel Gasthof Zur Krone", lat: HOTEL_COORDS.lat, lng: HOTEL_COORDS.lng, text: "Hauptstraße 106, 63849 Leidersbach", primary: true },
@@ -23,9 +23,9 @@ export default function SightsPage() {
   return (
     <article>
       <header className="relative isolate flex min-h-[70svh] items-end overflow-hidden bg-anthracite text-paper" data-hero>
-        {hero && <Image src={hero.src} alt="" fill priority sizes="100vw" className="object-cover opacity-70" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-anthracite/85 via-anthracite/20 to-anthracite/30" />
-        <div className="container-page relative pb-16 pt-40">
+        {hero && <Image src={hero.src} alt="" fill priority sizes="100vw" className="object-cover object-[50%_35%]" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-anthracite via-anthracite/55 to-anthracite/35" /><div className="absolute inset-0 bg-gradient-to-r from-anthracite/70 via-transparent to-transparent" />
+        <div className="container-page relative pb-16 pt-40 text-shadow-hero">
           <p className="eyebrow !text-gold-light">Umgebung</p>
           <h1 className="mt-5 max-w-3xl text-[3rem] font-light leading-[0.98] md:text-[4.8rem]">
             Spessart vor der Tür, <em>die Welt eine Stunde weit.</em>
