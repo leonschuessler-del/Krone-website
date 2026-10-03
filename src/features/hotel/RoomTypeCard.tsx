@@ -6,10 +6,10 @@ import { mediaExists } from "@/lib/media";
 import { formatMoney } from "@/lib/format";
 
 /** Room type teaser: photo, name, "ab"-price, guests, one line. */
-export function RoomTypeCard({ type, href = "/hotel#buchen", compact = false }: { type: RoomTypeSeed; href?: string; compact?: boolean }) {
+export function RoomTypeCard({ type, href, compact = false }: { type: RoomTypeSeed; href?: string; compact?: boolean }) {
   const img = mediaExists(type.image) ? type.image : null;
   return (
-    <Link href={href} className="group flex flex-col bg-white" data-testid={`roomcard-${type.id}`}>
+    <Link href={href ?? `/hotel/buchen?zimmer=${type.id}`} className="group flex flex-col bg-white" data-testid={`roomcard-${type.id}`}>
       <div className="relative aspect-[4/3] overflow-hidden bg-cream">
         {img ? (
           <Image src={img} alt={type.name} fill sizes="(min-width:1024px) 33vw, 100vw" className="object-cover transition-transform duration-[1.4s] ease-out group-hover:scale-[1.04]" />

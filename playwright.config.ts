@@ -26,7 +26,8 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec\.ts/ },
   ],
   webServer: {
-    command: `npm run build && npx next start -p ${PORT}`,
+    // E2E_SKIP_BUILD=1 reuses the existing .next build (local runs after `next build`)
+    command: process.env.E2E_SKIP_BUILD ? `npx next start -p ${PORT}` : `npm run build && npx next start -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     timeout: 600_000,
     reuseExistingServer: false,

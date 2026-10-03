@@ -13,7 +13,7 @@ export const mainNavigation: NavItem[] = [
   { label: "Kontakt", href: "/kontakt" },
 ];
 
-export const headerCta: NavItem = { label: "Zimmer buchen", href: "/hotel#buchen" };
+export const headerCta: NavItem = { label: "Zimmer buchen", href: "/hotel/buchen" };
 
 export const legalNavigation: NavItem[] = [
   { label: "Impressum", href: "/impressum" },
@@ -25,7 +25,7 @@ export const legalNavigation: NavItem[] = [
 
 export const footerNavigation: NavItem[] = [
   { label: "Hotel & Zimmer", href: "/hotel" },
-  { label: "Zimmer buchen", href: "/hotel#buchen" },
+  { label: "Zimmer buchen", href: "/hotel/buchen" },
   { label: "Eventlocation", href: "/eventlocation" },
   { label: "Raumplaner", href: "/eventlocation#karte" },
   { label: "Angebote & Aktuelles", href: "/aktuelles" },

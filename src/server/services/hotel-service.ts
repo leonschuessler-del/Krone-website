@@ -11,6 +11,7 @@ import { customers, hotelReservations, roomTypes } from "@/server/db/schema";
 import { pushCalendarEvent, removeCalendarEvent, type CalendarSyncResult } from "@/server/integrations/calendar";
 import { hotelChannel } from "@/server/integrations/dirs21";
 import { operatorEmail, sendEmail } from "./email-service";
+import { hotelPaymentsAvailable, startHotelPayment, type HotelPaymentStart } from "./hotel-payment-service";
 
 /**
  * Hotel reservations: rooms are booked individually (not with an event).
@@ -36,6 +37,8 @@ export const hotelReservationSchema = z
     email: z.string().trim().email().max(200),
     phone: z.string().trim().max(40).optional().default(""),
     notes: z.string().trim().max(2000).optional().default(""),
+    /** how the guest wants to pay – online/guarantee need a payment provider (docs/ZAHLUNG.md) */
+    payment: z.enum(["hotel", "online", "guarantee"]).optional().default("hotel"),
     /** honeypot */
     website: z.string().max(0).optional(),
   })
@@ -148,7 +151,27 @@ export async function createHotelReservation(db: Database, input: HotelReservati
   };
   await sendEmail(db, "hotel_request_received", result.customer.email, ctx);
   await sendEmail(db, "operator_new_hotel_request", operatorEmail() ?? "betreiber@krone.invalid (nicht konfiguriert)", ctx);
-  return { reservationNumber: result.reservationNumber, status: "requested" as const, total: quote.total === null ? null : quote.total + extrasSum, lines: quote.lines.map((l) => ({ roomTypeId: l.roomTypeId, rooms: l.rooms, name: l.name })) };
+  const total = quote.total === null ? null : quote.total + extrasSum;
+
+  // online payment / card guarantee – only with a priced stay and a configured provider
+  let payment: HotelPaymentStart = { provider: "none" };
+  if (input.payment !== "hotel" && hotelPaymentsAvailable() && (input.payment === "guarantee" || (total !== null && total > 0))) {
+    try {
+      payment = await startHotelPayment(db, {
+        reservationNumber: result.reservationNumber,
+        kind: input.payment === "online" ? "full" : "guarantee",
+        amount: total ?? 0,
+        customerEmail: result.customer.email,
+        customerName: ctx.customerName,
+        description: `Zur Krone – Zimmer ${result.reservationNumber} (${ctx.dateLabel})`,
+      });
+    } catch (err) {
+      // the reservation stands; the guest pays at the hotel and the admin sees the attempt
+      console.error("[hotel] payment start failed", err);
+      payment = { provider: "none" };
+    }
+  }
+  return { reservationNumber: result.reservationNumber, status: "requested" as const, total, lines: quote.lines.map((l) => ({ roomTypeId: l.roomTypeId, rooms: l.rooms, name: l.name })), payment };
 }
 
 export async function listHotelReservations(db: Database) {
@@ -172,6 +195,7 @@ export interface HotelReservationGroup {
   arrivalDate: LocalDate;
   departureDate: LocalDate;
   status: HotelReservationRow["r"]["status"];
+  paymentStatus: HotelReservationRow["r"]["paymentStatus"];
   total: number | null;
   notes: string | null;
   createdAt: Date;
@@ -183,7 +207,7 @@ export function groupHotelReservations(rows: HotelReservationRow[]): HotelReserv
     const key = r.reservationNumber ?? r.id;
     let g = map.get(key);
     if (!g) {
-      g = { id: r.id, reservationNumber: key, customer, lines: [], guests: 0, arrivalDate: r.arrivalDate, departureDate: r.departureDate, status: r.status, total: 0, notes: null, createdAt: r.createdAt };
+      g = { id: r.id, reservationNumber: key, customer, lines: [], guests: 0, arrivalDate: r.arrivalDate, departureDate: r.departureDate, status: r.status, paymentStatus: r.paymentStatus, total: 0, notes: null, createdAt: r.createdAt };
       map.set(key, g);
     }
     g.lines.push({ rooms: r.rooms, name: type.name, totalPrice: r.totalPrice, channelRef: r.channelRef });

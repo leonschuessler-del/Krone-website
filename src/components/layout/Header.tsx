@@ -81,15 +81,12 @@ export function Header() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.2em] transition-colors",
+                  "nav-link px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.2em] transition-colors duration-300",
                   transparent ? "text-paper/85 hover:text-paper" : "text-ink-soft hover:text-ink",
                   active && (transparent ? "text-paper" : "text-ink"),
                 )}
               >
                 {item.label}
-                {active && (
-                  <span className="absolute inset-x-3.5 -bottom-0.5 h-px bg-gold" />
-                )}
               </Link>
             );
           })}

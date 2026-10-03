@@ -5,7 +5,7 @@ import { Gallery } from "@/components/media/Gallery";
 import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { breakfast, directBenefits, guestRoomTypes, hotelCopy, hotelFacts, hotelStory, stayExtras } from "@/content/hotel";
-import { HotelBooking } from "@/features/hotel/HotelBooking";
+import { BookingBar } from "@/features/hotel/BookingBar";
 import { formatMoney } from "@/lib/format";
 import { getSpaceMedia, mediaExists } from "@/lib/media";
 
@@ -17,8 +17,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/hotel" },
 };
 
-export default async function HotelPage({ searchParams }: { searchParams: Promise<{ anreise?: string; abreise?: string; gaeste?: string }> }) {
-  const params = await searchParams;
+export default async function HotelPage() {
   const media = getSpaceMedia("hotel", "Hotel");
   return (
     <article>
@@ -33,7 +32,7 @@ export default async function HotelPage({ searchParams }: { searchParams: Promis
           </h1>
           <p className="mt-6 max-w-xl text-lg font-light text-paper/85">{hotelCopy.text}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="#buchen" variant="gold" size="lg">
+            <ButtonLink href="/hotel/buchen" variant="gold" size="lg">
               Zimmer buchen
             </ButtonLink>
             <ButtonLink href="#zimmer" variant="dark" size="lg">
@@ -108,7 +107,7 @@ export default async function HotelPage({ searchParams }: { searchParams: Promis
                         bis {t.maxGuests} {t.maxGuests === 1 ? "Gast" : "Gäste"}
                         {t.sizeHint ? ` · ${t.sizeHint}` : ""}
                       </span>
-                      <ButtonLink href="#buchen" variant="primary" size="sm">
+                      <ButtonLink href={`/hotel/buchen?zimmer=${t.id}`} variant="primary" size="sm">
                         {t.basePricePerNight === null ? "Anfragen" : "Buchen"}
                       </ButtonLink>
                     </div>
@@ -124,9 +123,10 @@ export default async function HotelPage({ searchParams }: { searchParams: Promis
       <section id="buchen" className="scroll-mt-24 bg-paper py-24 md:py-32" aria-labelledby="booking-title">
         <div className="container-page">
           <SectionHeading id="booking-title" eyebrow="Online buchen" title="Ihr Aufenthalt in drei Schritten." className="mb-10">
-            <p>Anreise und Abreise im Kalender wählen, Zimmer zusammenstellen, Kontaktdaten – wir bestätigen persönlich. Bezahlt wird vor Ort.</p>
+            <p>Daten wählen, Zimmer vergleichen, bestätigen. Die Buchung öffnet sich als eigene Seite – mit Kalender, Preisen pro Nacht, Warenkorb für mehrere Zimmer und Zahlung im Hotel oder online.</p>
           </SectionHeading>
-          <HotelBooking initial={{ arrival: params.anreise, departure: params.abreise, guests: params.gaeste ? Number(params.gaeste) : undefined }} />
+          <BookingBar />
+          <p className="mt-4 text-sm text-muted">Oder direkt zur <a href="/hotel/buchen" className="font-semibold text-gold-dark underline underline-offset-4">Zimmerbuchung</a>.</p>
         </div>
       </section>
 

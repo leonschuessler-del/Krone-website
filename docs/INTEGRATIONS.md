@@ -1,4 +1,4 @@
-# Anbindungen (E-Mail, Apple-Kalender, DIRS21)
+# Anbindungen (E-Mail, Apple-Kalender, DIRS21, Zahlung)
 
 Alle Anbindungen werden nur über Umgebungsvariablen eingerichtet. Ohne Variablen läuft alles im Vorschaumodus: E-Mails landen im Verwaltungsbereich unter „E-Mails“, der Kalender wird nicht beschrieben, Hotelzimmer werden intern geführt.
 
@@ -60,3 +60,8 @@ Zimmer werden einzeln gebucht (8 Doppelzimmer, 2 Einzelzimmer, 1 Apartment, opti
 | `DIRS21_ROOM_MAP` | Zuordnung Zimmertyp → DIRS21-Kategorie, z. B. `double=DZ,double-single=DZE,single=EZ,apartment=APP` |
 
 Ohne diese Variablen arbeitet die Website intern („local“). Die genauen Request-Formate von DIRS21 werden beim Freischalten des Zugangs gegen die DIRS21-Dokumentation vervollständigt; die Stellen sind im Adapter markiert.
+
+## Online-Zahlung der Zimmer
+
+Siehe `docs/ZAHLUNG.md`: Empfehlung Stripe, Einrichtung über `PAYMENT_PROVIDER`, `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET`; Kartenhinterlegung für No-Show, Online-Zahlung, Zahlung im Hotel.

@@ -403,9 +403,39 @@ export const hotelReservations = pgTable("hotel_reservations", {
   /** id at the channel manager (DIRS21) once synced */
   channelRef: text("channel_ref"),
   declineReason: text("decline_reason"),
+  /** unpaid = pay at the hotel; pending → paid/guaranteed set by the payment provider webhook */
+  paymentStatus: text("payment_status").$type<"unpaid" | "pending" | "paid" | "guaranteed" | "failed" | "refunded">().notNull().default("unpaid"),
   createdAt: createdAt(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Online payments of room reservations (docs/ZAHLUNG.md). One row per attempt;
+ * `kind` full = the stay is paid now, guarantee = a card is stored (Stripe
+ * SetupIntent) and only charged for a no-show or a late cancellation.
+ */
+export const hotelPayments = pgTable(
+  "hotel_payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reservationNumber: text("reservation_number").notNull(),
+    provider: text("provider").$type<"demo" | "stripe">().notNull(),
+    kind: text("kind").$type<"full" | "guarantee">().notNull(),
+    /** cents; 0 for a guarantee */
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull().default("EUR"),
+    status: text("status").$type<"pending" | "succeeded" | "failed" | "refunded">().notNull(),
+    /** Stripe checkout session id */
+    providerRef: text("provider_ref"),
+    /** Stripe payment_intent / setup_intent id once known */
+    intentRef: text("intent_ref"),
+    checkoutUrl: text("checkout_url"),
+    raw: jsonb("raw"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("hotel_payments_reservation_idx").on(t.reservationNumber)],
+);
 
 export type SpaceRow = typeof spaces.$inferSelect;
 export type BookingRow = typeof bookings.$inferSelect;

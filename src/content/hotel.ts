@@ -25,6 +25,9 @@ export interface RoomTypeSeed {
   eventOnly?: boolean;
   /** image under /media/hotel */
   image: string;
+  /** beds as shown in the booking engine, e.g. "1 Doppelbett" */
+  beds: string;
+  bedKind: "double" | "single" | "multi";
 }
 
 /**
@@ -56,6 +59,8 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     inventoryGroup: "double",
     sortOrder: 10,
     image: "/media/hotel/hero.webp",
+    beds: "1 Doppelbett",
+    bedKind: "double",
   },
   {
     id: "double-single",
@@ -69,6 +74,8 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     inventoryGroup: "double",
     sortOrder: 20,
     image: "/media/hotel/gallery-02.webp",
+    beds: "1 Doppelbett zur Einzelnutzung",
+    bedKind: "double",
   },
   {
     id: "single",
@@ -82,6 +89,8 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     inventoryGroup: "single",
     sortOrder: 30,
     image: "/media/hotel/gallery-03.webp",
+    beds: "1 Einzelbett",
+    bedKind: "single",
   },
   {
     id: "apartment",
@@ -98,6 +107,8 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     inventoryGroup: "apartment",
     sortOrder: 40,
     image: "/media/hotel/gallery-04.webp",
+    beds: "2 Doppelbetten · 1 Bett 1,40 m",
+    bedKind: "multi",
   },
   {
     id: "floor",
@@ -112,6 +123,8 @@ export const roomTypeSeeds: RoomTypeSeed[] = [
     sortOrder: 50,
     eventOnly: true,
     image: "/media/hotel/hero.webp",
+    beds: "10 Zimmer + Apartment",
+    bedKind: "multi",
   },
 ];
 
@@ -154,22 +167,33 @@ export const hotelCopy = {
   checkIn: "Anreise 15:30–21 Uhr (Schlüsselsafe vorhanden), Abreise Mo–Fr bis 10 Uhr, Sa–So bis 11 Uhr.",
 };
 
-/** The house and its history, as told on krone-landhotel.de. */
+/** The house and its history, as told on krone-landhotel.de – tightened for the start page. */
 export const hotelStory = {
   eyebrow: "Seit 1919 in Familienbesitz",
   title: "Ein Haus mit großer Tradition.",
   paragraphs: [
-    "Seit 1919 ist die „Krone“ in der Dorfmitte von Leidersbach nahe Aschaffenburg im Besitz der Familie. Zum Landhotel mit Gasthof wurde das traditionelle Wirtshaus 1980/81 von den ehemaligen Besitzern Cäcilia und Franz Schüßler umgebaut.",
-    "Von 2015 bis Ende 2025 setzten Juniorchef Boris Schüßler und seine Frau frische Akzente: am Herd, am Grill und mit schönen Arrangements.",
-    "Seit dem 1. Januar 2026 ist das Restaurant geschlossen. Das Hotel garni bleibt – mit Frühstück, das morgens im Haus serviert wird, und mit Räumen, die heute als Eventlocation vermietet werden.",
+    "Seit 1919 gehört die „Krone“ in der Dorfmitte von Leidersbach der Familie. Aus dem Wirtshaus mit Eder-Bräu-Schild wurde 1980/81 unter Cäcilia und Franz Schüßler das Landhotel mit Gasthof – das Haus bekam ein Stockwerk und seine Zimmer.",
+    "Von 2015 bis 2025 setzten Boris Schüßler und seine Frau frische Akzente am Herd und am Grill. Seit 2026 ist die Krone Hotel garni und Eventlocation: Frühstück im Haus, Räume für Feste – und die Familie wie eh und je dahinter.",
   ],
   milestones: [
     { year: "1919", text: "Die Krone kommt in Familienbesitz." },
-    { year: "1980/81", text: "Umbau des Wirtshauses zum Landhotel mit Gasthof." },
+    { year: "1980/81", text: "Aufstockung – aus dem Wirtshaus wird das Landhotel." },
     { year: "2015", text: "Boris Schüßler übernimmt die Küche." },
     { year: "2026", text: "Hotel garni und Eventlocation." },
   ],
 };
+
+/**
+ * Photos for the "Wandel" strip on the start page (public/media/history, see
+ * its README). Captions stay with what the operator confirmed; years marked
+ * "um" or without year are unknown.
+ */
+export const historyPhotos = [
+  { src: "/media/history/fachwerkhaus.webp", year: "Früher", caption: "Fachwerk in Leidersbach – aus dem Familienalbum" },
+  { src: "/media/history/krone-eder-braeu.webp", year: "Wirtshaus", caption: "Die Krone mit dem Eder-Bräu-Schild" },
+  { src: "/media/history/umbau-strasse.webp", year: "1980/81", caption: "Aufstockung für die Hotelzimmer" },
+  { src: "/media/property/house-front.webp", year: "Heute", caption: "Landhotel Gasthof Zur Krone, Hauptstraße 106" },
+] as const;
 
 export const breakfast = {
   title: "Frühstück im Haus.",

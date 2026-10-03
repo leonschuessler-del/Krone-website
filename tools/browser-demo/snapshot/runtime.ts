@@ -17,15 +17,13 @@ import { demoSettings } from "@/content/settings";
 import { displayFacts, ESTIMATE_NOTE } from "@/content/space-estimates";
 import { extraSeeds } from "@/content/extras";
 import L from "leaflet";
-import { guestRoomTypes, hotelCopy, roomInventory } from "@/content/hotel";
-const roomTypeSeeds = guestRoomTypes;
-import { freeRooms, fullyBookedNights, generateReservationNumber, nightCount, stayNudges, stayQuote, suggestRooms, validateItems, validateStay, type RoomReservationLike, type StayItem } from "@/domain/hotel";
 import { calculateQuote, type Quote } from "@/domain/pricing";
 import { checkSelection, selectionDayStatus, type AvailabilityContext, type SpaceAvailabilityProfile } from "@/domain/availability";
 import { generateBookingNumber } from "@/domain/booking";
 import type { AvailabilityBlock } from "@/domain/types";
 import { addDays, isoWeekday, todayLocal, zonedDateTimeToUtc, zonedToUtc } from "@/domain/time";
 import { mountTourPlayer } from "@/features/home/tour-player";
+import { mountPreviewEngine } from "./preview-engine";
 
 interface PreviewSpace {
   id: string;
@@ -244,7 +242,7 @@ function roomHtml(s: PreviewSpace, index: number) {
         ${facts.estimated ? `<p class="pv-small">ca.-Werte: ${esc(ESTIMATE_NOTE)}</p>` : ""}
         ${!isHotel && s.bookable ? `<p class="pv-small">${s.basePrice === null ? "Preis auf Anfrage" : `${s.id === "restaurant" ? "" : "+ "}${eur(s.basePrice)} netto je Buchung (Fr–So)`} · Toiletten inklusive.</p>` : ""}
         <div class="pv-actions">
-          ${isHotel ? `<button type="button" class="pv-btn pv-btn-gold" data-hotel-book>Zimmer buchen</button>` : ""}
+          ${isHotel ? `<a class="pv-btn pv-btn-gold" href="buchen.html">Zimmer buchen</a>` : ""}
           ${s.bookable ? `<button type="button" class="pv-btn ${on ? "pv-btn-dark" : "pv-btn-gold"}" data-room-select="${s.id}">${selectLabel}</button>` : ""}
           ${s.bookable ? `<button type="button" class="pv-btn" data-flow data-flow-with="${s.id}">Verfügbarkeit prüfen</button>` : ""}
           ${!s.bookable && !isHotel ? `<p class="pv-small">Die Küche wird als Zusatzleistung gebucht (nur mit Caterer).</p>` : ""}
@@ -590,164 +588,6 @@ function submitFlow(form: HTMLFormElement, submitter?: HTMLElement | null) {
 }
 
 /* ------------------------------------------------------------- hotel flow */
-const HOTEL_KEY = "krone-preview-hotel-v1";
-interface StoredStay extends RoomReservationLike {
-  ref: string;
-  name: string;
-}
-function loadStays(): StoredStay[] {
-  try {
-    return JSON.parse(localStorage.getItem(HOTEL_KEY) ?? "[]") as StoredStay[];
-  } catch {
-    return [];
-  }
-}
-let stays = loadStays();
-const hotel: { arrival: string | null; departure: string | null; counts: Record<string, number>; guests: number; name: string; email: string; error: string; ref: string; month: string; lines: Array<{ rooms: number; name: string }>; total: number | null } = {
-  arrival: addDays(today, 7),
-  departure: addDays(today, 9),
-  counts: {},
-  guests: 2,
-  name: "",
-  email: "",
-  error: "",
-  ref: "",
-  month: addDays(today, 7).slice(0, 7),
-  lines: [],
-  total: null,
-};
-const hotelStay = () => (hotel.arrival && hotel.departure ? { arrival: hotel.arrival, departure: hotel.departure } : null);
-const hotelItems = () => roomTypeSeeds.map((t) => ({ roomTypeId: t.id, rooms: hotel.counts[t.id] ?? 0 })).filter((i) => i.rooms > 0);
-
-function hotelSetCount(id: string, n: number) {
-  const stay = hotelStay();
-  const type = roomTypeSeeds.find((t) => t.id === id)!;
-  const free = stay ? freeRooms(id, stay, stays) : roomInventory[type.inventoryGroup] ?? 1;
-  const next = Math.max(0, Math.min(n, free));
-  hotel.counts = { ...hotel.counts, [id]: next };
-  if (id === "floor" && next > 0) for (const t of roomTypeSeeds) if (t.id !== "floor") hotel.counts[t.id] = 0;
-  if (id !== "floor" && next > 0) hotel.counts.floor = 0;
-}
-
-/** Arrival/departure like on the booking portals: first tap arrival, second tap departure. */
-function hotelPick(date: string) {
-  if (!hotel.arrival || hotel.departure || date <= hotel.arrival) {
-    hotel.arrival = date;
-    hotel.departure = null;
-    return;
-  }
-  hotel.departure = date;
-}
-
-function stayCalendarHtml(monthKey: string, full: Set<string>) {
-  const [y, m] = monthKey.split("-").map(Number) as [number, number];
-  const first = `${monthKey}-01`;
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const lead = isoWeekday(first) - 1;
-  const cells: string[] = [];
-  for (let i = 0; i < lead; i++) cells.push('<span class="pv-day pv-day-empty"></span>');
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = `${monthKey}-${String(d).padStart(2, "0")}`;
-    const past = date < today;
-    const isFull = full.has(date);
-    const sel = date === hotel.arrival || date === hotel.departure;
-    const inRange = !!hotel.arrival && !!hotel.departure && date > hotel.arrival && date < hotel.departure;
-    const disabled = past || (isFull && !(hotel.arrival && !hotel.departure && date > hotel.arrival));
-    cells.push(`<button type="button" class="pv-day is-${past ? "past" : isFull ? "busy" : "free"}${sel ? " is-sel" : ""}${inRange ? " is-range" : ""}" data-stay-date="${date}" ${disabled ? "disabled" : ""} aria-pressed="${sel}" aria-label="${fmtDate(date)}${isFull ? ": ausgebucht" : ""}">${d}</button>`);
-  }
-  const monthName = new Date(y, m - 1, 15).toLocaleDateString("de-DE", { month: "long", year: "numeric" });
-  return `<div class="pv-stay-month"><strong>${monthName}</strong><div class="pv-cal-grid">${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => `<span class="pv-wd">${w}</span>`).join("")}${cells.join("")}</div></div>`;
-}
-
-function renderHotel() {
-  const stay = hotelStay();
-  const issues = stay ? validateStay(stay, today) : [];
-  const nights = stay ? nightCount(stay.arrival, stay.departure) : 0;
-  const items = hotelItems();
-  const quote = stay ? stayQuote(items, stay) : null;
-  const nudges = stay && !issues.length && items.length ? stayNudges(items, stay, hotel.guests) : [];
-  const shortfall = stay ? items.some((i) => freeRooms(i.roomTypeId, stay, stays) < i.rooms) : false;
-  if (hotel.ref) {
-    return openDialog(`<p class="pv-eyebrow">Zimmeranfrage eingegangen</p><h2 class="pv-h2">Vielen Dank, ${esc(hotel.name.split(" ")[0] ?? "")}!</h2>
-      <p class="pv-ref">Ihre Reservierungsnummer <strong>${esc(hotel.ref)}</strong></p>
-      <dl class="pv-facts"><div><dt>Zimmer</dt><dd>${hotel.lines.map((l) => `${l.rooms} × ${esc(l.name)}`).join(", ")}</dd></div><div><dt>Aufenthalt</dt><dd>${esc(fmtDate(hotel.arrival!))} – ${esc(fmtDate(hotel.departure!))} (${nights} Nächte)</dd></div><div><dt>Preis inkl. Frühstück</dt><dd>${eur(hotel.total)}</dd></div></dl>
-      <p class="pv-text">Die Krone prüft die Zimmer und bestätigt persönlich per E-Mail. Vorschau: nichts wird versendet; die Zimmer gelten in diesem Browser als belegt.</p>
-      <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Fertig</button></div>`, { label: "Zimmeranfrage" });
-  }
-  // nights where no room of any type is free – struck through
-  const from = today < (hotel.month + "-01") ? hotel.month + "-01" : today;
-  const to = addDays(from, 70);
-  const sets = roomTypeSeeds.filter((t) => t.id !== "floor").map((t) => fullyBookedNights(t.id, from, to, stays));
-  const full = new Set([...sets[0]!].filter((n) => sets.every((s) => s.has(n))));
-  const [y, m] = hotel.month.split("-").map(Number) as [number, number];
-  const next = new Date(y, m, 15);
-  const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
-  const suggestions = suggestRooms(hotel.guests);
-  const applied = (its: StayItem[]) => roomTypeSeeds.every((t) => (hotel.counts[t.id] ?? 0) === (its.find((i) => i.roomTypeId === t.id)?.rooms ?? 0));
-  openDialog(`<p class="pv-eyebrow">${esc(hotelCopy.eyebrow)}</p><h2 class="pv-h2">${esc(hotelCopy.title)}</h2><p class="pv-text">${esc(hotelCopy.text)}</p>
-    <div class="pv-row pv-stay-dates"><div class="pv-stay-date${hotel.arrival && !hotel.departure ? "" : " is-active"}"><small>Anreise</small><strong data-hotel-arrival>${hotel.arrival ? esc(fmtDate(hotel.arrival)) : "–"}</strong></div><div class="pv-stay-date${hotel.arrival && !hotel.departure ? " is-active" : ""}"><small>Abreise</small><strong data-hotel-departure>${hotel.departure ? esc(fmtDate(hotel.departure)) : "–"}</strong></div>
-      <label class="pv-stay-date pv-stay-guests"><small>Gäste</small><select data-hotel="guests-top">${Array.from({ length: 22 }, (_, i) => `<option ${i + 1 === hotel.guests ? "selected" : ""}>${i + 1}</option>`).join("")}</select></label></div>
-    <div class="pv-cal pv-stay-cal">
-      <div class="pv-cal-head"><button type="button" data-stay-month="-1" ${hotel.month > today.slice(0, 7) ? "" : "disabled"} aria-label="Vorheriger Monat">‹</button><span class="pv-small">${!hotel.arrival ? "Anreisetag wählen" : !hotel.departure ? "Jetzt den Abreisetag wählen" : "Erneut tippen, um neu zu wählen"}</span><button type="button" data-stay-month="1" aria-label="Nächster Monat">›</button></div>
-      <div class="pv-stay-months">${stayCalendarHtml(hotel.month, full)}${stayCalendarHtml(nextKey, full)}</div>
-    </div>
-    <p class="pv-small">${!stay ? "Erst Anreise, dann Abreise antippen." : issues.includes("past") ? "Die Anreise liegt in der Vergangenheit." : `${nights} ${nights === 1 ? "Nacht" : "Nächte"} · ${esc(hotelCopy.checkIn)}`}</p>
-    <p class="pv-eyebrow pv-suggest-title">✦ Unser Vorschlag für ${hotel.guests} ${hotel.guests === 1 ? "Gast" : "Gäste"}</p>
-    <div class="pv-suggest">${suggestions
-      .map(
-        (sg) => `<button type="button" class="pv-suggest-card${applied(sg.items) ? " is-on" : ""}" data-suggest="${esc(JSON.stringify(sg.items))}" data-testid="suggest-${sg.id}">
-          ${sg.tag ? `<small class="pv-tag ${sg.tag === "günstigste" ? "is-best" : ""}">${sg.tag === "günstigste" ? "Günstigste Wahl" : sg.tag === "komfort" ? "Mehr Komfort" : "Für Familien"}</small>` : ""}
-          <strong>${esc(sg.title)}</strong><span>${esc(sg.note)}</span><b>${sg.perNight === null ? "auf Anfrage" : `${eur(sg.perNight)} <small>/ Nacht</small>`}</b></button>`,
-      )
-      .join("")}</div>
-    <p class="pv-small">Oder stellen Sie Ihre Zimmer unten selbst zusammen.</p>
-    <div class="pv-choices pv-choices-list pv-room-list">${roomTypeSeeds
-      .map((r) => {
-        const f = stay ? freeRooms(r.id, stay, stays) : roomInventory[r.inventoryGroup] ?? 1;
-        const n = hotel.counts[r.id] ?? 0;
-        return `<div class="pv-choice pv-room${f === 0 ? " is-off" : ""}${n > 0 ? " is-on" : ""}" data-testid="room-${r.id}"><span><strong>${esc(r.name)}</strong><small>${esc(r.description)} · ${f === 0 ? "belegt" : r.id === "floor" ? "exklusiv" : `${f} von ${roomInventory[r.inventoryGroup]} frei`}</small><b class="pv-choice-price">${r.basePricePerNight === null ? "auf Anfrage" : `${eur(r.basePricePerNight)} / Nacht`}${r.id === "floor" ? `<small>statt 936 € einzeln + Apartment</small>` : ""}</b></span>
-          <span class="pv-stepper" role="group" aria-label="${esc(r.name)}: Anzahl"><button type="button" data-room-minus="${r.id}" ${n === 0 ? "disabled" : ""} aria-label="${esc(r.name)} entfernen">−</button><b data-room-count="${r.id}">${n}</b><button type="button" data-room-plus="${r.id}" ${f === 0 || n >= f ? "disabled" : ""} aria-label="${esc(r.name)} hinzufügen">+</button></span></div>`;
-      })
-      .join("")}</div>
-    <form class="pv-form" data-hotel-form novalidate>
-      <p class="pv-span pv-small">${hotel.guests} ${hotel.guests === 1 ? "Gast" : "Gäste"}${quote && hotel.guests > quote.maxGuests ? ` – die gewählten Zimmer bieten Platz für ${quote.maxGuests}, bitte ein Zimmer ergänzen.` : ""}</p>
-      <label>Name *<input name="name" required value="${esc(hotel.name)}"></label>
-      <label>E-Mail *<input name="email" type="email" required value="${esc(hotel.email)}"></label>
-      <div class="pv-span pv-stay-sum">${quote ? quote.lines.map((l) => `<p><span>${l.rooms} × ${esc(l.name)}</span><span>${l.pricing ? eur(l.pricing.list) : "auf Anfrage"}</span></p>`).join("") : ""}${!items.length ? `<p class="pv-small">Noch kein Zimmer gewählt.</p>` : ""}${quote && quote.discount > 0 ? `<p class="pv-good"><span>Langzeit-Vorteil −${quote.discountPercent} %</span><span>−${eur(quote.discount)}</span></p>` : ""}</div>
-      <p class="pv-span pv-price-total pv-hotel-total"><span>Gesamt inkl. Frühstück${nights ? ` · ${nights} ${nights === 1 ? "Nacht" : "Nächte"}` : ""}</span><strong>${items.length ? eur(quote?.total ?? null) : "–"}</strong></p>
-      ${nudges.map((n) => `<p class="pv-span pv-tip">${esc(n)}</p>`).join("")}
-      ${hotel.error ? `<p class="pv-error pv-span" role="alert">${esc(hotel.error)}</p>` : ""}
-      <div class="pv-actions pv-span"><button type="submit" class="pv-btn pv-btn-gold" ${!stay || issues.length || !items.length || shortfall || validateItems(items).length || (quote && hotel.guests > quote.maxGuests) ? "disabled" : ""}>${items.length > 1 ? `${quote?.rooms ?? 0} Zimmer anfragen` : "Zimmer anfragen"}</button></div>
-      <p class="pv-small pv-span">Unverbindlich – die Krone bestätigt persönlich. Bezahlt wird vor Ort.</p>
-    </form>`, { wide: true, label: "Zimmer buchen" });
-}
-
-function submitHotel(form: HTMLFormElement) {
-  const fd = new FormData(form);
-  hotel.name = String(fd.get("name") ?? "").trim();
-  hotel.email = String(fd.get("email") ?? "").trim();
-  const stay = hotelStay();
-  const items = hotelItems();
-  if (!stay) hotel.error = "Bitte wählen Sie An- und Abreise im Kalender.";
-  else if (!items.length) hotel.error = "Bitte wählen Sie mindestens ein Zimmer.";
-  else if (!hotel.name) hotel.error = "Bitte geben Sie Ihren Namen an.";
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hotel.email)) hotel.error = "Bitte geben Sie eine gültige E-Mail-Adresse an.";
-  else if (items.some((i) => freeRooms(i.roomTypeId, stay, stays) < i.rooms)) hotel.error = "In diesem Zeitraum sind nicht mehr genug Zimmer frei.";
-  else hotel.error = "";
-  if (hotel.error || !stay) return renderHotel();
-  const quote = stayQuote(items, stay);
-  hotel.ref = generateReservationNumber(Number(stay.arrival.slice(0, 4)));
-  hotel.lines = quote.lines.map((l) => ({ rooms: l.rooms, name: l.name }));
-  hotel.total = quote.total;
-  stays = [...stays, ...items.map((i) => ({ ref: hotel.ref, name: hotel.name, roomTypeId: i.roomTypeId, arrivalDate: stay.arrival, departureDate: stay.departure, rooms: i.rooms, status: "requested" }) as StoredStay)];
-  try {
-    localStorage.setItem(HOTEL_KEY, JSON.stringify(stays));
-  } catch {
-    /* private mode */
-  }
-  renderHotel();
-}
-
 /* --------------------------------------------------------- legal on top */
 /** Legal text as a layer above the current dialog: "Zurück" returns to the request with every input kept. */
 function openLegal(doc: { title: string; html: string }) {
@@ -880,35 +720,6 @@ function initEvents() {
       e.preventDefault();
       return openInfo(hit.dataset.page!, "Diese Seite ist in der Vorschau nicht enthalten. Rechtstexte und weitere Unterseiten werden vor dem Start vom Betreiber ergänzt.");
     }
-    if ((hit = t("[data-stay-date]"))) {
-      hotelPick(hit.dataset.stayDate!);
-      hotel.error = "";
-      return renderHotel();
-    }
-    if ((hit = t("[data-stay-month]"))) {
-      const [y, m] = hotel.month.split("-").map(Number) as [number, number];
-      const d = new Date(y, m - 1 + Number(hit.dataset.stayMonth), 15);
-      hotel.month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return renderHotel();
-    }
-    if ((hit = t("[data-suggest]"))) {
-      const its = JSON.parse(hit.dataset.suggest!) as StayItem[];
-      hotel.counts = Object.fromEntries(its.map((i) => [i.roomTypeId, i.rooms]));
-      return renderHotel();
-    }
-    if ((hit = t("[data-room-plus]"))) {
-      hotelSetCount(hit.dataset.roomPlus!, (hotel.counts[hit.dataset.roomPlus!] ?? 0) + 1);
-      return renderHotel();
-    }
-    if ((hit = t("[data-room-minus]"))) {
-      hotelSetCount(hit.dataset.roomMinus!, (hotel.counts[hit.dataset.roomMinus!] ?? 0) - 1);
-      return renderHotel();
-    }
-    if ((hit = t("[data-hotel-book]"))) {
-      hotel.ref = "";
-      hotel.error = "";
-      return renderHotel();
-    }
     if ((hit = t("[data-select-space]"))) return toggle(hit.dataset.selectSpace!);
     if ((hit = t("[data-toggle-space]"))) return toggle(hit.dataset.toggleSpace!);
     if ((hit = t("[data-full-venue]"))) {
@@ -948,11 +759,6 @@ function initEvents() {
       return renderFlow();
     }
     if (el.dataset.toggleList) return toggle(el.dataset.toggleList, (el as HTMLInputElement).checked);
-    if (el.dataset.hotel === "guests-top") {
-      hotel.guests = Number(el.value) || 1;
-      hotel.counts = {};
-      return renderHotel();
-    }
     if (el.dataset.time === "from" || el.dataset.time === "to") {
       flow[el.dataset.time] = el.value;
       return renderFlow();
@@ -962,9 +768,11 @@ function initEvents() {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     if (form.matches("[data-flow-form]")) return submitFlow(form, (e as SubmitEvent).submitter);
-    if (form.matches("[data-hotel-form]")) return submitHotel(form);
     if (form.matches("[data-pv-bookingbar]")) {
-      location.href = "hotel.html#buchen";
+      const fd = new FormData(form);
+      const q = new URLSearchParams();
+      for (const [k, v] of fd.entries()) if (typeof v === "string" && v) q.set(k, v);
+      location.href = `buchen.html?${q.toString()}`;
       return;
     }
     if (form.matches("[data-pv-contact]")) {
@@ -1053,9 +861,4 @@ initHeader();
 initEvents();
 initMaps();
 updateSelectionUi();
-// arriving from the booking bar: open the room booking right away
-if (location.hash === "#buchen" && document.querySelector("[data-hotel-book]")) {
-  hotel.ref = "";
-  hotel.error = "";
-  setTimeout(() => renderHotel(), 400);
-}
+mountPreviewEngine({ legal: data.legal });

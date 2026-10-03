@@ -85,6 +85,8 @@ export const EMAIL_TEMPLATE_LABEL: Record<string, string> = {
   request_accepted: "Anfrage angenommen",
   request_declined: "Anfrage abgelehnt",
   hotel_request_received: "Zimmeranfrage eingegangen",
+  hotel_payment_received: "Zimmer: Zahlung erhalten",
+  hotel_card_guaranteed: "Zimmer: Karte hinterlegt",
   hotel_confirmed: "Zimmer bestätigt",
   hotel_declined: "Zimmeranfrage abgelehnt",
   hotel_cancelled: "Zimmer storniert",

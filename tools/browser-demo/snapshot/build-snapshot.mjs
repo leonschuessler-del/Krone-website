@@ -19,6 +19,7 @@ const ROOT = path.resolve(here, "../../..");
 const ROUTES = [
   { path: "/", file: "index.html", title: "Zur Krone – Landhotel Leidersbach", map: "home" },
   { path: "/hotel", file: "hotel.html", title: "Hotel & Zimmer · Zur Krone" },
+  { path: "/hotel/buchen", file: "buchen.html", title: "Zimmer buchen · Zur Krone" },
   { path: "/eventlocation", file: "eventlocation.html", title: "Eventlocation · Zur Krone", tour: true },
   { path: "/sehenswuerdigkeiten", file: "umgebung.html", title: "Umgebung · Zur Krone", map: "sights" },
   { path: "/aktuelles", file: "aktuelles.html", title: "Aktuelles & Angebote · Zur Krone" },
@@ -34,6 +35,9 @@ const bundle = await build({
   minify: true,
   write: false,
   target: "es2020",
+  jsx: "automatic",
+  // browser bundle: no Node `process` – site config falls back to the public domain
+  define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_SITE_URL": '"https://krone-landhotel.de"', "process.env": "{}", "process.emit": "undefined" },
   tsconfig: path.join(ROOT, "tsconfig.json"),
   absWorkingDir: ROOT,
 });
@@ -166,11 +170,12 @@ async function snapshotRoute(route) {
         const h = a.getAttribute("href");
         if (!h || h.startsWith("#") || /^(mailto|tel|https?):/.test(h)) return;
         const [pathPart, hash = ""] = h.split("#");
-        const p = pathPart.split("?")[0];
+        const [p, query = ""] = pathPart.split("?");
         const hashPart = hash ? "#" + hash : "";
+        const queryPart = query ? "?" + query : "";
         let target = null;
         let m;
-        if (fileOf(p || "/")) target = fileOf(p || "/") + hashPart;
+        if (fileOf(p || "/")) target = fileOf(p || "/") + queryPart + hashPart;
         else if ((m = p.match(/^\/bereiche\/([\w-]+)/))) {
           target = "eventlocation.html#karte";
           a.dataset.room = m[1];
@@ -300,16 +305,14 @@ async function snapshotRoute(route) {
         }
       }
 
-      // --- hotel booking widget (React) → one button that opens the runtime's hotel dialog
-      doc.querySelectorAll("[data-testid=hotel-booking]").forEach((w) => {
-        w.outerHTML = `<div class="pv-hotel-cta" data-testid="hotel-booking-cta">
-          <button type="button" class="pv-btn pv-btn-gold pv-btn-lg" data-hotel-book>Zimmer buchen</button>
-          <p class="pv-small">Vorschau: An- und Abreise im Kalender, Zimmerwahl, Extras und Anfrage öffnen sich hier als Dialog. Nichts wird versendet.</p>
-        </div>`;
+      // --- booking engine (React) → mounted by the runtime with a local stand-in API
+      doc.querySelectorAll("[data-booking-engine]").forEach((w) => {
+        w.replaceChildren();
+        w.setAttribute("data-pv-engine", "");
       });
-      // --- booking bar (start page) → hotel page, dialog opens there
+      // --- booking bar (start page / hotel page) → booking page with the dates as query
       doc.querySelectorAll("[data-testid=booking-bar]").forEach((f) => {
-        f.setAttribute("action", "hotel.html");
+        f.setAttribute("action", "buchen.html");
         f.setAttribute("method", "get");
         f.setAttribute("data-pv-bookingbar", "");
       });

@@ -139,14 +139,72 @@
   }
   /* Rule: text on photos is always readable – soft shadow on top of the scrim */
   .text-shadow-hero, .text-shadow-hero * { text-shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 8px 30px rgb(0 0 0 / 0.35); }
-  /* luxury-hotel button: square, letter-spaced caps */
+  /* luxury-hotel button: square, letter-spaced caps, a soft light sweep on hover */
   .btn-lux {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
     font-family: var(--font-sans);
     text-transform: uppercase;
     letter-spacing: 0.2em;
     font-size: 0.72rem;
     font-weight: 500;
   }
+  .btn-lux::after {
+    content: "";
+    position: absolute;
+    inset: -40% auto -40% -60%;
+    width: 40%;
+    background: linear-gradient(105deg, transparent, rgb(255 255 255 / 0.22), transparent);
+    transform: skewX(-18deg) translateX(0);
+    transition: transform 0s;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @media (hover: hover) {
+    .btn-lux:hover { box-shadow: 0 14px 28px -14px rgb(27 24 22 / 0.45); transform: translateY(-1px); }
+    .btn-lux:hover::after { transform: skewX(-18deg) translateX(420%); transition: transform 0.75s var(--ease-out-soft); }
+  }
+
+  /* navigation link: gold line grows in from the left on hover, stays for the active page */
+  .nav-link { position: relative; }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0.875rem;
+    right: 0.875rem;
+    bottom: 0.15rem;
+    height: 1px;
+    background: var(--color-gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s var(--ease-out-soft);
+  }
+  .nav-link:hover::after, .nav-link[aria-current="page"]::after { transform: scaleX(1); }
+
+  /* "the picture moves a little": slow zoom plus a tiny settle on hover, images only */
+  .hover-lift { transition: transform 0.45s var(--ease-out-soft), box-shadow 0.45s var(--ease-out-soft); }
+  @media (hover: hover) {
+    .hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+    .hover-zoom img, .hover-zoom video { transition: transform 1.4s var(--ease-out-soft); }
+    .hover-zoom:hover img, .hover-zoom:hover video { transform: scale(1.045); }
+    .hover-nudge:hover img { animation: nudge 0.55s var(--ease-out-soft) 1; }
+  }
+  @keyframes nudge {
+    0% { transform: scale(1) rotate(0); }
+    35% { transform: scale(1.035) rotate(-0.4deg); }
+    70% { transform: scale(1.04) rotate(0.25deg); }
+    100% { transform: scale(1.045) rotate(0); }
+  }
+
+  /* gold accent for the one important word in a sentence */
+  .accent { color: var(--color-gold-dark); }
+  .panel-dark .accent, .text-paper .accent { color: var(--color-gold-light); }
+
+  /* fact row with an icon in front – used for Check-in, Schlüsselsafe, Haustiere … */
+  .fact-list { display: grid; gap: 0.6rem; }
+  .fact-list li { display: flex; align-items: flex-start; gap: 0.75rem; line-height: 1.5; }
+  .fact-list svg { flex: none; width: 1.1rem; height: 1.1rem; margin-top: 0.2rem; color: var(--color-gold-dark); }
 
   .gold-rule {
     display: block;
@@ -192,6 +250,13 @@
     font-size: 0.8125rem;
     color: var(--color-danger);
   }
+
+  /* booking engine: two stacked range inputs form one price slider */
+  .range-thumb { pointer-events: none; }
+  .range-thumb::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; appearance: none; height: 1.25rem; width: 1.25rem; border-radius: 999px; background: #fff; border: 2px solid var(--color-gold-dark); box-shadow: 0 1px 4px rgb(27 24 22 / 0.25); cursor: pointer; }
+  .range-thumb::-moz-range-thumb { pointer-events: auto; height: 1.25rem; width: 1.25rem; border-radius: 999px; background: #fff; border: 2px solid var(--color-gold-dark); box-shadow: 0 1px 4px rgb(27 24 22 / 0.25); cursor: pointer; }
+  .range-thumb::-webkit-slider-runnable-track { background: transparent; }
+  .range-thumb::-moz-range-track { background: transparent; }
 
   /* Paper grain for dark panels – very subtle, CSS only */
   .panel-dark {

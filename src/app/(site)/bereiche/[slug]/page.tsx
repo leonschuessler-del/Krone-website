@@ -11,7 +11,6 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { SelectSpaceButton } from "@/features/spaces/SelectSpaceButton";
 import { SpaceAvailability } from "@/features/spaces/SpaceAvailability";
 import { hotelCopy, roomTypeSeeds } from "@/content/hotel";
-import { HotelBooking } from "@/features/hotel/HotelBooking";
 import { SpaceMiniMap } from "@/features/spaces/SpaceMiniMap";
 import { formatPriceFrom } from "@/features/spaces/price-label";
 import { env } from "@/lib/env";
@@ -246,7 +245,14 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             <SectionHeading id="rooms-title" eyebrow={hotelCopy.eyebrow} title={hotelCopy.title} className="mb-10">
               <p>{hotelCopy.text}</p>
             </SectionHeading>
-            <HotelBooking />
+            <div className="flex flex-wrap gap-3">
+              <ButtonLink href="/hotel/buchen" variant="gold" size="lg">
+                Zimmer buchen
+              </ButtonLink>
+              <ButtonLink href="/hotel" variant="secondary" size="lg">
+                Zimmer & Preise
+              </ButtonLink>
+            </div>
           </div>
         </section>
       ) : (

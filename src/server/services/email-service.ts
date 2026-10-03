@@ -22,6 +22,8 @@ export type EmailTemplate =
   | "request_accepted"
   | "request_declined"
   | "hotel_request_received"
+  | "hotel_payment_received"
+  | "hotel_card_guaranteed"
   | "hotel_confirmed"
   | "hotel_declined"
   | "hotel_cancelled"
@@ -96,6 +98,14 @@ const TEMPLATES: Record<EmailTemplate, (c: EmailContext) => { subject: string; b
   hotel_request_received: (c) => ({
     subject: `Ihre Zimmeranfrage ${c.bookingNumber} – Zur Krone`,
     body: [`Guten Tag ${c.customerName},`, `vielen Dank für Ihre Zimmeranfrage. Wir prüfen die Verfügbarkeit und bestätigen Ihnen die Reservierung persönlich – in der Regel innerhalb eines Tages.`, `Frühstück ist bei allen Zimmern inklusive. Anreise ab 15 Uhr, Abreise bis 11 Uhr.`],
+  }),
+  hotel_payment_received: (c) => ({
+    subject: `Zahlung erhalten – Zimmerreservierung ${c.bookingNumber}`,
+    body: [`Guten Tag ${c.customerName},`, `vielen Dank – Ihre Zahlung über ${c.totalLabel} für die Reservierung ${c.bookingNumber} ist eingegangen.`, `Wir prüfen die Zimmer und bestätigen Ihnen die Reservierung persönlich. Sollte ein Zimmer wider Erwarten nicht frei sein, erstatten wir den Betrag vollständig.`],
+  }),
+  hotel_card_guaranteed: (c) => ({
+    subject: `Karte hinterlegt – Zimmerreservierung ${c.bookingNumber}`,
+    body: [`Guten Tag ${c.customerName},`, `Ihre Karte sichert die Reservierung ${c.bookingNumber}. Es wurde nichts abgebucht.`, `Bezahlt wird im Hotel. Belastet wird die Karte nur bei Nichtanreise oder einer Stornierung innerhalb von zwei Tagen vor der Anreise (80 % des Gesamtpreises, bei Nichtanreise der Gesamtpreis).`],
   }),
   hotel_confirmed: (c) => ({
     subject: `Ihre Zimmerreservierung ${c.bookingNumber} ist bestätigt – Zur Krone`,

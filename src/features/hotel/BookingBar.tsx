@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 
 /**
  * The booking bar of the luxury hotel sites: arrival, departure, guests →
- * availability. It hands the dates to the hotel booking (/hotel#buchen).
+ * availability. It hands dates and guests to the booking page (/hotel/buchen).
  */
 export function BookingBar({ className, tone = "light" }: { className?: string; tone?: "light" | "dark" }) {
   const router = useRouter();
@@ -27,20 +27,20 @@ export function BookingBar({ className, tone = "light" }: { className?: string; 
       data-testid="booking-bar"
       onSubmit={(e) => {
         e.preventDefault();
-        router.push(`/hotel?anreise=${arrival}&abreise=${departure}&gaeste=${guests}#buchen`);
+        router.push(`/hotel/buchen?anreise=${arrival}&abreise=${departure}&erwachsene=${guests}`);
       }}
     >
       <label className={field}>
         <span className={label}><CalendarDays className="h-3 w-3" aria-hidden /> Anreise</span>
-        <input type="date" min={today} value={arrival} onChange={(e) => { setArrival(e.target.value); if (e.target.value >= departure) setDeparture(addDays(e.target.value, 1)); }} className={input} />
+        <input type="date" name="anreise" min={today} value={arrival} onChange={(e) => { setArrival(e.target.value); if (e.target.value >= departure) setDeparture(addDays(e.target.value, 1)); }} className={input} />
       </label>
       <label className={field}>
         <span className={label}><CalendarDays className="h-3 w-3" aria-hidden /> Abreise</span>
-        <input type="date" min={addDays(arrival, 1)} value={departure} onChange={(e) => setDeparture(e.target.value)} className={input} />
+        <input type="date" name="abreise" min={addDays(arrival, 1)} value={departure} onChange={(e) => setDeparture(e.target.value)} className={input} />
       </label>
       <label className={cn(field, "md:max-w-[9rem]")}>
         <span className={label}><Users className="h-3 w-3" aria-hidden /> Gäste</span>
-        <select value={guests} onChange={(e) => setGuests(Number(e.target.value))} className={cn(input, "appearance-none")}>
+        <select name="erwachsene" value={guests} onChange={(e) => setGuests(Number(e.target.value))} className={cn(input, "appearance-none")}>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n} className="text-ink">{n}</option>
           ))}

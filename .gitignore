@@ -30,3 +30,6 @@ blob-report/
 .agents/
 .claude/skills/higgsfield-*
 skills-lock.json
+
+# python tooling
+__pycache__/

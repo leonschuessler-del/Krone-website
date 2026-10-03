@@ -34,7 +34,7 @@ den Betreiber.
 15. [Checkliste vor dem Produktionsstart](#checkliste-vor-dem-produktionsstart)
 
 Weitere Dokumente: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [docs/ADMIN.md](docs/ADMIN.md)
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [docs/ADMIN.md](docs/ADMIN.md) · [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) · [docs/ZAHLUNG.md](docs/ZAHLUNG.md)
 
 ---
 
@@ -84,7 +84,7 @@ Siehe [`.env.example`](.env.example). Die wichtigsten Variablen:
 | `AUTH_SECRET` | Secret für Admin-Sessions (≥ 32 Zeichen, in Produktion Pflicht) |
 | `NEXT_PUBLIC_SITE_URL` | öffentliche URL (Sitemap, OpenGraph, Zahlungs-Redirects, E-Mail-Links) |
 | `DEMO_MODE` | `true`: Demo-Verfügbarkeiten/-Preise, simulierte Zahlung, E-Mails nur als Vorschau |
-| `PAYMENT_PROVIDER` | `demo` \| `stripe` \| `none` (nur Anfragen) |
+| `PAYMENT_PROVIDER` | `demo` \| `stripe` \| `none` (nur Anfragen) – Anbieterwahl und Einrichtung in [docs/ZAHLUNG.md](docs/ZAHLUNG.md) |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe (vorbereitet) |
 | `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM`, `EMAIL_OPERATOR_TO` | E-Mail (`preview` oder `resend`) |
 | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | Admin-Zugang beim ersten Seed |

@@ -5,7 +5,7 @@ import { ArrowRight, BedDouble, Coffee, Car, Wifi, PawPrint, Bike } from "lucide
 import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { siteConfig } from "@/config/site";
-import { breakfast, directBenefits, guestRoomTypes, hotelStory } from "@/content/hotel";
+import { breakfast, directBenefits, guestRoomTypes, historyPhotos, hotelStory } from "@/content/hotel";
 import { arrival, HOTEL_COORDS, sights } from "@/content/sights";
 import { StructuredData } from "@/features/home/StructuredData";
 import { HeroVideo } from "@/features/home/HeroVideo";
@@ -14,6 +14,7 @@ import { RoomTypeCard } from "@/features/hotel/RoomTypeCard";
 import { OfferCards } from "@/features/offers/OfferCards";
 import { SightCard } from "@/features/sights/SightCard";
 import { LeafletMap } from "@/features/sights/LeafletMap";
+import { cn } from "@/lib/cn";
 import { getHeroVideo, getPropertyGallery, mediaExists } from "@/lib/media";
 import { getDb } from "@/server/db/client";
 import { listYieldOffers } from "@/server/services/offers-service";
@@ -32,7 +33,6 @@ export default async function HomePage() {
   const offers = await listYieldOffers(await getDb()).catch(() => []);
   const teaserSights = ["mespelbrunn", "aschaffenburg", "frankfurt"].map((id) => sights.find((s) => s.id === id)!).filter(Boolean);
   const eventImage = mediaExists("/media/restaurant/hero.webp") ? { src: "/media/restaurant/hero.webp" } : (property[0] ?? null);
-  const houseImage = mediaExists("/media/property/house-front.webp") ? { src: "/media/property/house-front.webp" } : (property[1] ?? property[0] ?? null);
 
   return (
     <>
@@ -60,10 +60,19 @@ export default async function HomePage() {
 
       {/* Intro / story */}
       <section className="bg-paper py-24 md:py-32" aria-labelledby="story-title">
-        <div className="container-page grid gap-14 lg:grid-cols-[1fr_1.1fr] lg:items-center">
-          <div className="relative aspect-[4/3] overflow-hidden bg-cream lg:aspect-[4/5]">
-            {houseImage && <Image src={houseImage.src} alt="Landhotel Gasthof Zur Krone in Leidersbach" fill sizes="(min-width:1024px) 45vw, 100vw" className="object-cover" />}
-          </div>
+        <div className="container-page grid gap-14 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+          {/* Wandel: four photos from the family album to today */}
+          <ol className="grid grid-cols-2 gap-3 sm:gap-4" aria-label="Die Krone im Wandel" data-testid="history-strip">
+            {historyPhotos.filter((h) => mediaExists(h.src)).map((h, i) => (
+              <li key={h.src} className={cn("group relative overflow-hidden bg-cream", i === 3 ? "col-span-2 aspect-[16/8]" : "aspect-[4/3]")}>
+                <Image src={h.src} alt={h.caption} fill sizes="(min-width:1024px) 28vw, 50vw" className={cn("object-cover transition-transform duration-[1.6s] ease-out group-hover:scale-[1.04]", i < 2 && "sepia-[.25]")} />
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-anthracite/80 to-transparent px-3 pb-2.5 pt-8 text-paper text-shadow-hero">
+                  <span className="block font-serif text-lg leading-none text-gold-light">{h.year}</span>
+                  <span className="mt-1 block text-[0.72rem] leading-snug text-paper/90">{h.caption}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
           <div>
             <SectionHeading id="story-title" eyebrow={hotelStory.eyebrow} title={hotelStory.title}>
               {hotelStory.paragraphs.slice(0, 2).map((p) => (
@@ -92,7 +101,7 @@ export default async function HomePage() {
             <SectionHeading id="rooms-title" eyebrow="Zimmer & Apartment" title="Schlafen wie zu Hause, nur ruhiger.">
               <p>Holz, helle Stoffe, eigenes Bad – und morgens der Duft von frischen Brötchen. Alle Zimmer liegen im ersten Obergeschoss, das Apartment hat drei Schlafzimmer und eine eigene Küche.</p>
             </SectionHeading>
-            <ButtonLink href="/hotel#buchen" variant="primary">
+            <ButtonLink href="/hotel/buchen" variant="primary">
               Verfügbarkeit prüfen
             </ButtonLink>
           </div>

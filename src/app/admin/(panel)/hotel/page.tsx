@@ -15,6 +15,14 @@ const STATUS: Record<string, { label: string; tone: "warning" | "success" | "neu
   confirmed: { label: "Bestätigt", tone: "success" },
   cancelled: { label: "Storniert", tone: "neutral" },
 };
+const PAYMENT: Record<string, { label: string; tone: "warning" | "success" | "neutral" | "danger" }> = {
+  unpaid: { label: "Zahlung im Hotel", tone: "neutral" },
+  pending: { label: "Online-Zahlung offen", tone: "warning" },
+  paid: { label: "Online bezahlt", tone: "success" },
+  guaranteed: { label: "Karte hinterlegt", tone: "success" },
+  failed: { label: "Zahlung fehlgeschlagen", tone: "danger" },
+  refunded: { label: "Erstattet", tone: "neutral" },
+};
 
 export default async function HotelAdminPage() {
   const rows = groupHotelReservations(await listHotelReservations(await getDb()));
@@ -71,6 +79,7 @@ export default async function HotelAdminPage() {
                     <td className={`${tdClass} tabular-nums`}>{formatMoney(r.total, "auf Anfrage")}</td>
                     <td className={tdClass}>
                       <Badge tone={STATUS[r.status]?.tone ?? "neutral"}>{STATUS[r.status]?.label ?? r.status}</Badge>
+                      <span className="mt-1 block"><Badge tone={PAYMENT[r.paymentStatus]?.tone ?? "neutral"}>{PAYMENT[r.paymentStatus]?.label ?? r.paymentStatus}</Badge></span>
                       {r.lines.some((l) => l.channelRef) && <span className="block text-[0.65rem] text-muted">DIRS21 {r.lines.map((l) => l.channelRef).filter(Boolean).join(", ")}</span>}
                     </td>
                     <td className={tdClass}>
