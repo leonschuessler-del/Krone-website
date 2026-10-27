@@ -36,3 +36,4 @@ __pycache__/
 
 # agent worktrees
 .claude/worktrees/
+.claude/review-tmp/
