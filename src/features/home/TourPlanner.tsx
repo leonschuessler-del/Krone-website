@@ -12,13 +12,12 @@ import { displayFacts, spaceEstimates } from "@/content/space-estimates";
 import { getFullVenueSpaceIds, isFullVenueSelection } from "@/domain/selection";
 import { useAvailabilityCheck } from "@/features/availability/use-availability-check";
 import { AvailabilityResult } from "@/features/booking/AvailabilityResult";
-import { scheduleHasRange } from "@/features/booking/hooks";
+import { scheduleHasRange, usePriceQuote } from "@/features/booking/hooks";
 import { SchedulePicker } from "@/features/booking/SchedulePicker";
 import type { SpaceView } from "@/features/spaces/types";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { formatDateMedium, formatMoney, pluralize } from "@/lib/format";
-import { provisionalQuote } from "@/features/booking/provisional-quote";
 import { useBookingStore, type ScheduleDraft } from "@/store/booking-store";
 
 function scheduleLabel(s: ScheduleDraft): string | null {
@@ -50,8 +49,9 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
   const hasRange = scheduleHasRange(schedule);
   const allAvailable = check.data?.bookingAllowed === true && check.state !== "loading";
   const label = scheduleLabel(schedule);
-  // prices only while the site shows them – otherwise a short summary of the selection
-  const estimate = siteScope.showPrices ? provisionalQuote(bookable, selected) : null;
+  // prices only while the site shows them – computed on the server (never fetched otherwise),
+  // so no price figures or pricing code end up in this page's client bundle
+  const { data: estimate } = usePriceQuote(selected, schedule, { enabled: siteScope.showPrices });
   const seats = bookable.reduce((sum, s) => (selected.includes(s.id) && s.type !== "hotel" ? sum + (s.capacitySeated ?? spaceEstimates[s.id]?.seats ?? 0) : sum), 0);
 
   const goToBooking = (inquiry = false) => {

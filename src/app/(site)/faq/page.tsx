@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { faqItems } from "@/content/faq";
 import { FaqList } from "@/features/home/FaqList";
+import { pageMeta } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Häufige Fragen",
   description: "Antworten rund um die Eventlocation Zur Krone in Leidersbach: Räume kombinieren, freie Termine, Zusatzleistungen, Übernachtung, Angebot und Übergabe.",
-  alternates: { canonical: "/faq" },
-};
+  path: "/faq",
+});
 
 export default function FaqPage() {
   const jsonLd = {

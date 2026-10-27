@@ -12,12 +12,14 @@ import { siteScope } from "@/config/scope";
 import { SelectSpaceButton } from "@/features/spaces/SelectSpaceButton";
 import { SpaceAvailability } from "@/features/spaces/SpaceAvailability";
 import { hotelCopy, roomTypeSeeds, type RoomTypeSeed } from "@/content/hotel";
+import { badgeBg, spaceHref } from "@/features/spaces/display";
 import { SpaceMiniMap } from "@/features/spaces/SpaceMiniMap";
 import { formatPriceFrom } from "@/features/spaces/price-label";
 import { env } from "@/lib/env";
-import { displayFacts, ESTIMATE_NOTE } from "@/content/space-estimates";
+import { displayFacts } from "@/content/space-estimates";
 import { formatDuration, formatMoney } from "@/lib/format";
 import { listSpaceViews } from "@/server/services/space-service";
+import { pageMeta } from "@/lib/page-metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,13 @@ const MODE_LABEL = siteScope.requestOnly
   ? ({ instant: "unverbindliche Anfrage", inquiry: "unverbindliche Anfrage", both: "unverbindliche Anfrage" } as const)
   : ({ instant: "Direktbuchung", inquiry: "auf Anfrage", both: "Direktbuchung oder Anfrage" } as const);
 
-const stripPlaceholder = (t: string | null) => t?.replace(/\s*\[PLACEHOLDER[^\]]*\]/g, "").trim() ?? null;
+/**
+ * Public text never shows placeholders or notes meant for the operator: "[PLACEHOLDER …]" markers
+ * and sentences like "… werden vom Betreiber ergänzt." / "… folgt." are removed (safety net –
+ * the source text should be cleaned in Admin → Bereiche as well).
+ */
+const OPERATOR_NOTE = /[^.!?]*\b(?:vom Betreiber ergänzt|werden ergänzt|wird ergänzt|folgt|folgen)\s*\.\s*/g;
+const stripPlaceholder = (t: string | null) => t?.replace(/\s*\[PLACEHOLDER[^\]]*\]/g, "").replace(OPERATOR_NOTE, " ").replace(/\s{2,}/g, " ").trim() || null;
 
 /** Room rows on the hotel plan: glyph by bed kind, the whole floor gets the hotel glyph. */
 const ROOM_ICON: Record<RoomTypeSeed["bedKind"], LucideIcon> = { double: BedDouble, single: BedSingle, multi: House };
@@ -34,13 +42,14 @@ const ROOM_ICON: Record<RoomTypeSeed["bedKind"], LucideIcon> = { double: BedDoub
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const space = (await listSpaceViews()).find((s) => s.slug === slug);
-  if (!space) return { title: "Bereich nicht gefunden" };
-  return {
+  if (!space) return { title: "Bereich nicht gefunden", robots: { index: false } };
+  return pageMeta({
     title: `${space.name} mieten`,
     description: `${space.name} in der Krone Leidersbach – ${space.shortDescription ?? ""} Verfügbarkeit prüfen und ${siteScope.requestOnly ? "unverbindlich anfragen" : "buchen"}.`,
-    alternates: { canonical: space.href },
-    openGraph: { title: `${space.name} · Zur Krone Leidersbach`, images: space.media.hero ? [space.media.hero.src] : undefined },
-  };
+    path: space.href,
+    ogTitle: `${space.name} · Zur Krone Leidersbach`,
+    images: space.media.hero ? [space.media.hero.src] : undefined,
+  });
 }
 
 export default async function SpaceDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -49,8 +58,8 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
   const space = spaces.find((s) => s.slug === slug);
   if (!space) notFound();
   const demo = env.demoMode;
-  const unverified = new Set(space.needsVerification);
   const others = spaces.filter((s) => s.id !== space.id);
+  const description = stripPlaceholder(space.longDescription);
   const images = space.media.hero ? [space.media.hero, ...space.media.gallery.filter((g) => g.src !== space.media.hero!.src)] : space.media.gallery;
 
   const est = displayFacts(space);
@@ -62,6 +71,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
         { icon: Sparkles, label: "Endreinigung", value: formatMoney(space.cleaningFee, "Angabe folgt") + (demo && space.cleaningFee !== null ? " (Demo)" : ""), pending: space.cleaningFee === null },
       ]
     : [{ icon: Handshake, label: "Angebot", value: "individuell · auf Anfrage" }];
+  // Facts without a confirmed value are left out rather than showing "Angabe folgt".
   const facts: Array<{ icon: LucideIcon; label: string; value: string; pending?: boolean }> = [
     { icon: Ruler, label: "Fläche", value: est.area, pending: space.areaSqm === null && est.area === "Angabe folgt" },
     { icon: space.type === "hotel" ? BedDouble : Users, label: space.type === "hotel" ? "Zimmer" : "Sitzplätze", value: est.seats, pending: space.capacitySeated === null && est.seats === "Angabe folgt" },
@@ -75,7 +85,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
     ...priceFacts,
     { icon: CalendarCheck, label: "Buchung", value: space.bookable ? MODE_LABEL[space.bookingMode] : "auf Anfrage" },
     { icon: space.type === "outdoor" ? TreeDeciduous : DoorOpen, label: "Art", value: TYPE_LABEL[space.type] },
-  ];
+  ].filter((f) => !f.pending);
 
   return (
     <article>
@@ -92,7 +102,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
         <div className="container-page relative pb-12 pt-32">
           <Breadcrumbs tone="dark" items={[{ label: "Start", href: "/" }, { label: "Bereiche", href: "/bereiche" }, { label: space.name }]} />
           <div className="mt-6 flex items-center gap-3">
-            <span className="grid h-12 min-w-12 place-items-center rounded-full border border-white/40 px-2 font-serif text-lg font-semibold" style={{ background: space.color }}>
+            <span className="grid h-12 min-w-12 place-items-center rounded-full border border-white/40 px-2 font-serif text-lg font-semibold text-white" style={{ background: badgeBg(space.color) }}>
               {space.code}
             </span>
             <span className="eyebrow !text-gold-light">{TYPE_LABEL[space.type]}</span>
@@ -136,15 +146,17 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
                 </>
               }
             >
-              <p>{stripPlaceholder(space.longDescription)}</p>
+              {description && <p>{description}</p>}
             </SectionHeading>
-            {unverified.has("longDescription") && <p className="mt-3 text-xs uppercase tracking-wider text-muted">Ausführliche Beschreibung folgt</p>}
 
-            <div className="mt-12 grid gap-8 sm:grid-cols-2">
-              <ListBlock title="Ausstattung" items={space.features} empty="Die Ausstattung wird aktuell zusammengestellt." />
-              <ListBlock title="Nutzungsmöglichkeiten" items={space.usageOptions} empty="Nutzungsmöglichkeiten werden ergänzt." />
-              <ListBlock title="Regeln & Hinweise" items={space.rules} empty="Hausordnung und Nutzungsregeln folgen." wide />
-            </div>
+            {/* only blocks with confirmed content – no "wird ergänzt" placeholders */}
+            {space.features.length + space.usageOptions.length + space.rules.length > 0 && (
+              <div className="mt-12 grid gap-8 sm:grid-cols-2">
+                {space.features.length > 0 && <ListBlock title="Ausstattung" items={space.features} />}
+                {space.usageOptions.length > 0 && <ListBlock title="Nutzungsmöglichkeiten" items={space.usageOptions} />}
+                {space.rules.length > 0 && <ListBlock title="Regeln & Hinweise" items={space.rules} wide />}
+              </div>
+            )}
           </div>
           <aside>
             <div className="card-surface p-6">
@@ -160,9 +172,9 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
                   </div>
                 ))}
               </dl>
-              {space.needsVerification.length > 0 && (
+              {est.estimated && (
                 <p className="mt-4 flex items-start gap-2 rounded-xl bg-cream p-3 text-xs text-ink-soft">
-                  <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {est.estimated ? `ca.-Werte: ${ESTIMATE_NOTE}` : "Einige Angaben werden noch vom Betreiber bestätigt."}
+                  <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> Mit „ca.“ gekennzeichnete Werte sind Richtwerte. Die genaue Planung besprechen wir gern persönlich mit Ihnen.
                 </p>
               )}
             </div>
@@ -243,7 +255,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             <p>
               {space.shape
                 ? `„${space.name}“ ist auf der Karte hervorgehoben – tippen Sie einen anderen Bereich an, um ihn zu entdecken.`
-                : "Die genaue Abgrenzung dieses Bereichs auf dem Grundstück wird noch eingezeichnet."}
+                : "Die Luftaufnahme zeigt das Grundstück mit allen Bereichen – tippen Sie einen an, um ihn zu entdecken."}
             </p>
             <p className="mt-2 text-sm text-muted">Drohnenaufnahme von oben – Raumgrenzen sinngemäß eingezeichnet.</p>
             {space.bookable && (
@@ -314,7 +326,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
           <ul className="mt-6 flex flex-wrap gap-2">
             {others.map((o) => (
               <li key={o.id}>
-                <Link href={o.href} className="inline-flex items-center gap-2 rounded-full border border-sand bg-white px-4 py-2 font-semibold transition-colors duration-300 hover:border-gold hover:text-gold-dark">
+                <Link href={spaceHref(o)} className="inline-flex items-center gap-2 rounded-full border border-sand bg-white px-4 py-2 font-semibold transition-colors duration-300 hover:border-gold hover:text-gold-dark">
                   <span className="font-serif text-xs text-gold-dark">{o.code}</span> {o.name}
                 </Link>
               </li>
@@ -326,21 +338,17 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
   );
 }
 
-function ListBlock({ title, items, empty, wide }: { title: string; items: string[]; empty: string; wide?: boolean }) {
+function ListBlock({ title, items, wide }: { title: string; items: string[]; wide?: boolean }) {
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
       <h3 className="font-serif text-2xl">{title}</h3>
-      {items.length ? (
-        <ul className="mt-3 space-y-1.5 text-ink-soft">
-          {items.map((i) => (
-            <li key={i} className="flex gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" /> {i}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-3 text-muted">{empty}</p>
-      )}
+      <ul className="mt-3 space-y-1.5 text-ink-soft">
+        {items.map((i) => (
+          <li key={i} className="flex gap-2">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" aria-hidden /> {i}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { SpaceCard } from "@/features/spaces/SpaceCard";
 import { env } from "@/lib/env";
 import { getPropertyGallery } from "@/lib/media";
 import { listSpaceViews } from "@/server/services/space-service";
+import { pageMeta } from "@/lib/page-metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -41,19 +42,26 @@ function accentWord(text: string, word: string): ReactNode {
   );
 }
 
-/** The new aerial front shot (gallery-01) gets a real description instead of the generic "Impression 1". */
-const GALLERY_ALT: Record<string, string> = {
-  "/media/property/gallery-01": "Die Krone von vorn aus der Luft: Hausfront mit Schriftzug, Hofeinfahrt und Biergarten",
+
+/** Focal points for crops that differ strongly from the photo (big tile is near-square on phones,
+    portrait on tablets): keeps the gable with the "Zur Krone" lettering in frame. */
+const GALLERY_FOCUS: Record<string, string> = {
+  "/media/property/gallery-01": "object-[85%_50%]",
 };
-function galleryAlt(src: string, fallback: string): string {
-  return GALLERY_ALT[src.replace(/\.[a-z0-9]+$/i, "")] ?? fallback;
+function galleryFocus(src: string): string {
+  return GALLERY_FOCUS[src.replace(/\.[a-z0-9]+$/i, "")] ?? "";
 }
 
-export const metadata: Metadata = {
-  title: { absolute: "Eventlocation Zur Krone – Räume mieten in Leidersbach" },
+/** The teaser mosaic: one 2×2 tile plus four singles fills two full rows on 4 columns (desktop)
+    and three full rows on 2 columns (phone) – no orphaned cells. */
+const TEASER_TILES = 5;
+
+export const metadata: Metadata = pageMeta({
+  title: "Eventlocation Zur Krone – Räume mieten in Leidersbach",
+  absolute: true,
   description: "Die Krone als Eventlocation: Restaurant, Nebenzimmer, Bühne, Wintergarten, Biergarten und Küche für Hochzeiten, Feiern und Firmenveranstaltungen bis 160 Personen – mit der ganzen Hotel-Etage für Ihre Gäste.",
-  alternates: { canonical: "/" },
-};
+  path: "/",
+});
 
 export default async function HomePage() {
   const spaces = await listSpaceViews();
@@ -61,7 +69,7 @@ export default async function HomePage() {
   const gallery = [
     ...getPropertyGallery(),
     ...spaces.flatMap((s) => s.media.gallery.slice(0, 1).map((g) => ({ ...g, spaceId: s.id }))),
-  ].slice(0, 7);
+  ].slice(0, TEASER_TILES);
   const hotel = spaces.find((s) => s.id === "hotel");
   const eventSpaces = spaces.filter((s) => s.bookable);
 
@@ -182,7 +190,7 @@ export default async function HomePage() {
                 eyebrow="Die ganze Etage"
                 title={
                   <>
-                    Feiern und bleiben – das Hotel <span className="accent">exklusiv</span>.
+                    Feiern und bleiben&nbsp;– das Hotel <span className="accent">exklusiv</span>.
                   </>
                 }
               >
@@ -211,13 +219,14 @@ export default async function HomePage() {
                 </ul>
               </SectionHeading>
               <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink href="#karte" variant="primary">
-                  Etage zur Feier hinzufügen
+                <ButtonLink href="/buchen" variant="primary">
+                  Etage mit anfragen
                 </ButtonLink>
                 <ButtonLink href={siteScope.mainSiteUrl} variant="secondary">
                   Hotel & Zimmer <ArrowRight className="h-4 w-4" />
                 </ButtonLink>
               </div>
+              <p className="mt-3 text-sm text-ink-soft">Die ganze Etage wählen Sie in der Anfrage bei den Zusatzleistungen.</p>
             </div>
           </div>
         </section>
@@ -236,7 +245,7 @@ export default async function HomePage() {
           </div>
           <div className="mt-12 grid auto-rows-[180px] grid-cols-2 gap-3 md:auto-rows-[220px] md:grid-cols-4">
             {gallery.length === 0
-              ? Array.from({ length: 5 }).map((_, i) => (
+              ? Array.from({ length: TEASER_TILES }).map((_, i) => (
                   <div key={i} className={i === 0 ? "col-span-2 row-span-2 overflow-hidden rounded-2xl" : "overflow-hidden rounded-2xl"}>
                     <MediaPlaceholder />
                   </div>
@@ -247,7 +256,13 @@ export default async function HomePage() {
                     href="/galerie"
                     className={`hover-zoom relative overflow-hidden rounded-2xl ${i === 0 ? "col-span-2 row-span-2" : ""}`}
                   >
-                    <Image src={g.src} alt={galleryAlt(g.src, g.alt)} fill sizes={i === 0 ? "50vw" : "25vw"} className="object-cover" />
+                    <Image
+                      src={g.src}
+                      alt={g.alt}
+                      fill
+                      sizes={i === 0 ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 50vw"}
+                      className={`object-cover ${galleryFocus(g.src)}`}
+                    />
                     {!g.isReal && i === 0 && (
                       <span className="absolute left-3 top-3 rounded-full bg-anthracite/70 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-paper">Beispielbilder</span>
                     )}

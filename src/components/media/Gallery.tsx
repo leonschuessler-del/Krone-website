@@ -5,9 +5,10 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaAsset } from "@/domain/types";
 import { cn } from "@/lib/cn";
+import { mosaicSizes, mosaicSpan } from "./mosaic";
 
 /**
- * Gallery: grid + lightbox on desktop, swipeable rail on mobile.
+ * Gallery: mosaic grid (rows always full, see ./mosaic) + lightbox on desktop, swipeable rail on mobile.
  * Lightbox: keyboard (←/→/Esc), swipe, focus handled by native <dialog>.
  */
 export function Gallery({ images, className, label = "Galerie" }: { images: MediaAsset[]; className?: string; label?: string }) {
@@ -55,9 +56,9 @@ export function Gallery({ images, className, label = "Galerie" }: { images: Medi
       {/* Desktop grid */}
       <ul className="hidden auto-rows-[200px] grid-cols-4 gap-3 md:grid lg:auto-rows-[230px]" aria-label={label}>
         {images.map((img, i) => (
-          <li key={img.src} className={cn("hover-zoom relative overflow-hidden rounded-2xl", i === 0 && "col-span-2 row-span-2")}>
+          <li key={img.src} className={cn("hover-zoom relative overflow-hidden rounded-2xl", mosaicSpan(i, images.length))}>
             <button type="button" className="absolute inset-0 focus-visible:-outline-offset-4" onClick={() => open(i)} aria-label={`${img.alt} vergrößern`}>
-              <Image src={img.src} alt={img.alt} fill sizes={i === 0 ? "(min-width: 1408px) 660px, 50vw" : "(min-width: 1408px) 330px, 25vw"} className="object-cover" loading="lazy" />
+              <Image src={img.src} alt={img.alt} fill sizes={mosaicSizes(i, images.length)} className="object-cover" loading="lazy" />
             </button>
           </li>
         ))}

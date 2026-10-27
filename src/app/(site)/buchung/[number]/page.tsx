@@ -13,9 +13,11 @@ import { getDb } from "@/server/db/client";
 import { getPublicBooking } from "@/server/services/booking-service";
 import { toPublicBooking } from "@/server/services/booking-view";
 import { bookingAccessSchema } from "@/server/validation";
+import { pageMeta } from "@/lib/page-metadata";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: siteScope.requestOnly ? "Ihre Anfrage" : "Ihre Buchung", robots: { index: false, follow: false } };
+// Private page (token in the URL): no canonical, no og:url, not indexed.
+export const metadata: Metadata = pageMeta({ title: siteScope.requestOnly ? "Ihre Anfrage" : "Ihre Buchung", noindex: true, nofollow: true });
 
 /** What happens after a non-binding request – shown instead of any amount. */
 const NEXT_STEPS = [

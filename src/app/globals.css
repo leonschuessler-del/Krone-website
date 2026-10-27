@@ -34,7 +34,7 @@
   --color-gold: #bc8620;
   --color-gold-light: #d9b56a;
   --color-gold-pale: #f1e4c6;
-  --color-gold-dark: #8d6417;
+  --color-gold-dark: #876014; /* ≥ 4.5:1 on cream (#f1ebdf) */
 
   --color-moss: #4f5b3d;
   --color-olive: #7a7d5a;
@@ -415,9 +415,6 @@
 .tour-planner-item[aria-pressed="true"] .tour-planner-badge { border-color: transparent; background: var(--color-paper); color: var(--color-anthracite); }
 @media (max-width: 1023px) { .tour-planner-item[aria-pressed="true"] .tour-planner-badge { background: var(--color-anthracite); color: var(--color-paper); } }
 
-/* Long sections below the film: skip their layout and paint until they come
-   near the viewport (the remembered size keeps the scrollbar stable). */
-.tour-section ~ section:not(#karte) {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 900px;
-}
+/* No content-visibility on the sections below the film: every one of them is an
+   anchor target (/#bereiche, /#hotel, /#faq …). Placeholder heights shift the
+   layout after a client-side jump and the target ends up off screen. */

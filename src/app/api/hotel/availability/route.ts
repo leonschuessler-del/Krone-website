@@ -1,3 +1,4 @@
+import { siteScope } from "@/config/scope";
 import { getDb } from "@/server/db/client";
 import { errorJson, json, limitOrNull } from "@/server/http";
 import { LIMITS } from "@/server/rate-limit";
@@ -5,8 +6,14 @@ import { hotelAvailability, hotelAvailabilityQuerySchema } from "@/server/servic
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/hotel/availability?arrival=YYYY-MM-DD&departure=YYYY-MM-DD */
+/**
+ * GET /api/hotel/availability?arrival=YYYY-MM-DD&departure=YYYY-MM-DD
+ * Archiviert (10/2026): Die Antwort enthält Zimmerpreise. Solange nur die Eventlocation online ist
+ * (siteScope.eventOnly) oder keine Preise gezeigt werden (!siteScope.showPrices), antwortet die Route
+ * mit 404 – siehe ARCHIV.md.
+ */
 export async function GET(req: Request) {
+  if (siteScope.eventOnly || !siteScope.showPrices) return errorJson(404, "NOT_FOUND", "Zimmer buchen Sie über unsere Hauptseite.");
   const limited = limitOrNull(req, "availability", LIMITS.availability);
   if (limited) return limited;
   const q = Object.fromEntries(new URL(req.url).searchParams);

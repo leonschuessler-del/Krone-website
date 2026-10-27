@@ -53,6 +53,13 @@ export const pickSet = (vw: number, vh: number): FrameSet => (vw / Math.max(1, v
 /** pixel size of one frame per set – must match tools/media/film3.py (SETS) */
 export const FRAME_SIZE: Record<FrameSet, { w: number; h: number }> = { d: { w: 1920, h: 1080 }, m: { w: 720, h: 1280 } };
 
+/** Data saver or a 2G/3G link: the film keeps a short read-ahead window. */
+function slowConnection(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  return !!c && (c.saveData === true || /(^|-)(2g|3g)$/.test(c.effectiveType ?? ""));
+}
+
 export const packIndex = (f: number) => Math.floor(f / PACK);
 export const packCount = (frames: number) => Math.ceil(frames / PACK);
 const packUrl = (dir: string, set: FrameSet, p: number) => `${dir}${set}/p${String(p).padStart(2, "0")}.webp`;
@@ -254,6 +261,13 @@ class FrameStore {
   private wanted = new Set<string>();
   /** pack last drawn per chapter – kept until a closer one is decoded */
   private shown = new Map<number, string>();
+  /**
+   * How eagerly packs are fetched: 0 = nothing yet (the poster is the first
+   * paint and owns the bandwidth), 1 = warm-up after the page went idle (the
+   * first two packs of the opening, one at a time), 2 = the visitor started
+   * moving – the full read-ahead window.
+   */
+  private level: 0 | 1 | 2 = 0;
 
   constructor(
     private chapters: readonly TourChapter[],
@@ -295,28 +309,55 @@ class FrameStore {
     this.blobs.clear();
   }
 
+  /** Raise the fetch level (never lowers it) and start loading accordingly. */
+  raise(level: 1 | 2) {
+    if (this.disposed || level <= this.level) return;
+    this.level = level;
+    for (const c of this.heads.keys()) this.poster(c + this.dir);
+    this.pump();
+  }
+
+  /**
+   * The film left the screen (or the tab went to the background): free every
+   * decoded bitmap – ~8 MB (desktop) / ~3.7 MB (phone) each. Packs still in the
+   * decoder are closed by their finish() because nothing is wanted any more.
+   * Coming back, update() fetches the packs again (HTTP cache) and the poster
+   * covers the gap.
+   */
+  trim() {
+    if (this.disposed) return;
+    for (const d of this.decoded.values()) d.frames.forEach((b) => b.close());
+    this.decoded.clear();
+    this.shown.clear();
+    this.wanted = new Set();
+    this.blobs.clear();
+    this.heads = new Map();
+  }
+
   /** Where each visible layer is (chapter → fractional frame) and the scroll direction. */
   update(heads: Map<number, number>, direction: number) {
     this.heads = heads;
-    if (direction) this.dir = direction;
+    if (direction) this.dir = direction > 0 ? 1 : -1;
     for (const c of heads.keys()) {
       this.poster(c);
-      this.poster(c + this.dir);
+      if (this.level > 0) this.poster(c + this.dir);
     }
     this.pump();
     this.decodeWindow();
   }
 
   private pump() {
-    if (this.disposed) return;
-    // ~60 frames (desktop) / ~48 frames (phone) ahead: several seconds of film
-    const order = fetchWindow(this.packs, this.heads, this.dir, this.set === "m" ? 8 : 10);
+    if (this.disposed || this.level === 0) return;
+    // engaged: ~60 frames (desktop) / ~48 frames (phone) ahead – several seconds of film;
+    // warm-up and slow or data-saving connections: a short window only
+    const ahead = this.level === 1 ? 2 : slowConnection() ? 3 : this.set === "m" ? 8 : 10;
+    const order = fetchWindow(this.packs, this.heads, this.dir, ahead);
     // release compressed packs that left the window (the HTTP cache keeps them)
     if (this.blobs.size > order.length + 12) {
       const keep = new Set(order.map(([c, p]) => `${c}:${p}`));
       for (const k of [...this.blobs.keys()]) if (!keep.has(k) && !this.decoding.has(k)) this.blobs.delete(k);
     }
-    const max = this.set === "m" ? 3 : 4;
+    const max = this.level === 1 ? 1 : this.set === "m" ? 3 : 4;
     for (const [c, p] of order) {
       if (this.loading.size >= max) return;
       const key = `${c}:${p}`;
@@ -378,7 +419,7 @@ class FrameStore {
   private decodeWindow() {
     if (this.disposed) return;
     const two = this.heads.size > 1;
-    // a decoded frame costs w×h×4 bytes: ~8 MB (desktop) / ~4.7 MB (phone)
+    // a decoded frame costs w×h×4 bytes: ~8.3 MB (desktop) / ~3.7 MB (phone)
     const AHEAD = this.set === "m" ? (two ? 2 : 3) : two ? 2 : 4;
     const BEHIND = 1;
     const order: Array<[number, number]> = [];
@@ -402,6 +443,9 @@ class FrameStore {
     }
     const wanted = new Set(order.map(([c, p]) => `${c}:${p}`));
     this.wanted = wanted;
+    // only the last drawn pack of chapters still on screen is kept – the ones of
+    // chapters scrolled past would otherwise pile up (up to 6 frames each)
+    for (const c of [...this.shown.keys()]) if (!this.heads.has(c)) this.shown.delete(c);
     const shown = new Set(this.shown.values());
     for (const [key, d] of this.decoded) {
       if (!wanted.has(key) && !shown.has(key)) {
@@ -550,9 +594,29 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
   let h = 0;
   let free: FreeArea = { left: 0, top: 0, right: 1, bottom: 1 };
   let plannerOn = false;
+  /** the film is within one screen height of the viewport (IntersectionObserver below) */
+  let onScreen = true;
 
-  const makeStore = () => new FrameStore(chapters, url, pickSet(window.innerWidth, window.innerHeight), () => schedule(true));
+  /** fetch level handed to every store (also the one made on a portrait ↔ landscape switch) */
+  let level: 0 | 1 | 2 = 0;
+  const makeStore = () => {
+    const s = new FrameStore(chapters, url, pickSet(window.innerWidth, window.innerHeight), () => schedule(true));
+    if (level) s.raise(level);
+    return s;
+  };
   let store = makeStore();
+  const raise = (to: 1 | 2) => {
+    if (to <= level) return;
+    level = to;
+    store.raise(to);
+  };
+  /** First real interaction near the film: load ahead of the playhead. Measured, not taken
+      from the observer – a jump to /#faq scrolls before the observer has reported. */
+  const engage = () => {
+    if (level === 2) return;
+    const r = section.getBoundingClientRect();
+    if (r.bottom > -window.innerHeight && r.top < 2 * window.innerHeight) raise(2);
+  };
   let fedKey = "";
   /** tell the store which frames are on screen (only when the frame under a playhead changes) */
   const feed = (f: TourFrame, direction: number) => {
@@ -707,7 +771,7 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     current = next;
     if (Math.abs(target - current) < 0.0002) current = target;
     frame = computeFrame(current, chapters, spans, FINALE_START_CAMERA, finaleTo);
-    feed(frame, Math.sign(target - current));
+    if (onScreen) feed(frame, Math.sign(target - current));
     draw(frame);
     captions.forEach((el, i) => {
       const c = Math.round((frame!.captionOpacity[i] ?? 0) * 1000) / 1000;
@@ -770,7 +834,10 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
     raf = requestAnimationFrame(tick);
   }
 
-  const onScroll = () => schedule();
+  const onScroll = () => {
+    engage();
+    if (onScreen) schedule();
+  };
   const onResize = () => {
     size();
     schedule();
@@ -798,34 +865,96 @@ export function mountTourPlayer(section: HTMLElement, opts: TourPlayerOptions): 
       const hash = href.startsWith("#") ? href : href.startsWith("/#") ? href.slice(1) : "";
       if (!PLANNER_HASHES.has(hash)) return;
       e.preventDefault();
+      engage();
       history.replaceState(null, "", hash);
       jumpToPlanner();
       return;
     }
     e.preventDefault();
+    engage();
     if (el.dataset.tourJump === "planner") jumpToPlanner();
     else jumpTo(el.dataset.tourRail !== undefined ? Number(el.dataset.tourRail) : 1);
   };
   const onHash = () => {
-    if (tourVisible() && PLANNER_HASHES.has(location.hash)) jumpToPlanner();
+    if (!tourVisible() || !PLANNER_HASHES.has(location.hash)) return;
+    engage();
+    jumpToPlanner();
   };
+
+  /* Release decoded frames while the film is far off screen or the tab is hidden
+     (several hundred MB otherwise stay alive after scrolling past the tour).
+     The canvas keeps its last paint, so coming back shows no stand-in. */
+  const release = () => {
+    store.trim();
+    fedKey = "";
+  };
+  const io =
+    typeof IntersectionObserver !== "undefined"
+      ? new IntersectionObserver(
+          ([entry]) => {
+            if (!entry) return;
+            onScreen = entry.isIntersecting;
+            if (onScreen) schedule();
+            else release();
+          },
+          { rootMargin: "100% 0px" },
+        )
+      : null;
+  io?.observe(section);
+  const onVisibility = () => {
+    if (document.hidden) release();
+    else if (onScreen) schedule();
+  };
+
+  /* Staged loading: at first only the poster (high priority in the markup).
+     Once the page is loaded and idle, a short warm-up of the opening shot;
+     the full read-ahead window starts with the first scroll, wheel, touch or key. */
+  let idleId = 0;
+  let idleIsTimeout = false;
+  const warmUp = () => {
+    idleId = 0;
+    raise(1);
+  };
+  const onLoad = () => {
+    if (typeof requestIdleCallback === "function") idleId = requestIdleCallback(warmUp, { timeout: 2500 });
+    else {
+      idleIsTimeout = true;
+      idleId = setTimeout(warmUp, 1200) as unknown as number;
+    }
+  };
+  if (document.readyState === "complete") onLoad();
+  else window.addEventListener("load", onLoad, { once: true });
 
   size();
   feed(computeFrame(0, chapters, spans, FINALE_START_CAMERA, WIDE_CAMERA), 1);
   schedule();
   window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("wheel", engage, { passive: true, once: true });
+  window.addEventListener("touchstart", engage, { passive: true, once: true });
+  window.addEventListener("keydown", engage, { once: true });
   window.addEventListener("resize", onResize, { passive: true });
   window.addEventListener("hashchange", onHash);
   document.addEventListener("click", onClick);
+  document.addEventListener("visibilitychange", onVisibility);
   const ro = typeof ResizeObserver !== "undefined" && canvas ? new ResizeObserver(onResize) : null;
   if (ro && canvas) ro.observe(canvas);
   if (PLANNER_HASHES.has(location.hash)) requestAnimationFrame(onHash);
 
   return () => {
     window.removeEventListener("scroll", onScroll);
+    window.removeEventListener("wheel", engage);
+    window.removeEventListener("touchstart", engage);
+    window.removeEventListener("keydown", engage);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("hashchange", onHash);
+    window.removeEventListener("load", onLoad);
     document.removeEventListener("click", onClick);
+    document.removeEventListener("visibilitychange", onVisibility);
+    if (idleId) {
+      if (idleIsTimeout) clearTimeout(idleId);
+      else cancelIdleCallback(idleId);
+    }
+    io?.disconnect();
     ro?.disconnect();
     if (raf) cancelAnimationFrame(raf);
     store.dispose();

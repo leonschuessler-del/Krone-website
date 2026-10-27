@@ -24,8 +24,8 @@ Technik: **Next.js 16** (React, TypeScript) mit **PostgreSQL**-Datenbank. Die Ap
 
 **Was sie NICHT ist:**
 
-- Hotel, Zimmerbuchung und Restaurant bleiben auf der **bestehenden Website**. Diese bleibt, wie sie ist.
-  Von der Eventlocation führt der Link „Hotel & Restaurant“ zurück auf die Hauptseite.
+- Hotel und Zimmerbuchung bleiben auf der **bestehenden Website** (die Krone ist seit 2026 Hotel garni, ohne Restaurant). Diese bleibt, wie sie ist.
+  Von der Eventlocation führt der Link „Hotel & Zimmer“ zurück auf die Hauptseite.
 - **Keine Preise öffentlich.** Nirgends stehen Preise, Summen, Rabatte oder Anzahlungen – alles „auf Anfrage“.
   Räume, Ausstattung und Zusatzleistungen sind sichtbar, nur ohne Preis.
 - **Keine Online-Zahlung.** Gäste senden nur Anfragen; der Betreiber antwortet persönlich.
@@ -37,7 +37,7 @@ Technik: **Next.js 16** (React, TypeScript) mit **PostgreSQL**-Datenbank. Die Ap
 ```
 krone-landhotel.de  (bestehende Seite, bleibt unverändert)
    └─ Knopf „Eventlocation“  ──Link──►  https://event.krone-landhotel.de  (diese App)
-                                              └─ „Hotel & Restaurant“ ──► zurück zur Hauptseite
+                                              └─ „Hotel & Zimmer“ ──► zurück zur Hauptseite
 ```
 
 **Warum nicht einfach als Unterseite `/eventlocation` hineinkopieren?** Die App braucht einen laufenden Server:
@@ -136,7 +136,7 @@ Vorlage: [`.env.example`](../.env.example). **Echte Werte nur im Hosting eintrag
 | `DATABASE_URL` | `postgres://…` von Neon/Supabase | Datenbank. Leer = flüchtige Test-DB, Anfragen gehen verloren |
 | `AUTH_SECRET` | langer Zufallswert, ≥ 32 Zeichen | Admin-Login. Ohne ihn ist der Login in Produktion gesperrt |
 | `NEXT_PUBLIC_SITE_URL` | `https://event.krone-landhotel.de` | Sitemap, Vorschaubilder, Links in E-Mails |
-| `NEXT_PUBLIC_MAIN_SITE_URL` | `https://www.krone-landhotel.de` | Rücklink „Hotel & Restaurant“ zur Hauptseite (Standard ist dieser Wert) |
+| `NEXT_PUBLIC_MAIN_SITE_URL` | `https://www.krone-landhotel.de` | Rücklink „Hotel & Zimmer“ zur Hauptseite (Standard ist dieser Wert) |
 | `DEMO_MODE` | `false` | Demo-Belegungen und Demo-Daten aus |
 | `PAYMENT_PROVIDER` | `none` | keine Zahlung, nur Anfragen |
 | `EMAIL_PROVIDER` | `resend` | echter Versand (`preview` = nur im Admin sichtbar, nichts geht raus) |

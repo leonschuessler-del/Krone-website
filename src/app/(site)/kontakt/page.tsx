@@ -9,12 +9,13 @@ import { HOTEL_COORDS } from "@/content/sights";
 import { ContactForm } from "@/features/contact/ContactForm";
 import { ArrivalGrid } from "@/features/sights/ArrivalGrid";
 import { LeafletMap } from "@/features/sights/LeafletMap";
+import { pageMeta } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Kontakt & Anfahrt",
   description: "Kontakt zur Eventlocation Zur Krone in Leidersbach – Hochzeiten, Feiern, Firmenveranstaltungen und Raumanfragen. Adresse, Telefon, Karte und Anfahrt.",
-  alternates: { canonical: "/kontakt" },
-};
+  path: "/kontakt",
+});
 
 export default async function ContactPage({ searchParams }: { searchParams: Promise<{ betreff?: string }> }) {
   const { betreff } = await searchParams;

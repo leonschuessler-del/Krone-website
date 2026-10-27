@@ -3,13 +3,14 @@
 import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock, Layers, RefreshCw, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
 import { siteScope } from "@/config/scope";
-import { dayNudge, eligibleOffer } from "@/domain/offers";
+import type { Offer } from "@/domain/offers";
 import { addDays, diffDays, isoWeekday, monthRange, parseLocalDate, todayLocal, utcToLocal, zonedToUtc } from "@/domain/time";
 import type { SpaceAvailabilityStatus } from "@/domain/types";
 import { useAvailabilityCheck } from "@/features/availability/use-availability-check";
 import type { SpaceView } from "@/features/spaces/types";
 import { cn } from "@/lib/cn";
 import { formatDateLong, formatTime } from "@/lib/format";
+import { useAsyncResource } from "@/lib/use-async-resource";
 import type { ScheduleDraft } from "@/store/booking-store";
 import { useAvailabilityCalendar } from "./hooks";
 
@@ -92,7 +93,7 @@ export function SchedulePicker({ spaces, selectedIds, schedule, onChange, classN
     <div className={cn("space-y-5", className)} data-testid="schedule-picker">
       {/* Rental mode */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="radiogroup" aria-label="Mietdauer" className="inline-flex rounded-full border border-sand bg-cream/60 p-1 text-sm">
+        <div role="group" aria-label="Mietdauer" className="inline-flex rounded-full border border-sand bg-cream/60 p-1 text-sm">
           {(
             [
               ["hourly", "Stundenweise", Clock],
@@ -102,8 +103,7 @@ export function SchedulePicker({ spaces, selectedIds, schedule, onChange, classN
             <button
               key={mode}
               type="button"
-              role="radio"
-              aria-checked={schedule.rentalMode === mode}
+              aria-pressed={schedule.rentalMode === mode}
               onClick={() => onChange({ rentalMode: mode, endDate: mode === "daily" ? (schedule.date ?? null) : null })}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-semibold transition-colors",
@@ -116,7 +116,7 @@ export function SchedulePicker({ spaces, selectedIds, schedule, onChange, classN
           ))}
         </div>
         {selectedIds.length > 1 && (
-          <div role="radiogroup" aria-label="Kalenderansicht" className="inline-flex rounded-full border border-sand p-1 text-xs">
+          <div role="group" aria-label="Kalenderansicht" className="inline-flex rounded-full border border-sand p-1 text-xs">
             {(
               [
                 ["common", "Gemeinsame Termine", CalendarDays],
@@ -126,8 +126,7 @@ export function SchedulePicker({ spaces, selectedIds, schedule, onChange, classN
               <button
                 key={v}
                 type="button"
-                role="radio"
-                aria-checked={view === v}
+                aria-pressed={view === v}
                 onClick={() => setView(v)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold transition-colors",
@@ -285,9 +284,19 @@ function DayDetail({
   const common = overview.data?.commonFreeIntervals ?? [];
   const hours = [6, 9, 12, 15, 18, 21, 24, 27];
   const rentalDays = schedule.endDate && schedule.endDate > date ? diffDays(date, schedule.endDate) + 1 : 1;
-  // discounts and "free extra day" tips are price talk – hidden while the site shows no prices
-  const offer = siteScope.showPrices ? eligibleOffer(date, rentalDays, todayLocal()) : null;
-  const nudge = siteScope.showPrices ? dayNudge(rentalDays) : null;
+  // discounts and "free extra day" tips are price talk – hidden while the site shows no prices.
+  // The offer logic is loaded on demand only then, so it stays out of the page's client bundle.
+  const hints = useAsyncResource<{ offer: Offer | null; nudge: string | null }>(
+    `${date}|${rentalDays}`,
+    siteScope.showPrices,
+    async () => {
+      const { dayNudge, eligibleOffer } = await import("@/domain/offers");
+      return { offer: eligibleOffer(date, rentalDays, todayLocal()), nudge: dayNudge(rentalDays) };
+    },
+    0,
+  );
+  const offer = hints.data?.offer ?? null;
+  const nudge = hints.data?.nudge ?? null;
 
   return (
     <div className="rounded-2xl border border-sand bg-white p-4 shadow-soft sm:p-5" data-testid="day-detail">
@@ -302,7 +311,7 @@ function DayDetail({
         <div className="mt-3 flex flex-wrap gap-2 text-xs" data-testid="day-offer">
           {offer && (
             <span className="rounded-full bg-success-pale px-3 py-1 font-semibold text-success">
-              {offer.label}: −{offer.percent} % auf die Raummiete
+              {offer.label}: −{offer.percent} %
             </span>
           )}
           {nudge && <span className="rounded-full bg-[#f6efe2] px-3 py-1 text-[#7a5410]">{nudge}</span>}

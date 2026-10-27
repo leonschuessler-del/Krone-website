@@ -1,5 +1,6 @@
 "use client";
 
+import { badgeBg } from "@/features/spaces/display";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CalendarDays, Check, ChevronUp, List, Map as MapIcon, Maximize2, RotateCcw, X } from "lucide-react";
@@ -188,7 +189,7 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
               <RotateCcw className="h-4 w-4" /> Zurücksetzen
             </Button>
           )}
-          <div role="radiogroup" aria-label="Ansicht" className="inline-flex rounded-full border border-sand bg-white p-1">
+          <div role="group" aria-label="Ansicht" className="inline-flex rounded-full border border-sand bg-white p-1">
             {(
               [
                 ["map", "Karte", MapIcon],
@@ -198,15 +199,14 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
               <button
                 key={v}
                 type="button"
-                role="radio"
-                aria-checked={view === v}
+                aria-pressed={view === v}
                 onClick={() => setView(v)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
                   view === v ? "bg-ink text-paper" : "text-ink-soft hover:text-ink",
                 )}
               >
-                <Icon className="h-3.5 w-3.5" /> {text}
+                <Icon className="h-3.5 w-3.5" aria-hidden /> {text}
               </button>
             ))}
           </div>
@@ -258,7 +258,7 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
           ) : (
             <SpaceList spaces={spaces} selected={selected} statuses={statuses} detail={detail} onToggle={toggleSpace} />
           )}
-          <MapLegend spaces={spaces} selected={selected} onToggle={toggleSpace} hasStatus={Boolean(schedule.date)} />
+          <MapLegend spaces={spaces} selected={selected} onToggle={toggleSpace} hasStatus={Boolean(schedule.date)} hasHotelCard={Boolean(hotel)} />
           {hotel && <HotelCard hotel={hotel} selected={selected.includes(hotel.id)} status={statuses[hotel.id]} onToggle={() => toggleSpace(hotel.id)} />}
         </div>
 
@@ -285,8 +285,14 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
               <span className="block truncate text-xs text-paper/60">{label ?? "Tippen Sie auf die Karte"}</span>
             </span>
           </button>
-          <Button variant="gold" size="sm" onClick={selected.length ? primaryCta : () => setSheetOpen(true)} disabled={selected.length === 0}>
-            {hasRange && allAvailable ? "Weiter" : "Verfügbarkeit prüfen"}
+          <Button
+            variant="gold"
+            size="sm"
+            className="shrink-0 px-3 tracking-[0.14em]"
+            onClick={selected.length ? primaryCta : () => setSheetOpen(true)}
+            disabled={selected.length === 0}
+          >
+            {hasRange && allAvailable ? "Weiter" : "Termin prüfen"}
           </Button>
         </div>
       </div>
@@ -420,7 +426,7 @@ function SpacePreviewCard({
       </div>
       <div className="p-4">
         <div className="flex items-center gap-2">
-          <span className="grid h-7 min-w-7 place-items-center rounded-full px-1 font-serif text-sm font-semibold text-white" style={{ background: space.color }}>
+          <span className="grid h-7 min-w-7 place-items-center rounded-full px-1 font-serif text-sm font-semibold text-white" style={{ background: badgeBg(space.color) }}>
             {space.code}
           </span>
           <h3 className="font-serif text-xl">{space.name}</h3>
@@ -453,7 +459,20 @@ function SpacePreviewCard({
   );
 }
 
-function MapLegend({ spaces, selected, onToggle, hasStatus }: { spaces: SpaceView[]; selected: string[]; onToggle: (id: string) => void; hasStatus: boolean }) {
+function MapLegend({
+  spaces,
+  selected,
+  onToggle,
+  hasStatus,
+  hasHotelCard,
+}: {
+  spaces: SpaceView[];
+  selected: string[];
+  onToggle: (id: string) => void;
+  hasStatus: boolean;
+  /** true when the overnight card is rendered below the map (only if the floor is bookable as a space) */
+  hasHotelCard: boolean;
+}) {
   const onMap = spaces.filter((s) => s.shape && s.bookable);
   const notDrawn = spaces.filter((s) => !s.shape);
   return (
@@ -472,9 +491,25 @@ function MapLegend({ spaces, selected, onToggle, hasStatus }: { spaces: SpaceVie
         {notDrawn.map((s) => (
           <li key={s.id} className="inline-flex items-center gap-1.5 text-muted">
             <span className="h-3 w-3 rounded-sm border border-dashed border-taupe" />
-            <Link href={s.type === "hotel" ? "#planner-hotel" : s.href} className="underline-offset-4 hover:underline">
-              {s.type === "hotel" ? "Übernachtung im Haus (1. OG) – unter der Karte hinzufügen" : `${s.name} – genaue Abgrenzung folgt`}
-            </Link>
+            {s.type === "hotel" ? (
+              hasHotelCard ? (
+                <a href="#planner-hotel" className="underline-offset-4 hover:underline">
+                  Übernachtung im Haus (1. OG) – unter der Karte hinzufügen
+                </a>
+              ) : (
+                <span>
+                  Übernachtung im Haus (1. OG) – die ganze Etage wählen Sie{" "}
+                  <Link href="/buchen" className="font-semibold text-ink-soft underline underline-offset-4 hover:text-ink">
+                    im Anfrageformular
+                  </Link>{" "}
+                  als Zusatzleistung
+                </span>
+              )
+            ) : (
+              <Link href={s.href} className="underline-offset-4 hover:underline">
+                {`${s.name} – genaue Abgrenzung folgt`}
+              </Link>
+            )}
           </li>
         ))}
         <li className="inline-flex items-center gap-1.5 text-muted">
@@ -527,7 +562,7 @@ function SpaceList({
             <li key={s.id} className="flex items-center gap-4 px-4 py-3 sm:px-5">
               <label className="flex flex-1 cursor-pointer items-center gap-3">
                 <input type="checkbox" className="h-5 w-5 accent-[#b8904a]" checked={isSel} onChange={() => onToggle(s.id)} aria-describedby={`st-${s.id}`} />
-                <span className="grid h-8 min-w-8 place-items-center rounded-full px-1 font-serif text-sm font-semibold text-white" style={{ background: s.color }}>
+                <span className="grid h-8 min-w-8 place-items-center rounded-full px-1 font-serif text-sm font-semibold text-white" style={{ background: badgeBg(s.color) }}>
                   {s.code}
                 </span>
                 <span className="min-w-0">
@@ -613,7 +648,7 @@ function SelectionPanelContent({
         <ul className="mt-4 space-y-1.5" data-testid="selected-list">
           {selectedSpaces.map((s) => (
             <li key={s.id} className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2">
-              <span className="grid h-7 min-w-7 place-items-center rounded-full px-1 font-serif text-[0.8rem] font-semibold text-white" style={{ background: s.color }}>
+              <span className="grid h-7 min-w-7 place-items-center rounded-full px-1 font-serif text-[0.8rem] font-semibold text-white" style={{ background: badgeBg(s.color) }}>
                 {s.code}
               </span>
               <span className="flex-1 font-semibold">{s.name}</span>
@@ -643,16 +678,18 @@ function SelectionPanelContent({
             )}
           </dd>
         </div>
-        <div>
-          <dt className="mb-1.5 text-paper/60">Verfügbarkeit</dt>
-          <dd>
-            {!hasDate || selected.length === 0 ? (
-              <span className="text-paper/70">{selected.length ? "Termin wählen, um die Verfügbarkeit zu prüfen" : "–"}</span>
-            ) : (
-              <AvailabilityResult result={selectionCheck} tone="dark" onRemoveSpace={onRemove} onPickAlternative={onPickAlternative} onChooseOtherDate={onOpenSchedule} />
-            )}
-          </dd>
-        </div>
+        {selected.length > 0 && (
+          <div>
+            <dt className="mb-1.5 text-paper/60">Verfügbarkeit</dt>
+            <dd>
+              {!hasDate ? (
+                <span className="text-paper/70">Termin wählen, um die Verfügbarkeit zu prüfen</span>
+              ) : (
+                <AvailabilityResult result={selectionCheck} tone="dark" onRemoveSpace={onRemove} onPickAlternative={onPickAlternative} onChooseOtherDate={onOpenSchedule} />
+              )}
+            </dd>
+          </div>
+        )}
         {siteScope.showPrices ? (
           <div className="flex items-start justify-between gap-3">
             <dt className="text-paper/60">Preis</dt>
@@ -692,15 +729,19 @@ function SelectionPanelContent({
       </dl>
 
       <div className="mt-5 space-y-2.5">
-        <Button variant="gold" size="lg" className="w-full" disabled={selected.length === 0 || (hasRange && !allAvailable && selectionCheck.state !== "loading")} onClick={onPrimary} data-testid="panel-primary">
-          {!hasDate || !hasRange ? "Gemeinsame Verfügbarkeit prüfen" : inquiryOnly ? "Weiter zur Anfrage" : "Weiter zur Buchung"}
+        <Button
+          variant="gold"
+          size="lg"
+          className="h-auto min-h-14 w-full whitespace-normal px-5 py-3 text-center leading-snug"
+          disabled={selected.length === 0 || (hasRange && !allAvailable && selectionCheck.state !== "loading")} onClick={onPrimary} data-testid="panel-primary">
+          {!hasDate || !hasRange ? "Verfügbarkeit prüfen" : inquiryOnly ? "Weiter zur Anfrage" : "Weiter zur Buchung"}
           <ArrowRight className="h-4 w-4" />
         </Button>
         {hasRange && allAvailable && inquiryOnly && (
           <p className="text-xs text-paper/60">Sie senden eine unverbindliche Anfrage – wir melden uns mit einem individuellen Angebot.</p>
         )}
         {!fullVenueSelected && (
-          <Button variant="dark" className="w-full" onClick={onFullVenue}>
+          <Button variant="dark" className="h-auto min-h-12 w-full whitespace-normal px-5 py-2.5 text-center leading-snug" onClick={onFullVenue}>
             Gesamte Location auswählen
           </Button>
         )}

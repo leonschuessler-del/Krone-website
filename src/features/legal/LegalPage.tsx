@@ -18,7 +18,7 @@ export function LegalPage({ doc }: { doc: LegalDocument }) {
     <div className="bg-paper pb-24 pt-28 md:pt-36">
       <div className="container-page max-w-3xl">
         <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: doc.title }]} />
-        <h1 className="mt-6 text-5xl md:text-6xl">{doc.title}</h1>
+        <h1 className="mt-6 text-4xl hyphens-auto break-words [overflow-wrap:anywhere] sm:text-5xl md:text-6xl">{doc.title}</h1>
         <p className="mt-6 text-lg leading-relaxed text-ink-soft" data-legal-intro>
           {doc.intro}
         </p>

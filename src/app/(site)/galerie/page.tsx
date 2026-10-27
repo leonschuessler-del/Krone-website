@@ -7,35 +7,35 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { displayFacts } from "@/content/space-estimates";
 import { getHeroVideo, getPropertyGallery, getSpaceMedia, mediaExists } from "@/lib/media";
 import { listPublicSpaceViews } from "@/server/services/space-service";
+import { pageMeta } from "@/lib/page-metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Galerie – Die Krone in Bildern",
   description: "Haus, Restaurant, Nebenzimmer, Bühne, Wintergarten, Biergarten, Küche und die Zimmer für Ihre Gäste: die Eventlocation Zur Krone in Leidersbach in Bildern und im Film.",
-  alternates: { canonical: "/galerie" },
-};
-
-/** The new aerial front shot (gallery-01) gets a real description instead of the generic "Impression 1". */
-const PROPERTY_ALT: Record<string, string> = {
-  "/media/property/gallery-01": "Die Krone von vorn aus der Luft: Hausfront mit Schriftzug, Hofeinfahrt und Biergarten",
-};
+  path: "/galerie",
+});
 
 /** Chapter texts – what one sees, in one or two sentences. */
 const CHAPTER_TEXT: Record<string, string> = {
   hotel: "Zehn Zimmer und ein Apartment im ersten Obergeschoss – für Ihre Gäste direkt über der Feier. Eigenes Bad, morgens Frühstück im Haus.",
   restaurant: "Das Herz des Hauses: 60 Plätze, Theke, Eingang. Jede Veranstaltung beginnt hier.",
   "side-room": "Das Nebenzimmer für Gesellschaften bis 55 Personen, per Schiebetür zur Bühne zu öffnen.",
-  stage: "Leicht erhöht, mit Licht und Technik – für Reden, Musik und den ersten Tanz.",
+  stage: "Leicht erhöht, hinter einer großen Schiebetür – für Reden, Musik und den ersten Tanz.",
   "winter-garden": "Glasdach und Holz-Glastüren: Tageslicht von allen Seiten, davor der Biergarten.",
   "beer-garden": "Unter Pergola und Bäumen, hinter der Sandsteinmauer: Platz für 100 Gäste im Freien.",
-  kitchen: "Die Profiküche für Ihren Caterer – Herdblock, Kombidämpfer, Spülküche, Kühlhaus.",
+  kitchen: "Die Profiküche für Ihren Caterer – mit Herdblock, Kombidämpfern und Spülküche.",
   "old-tavern": "Die Alte Wirtschaft: holzvertäfelt und gemütlich wie früher.",
 };
 
+/** Unconfirmed values are left out instead of showing "Angabe folgt". */
+const known = (v: string) => Boolean(v) && v !== "Angabe folgt";
+
 export default async function GalleryPage() {
   const spaces = (await listPublicSpaceViews()).filter((s) => s.media.gallery.length || s.media.hero);
-  const property = getPropertyGallery().map((img) => ({ ...img, alt: PROPERTY_ALT[img.src.replace(/\.[a-z0-9]+$/i, "")] ?? img.alt }));
+  // alt texts of the real photos are maintained centrally in src/lib/media.ts (MEDIA_ALT)
+  const property = getPropertyGallery();
   const film = getHeroVideo();
   const hotel = getSpaceMedia("hotel", "Hotel");
   const hero = mediaExists("/media/property/house-front.webp") ? "/media/property/house-front.webp" : (property[0]?.src ?? null);
@@ -96,13 +96,15 @@ export default async function GalleryPage() {
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <SectionHeading id={`g-${c.id}`} eyebrow={`${String(i + 1).padStart(2, "0")} / ${String(chapters.length).padStart(2, "0")}`} title={c.name}>
                 <p>{CHAPTER_TEXT[c.id] ?? ""}</p>
-                {c.facts && (
+                {c.facts && (known(c.facts.area) || known(c.facts.seats)) && (
                   <p className="mt-3 flex flex-wrap gap-x-5 text-sm text-muted">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Ruler className="h-3.5 w-3.5 text-gold-dark" strokeWidth={1.5} aria-hidden />
-                      {c.facts.area}
-                    </span>
-                    {c.facts.seats && (
+                    {known(c.facts.area) && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Ruler className="h-3.5 w-3.5 text-gold-dark" strokeWidth={1.5} aria-hidden />
+                        {c.facts.area}
+                      </span>
+                    )}
+                    {known(c.facts.seats) && (
                       <span className="inline-flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5 text-gold-dark" strokeWidth={1.5} aria-hidden />
                         {c.facts.seats}

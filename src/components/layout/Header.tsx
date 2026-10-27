@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ButtonLink } from "@/components/ui/Button";
@@ -63,10 +63,55 @@ export function Header() {
     setOpen(false);
   }
 
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Open mobile menu: page behind does not scroll, Escape closes (focus back on the toggle),
+  // Tab cycles between the toggle and the menu entries only, and growing to desktop width closes it.
   useEffect(() => {
-    document.documentElement.style.overflow = open ? "hidden" : "";
+    if (!open) return;
+    const root = document.documentElement;
+    const prevOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
+
+    const close = () => {
+      setOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const focusables = [
+        menuButtonRef.current,
+        ...Array.from(panelRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []),
+      ].filter((el): el is HTMLElement => el !== null);
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement as HTMLElement | null;
+      const inside = active !== null && focusables.includes(active);
+      if (e.shiftKey && (active === first || !inside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !inside)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onDesktop = (e: MediaQueryListEvent) => {
+      if (e.matches) setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    desktop.addEventListener("change", onDesktop);
     return () => {
-      document.documentElement.style.overflow = "";
+      root.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+      desktop.removeEventListener("change", onDesktop);
     };
   }, [open]);
 
@@ -106,77 +151,86 @@ export function Header() {
   };
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow,backdrop-filter,color] duration-300",
-        transparent
-          ? "bg-gradient-to-b from-black/45 to-transparent text-paper"
-          : "border-b border-sand/70 bg-paper/94 text-ink backdrop-blur-md",
-      )}
-    >
-      <div className="container-page flex h-[4.75rem] items-center justify-between gap-6 md:h-[5.25rem]">
-        <Link href="/" className="shrink-0 transition-opacity hover:opacity-90" aria-label="Zur Krone – Startseite">
-          <Logo />
-        </Link>
+    <>
+      <header
+        className={cn(
+          "fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow,color] duration-300",
+          // No backdrop-filter while the menu is open: the header stays opaque and creates no containing block.
+          open
+            ? "border-b border-sand/70 bg-paper text-ink"
+            : transparent
+              ? "bg-gradient-to-b from-black/45 to-transparent text-paper"
+              : "border-b border-sand/70 bg-paper/94 text-ink backdrop-blur-md",
+        )}
+      >
+        <div className="container-page flex h-[4.75rem] items-center justify-between gap-6 md:h-[5.25rem]">
+          <Link href="/" className="shrink-0 transition-opacity hover:opacity-90" aria-label="Zur Krone – Startseite">
+            <Logo />
+          </Link>
 
-        <nav aria-label="Hauptnavigation" className="hidden items-center gap-1 lg:flex">
-          {mainNavigation.map((item) => {
-            const current = currentOf(item);
-            return (
-              <NavAnchor
-                key={item.href}
-                item={item}
-                current={current}
-                className={cn(
-                  "nav-link px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.2em] transition-colors duration-300",
-                  transparent ? "text-paper/85 hover:text-paper" : "text-ink-soft hover:text-ink",
-                  current && (transparent ? "text-paper" : "text-ink"),
-                )}
-              />
-            );
-          })}
-        </nav>
+          <nav aria-label="Hauptnavigation" className="hidden items-center gap-1 lg:flex">
+            {mainNavigation.map((item) => {
+              const current = currentOf(item);
+              return (
+                <NavAnchor
+                  key={item.href}
+                  item={item}
+                  current={current}
+                  className={cn(
+                    "nav-link px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.2em] transition-colors duration-300",
+                    transparent ? "text-paper/85 hover:text-paper" : "text-ink-soft hover:text-ink",
+                    current && (transparent ? "text-paper" : "text-ink"),
+                  )}
+                />
+              );
+            })}
+          </nav>
 
-        <div className="flex items-center gap-2">
-          <ButtonLink
-            href={headerCta.href}
-            variant={transparent ? "dark" : "primary"}
-            size="sm"
-            className="max-sm:hidden"
-          >
-            {headerCta.label}
-            {selectionCount > 0 && (
-              <span
-                className={cn(
-                  "ml-0.5 grid h-5 min-w-5 place-items-center rounded-full px-1 text-[0.7rem] font-bold",
-                  transparent ? "bg-anthracite text-gold-light" : "bg-gold text-anthracite",
-                )}
-                aria-label={`${selectionCount} Bereiche ausgewählt`}
-              >
-                {selectionCount}
-              </span>
-            )}
-          </ButtonLink>
-          <button
-            type="button"
-            className={cn(
-              "grid h-10 w-10 place-items-center rounded-full lg:hidden",
-              transparent ? "hover:bg-white/10" : "hover:bg-ink/5",
-            )}
-            aria-expanded={open}
-            aria-controls="mobile-nav"
-            aria-label={open ? "Menü schließen" : "Menü öffnen"}
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <ButtonLink
+              href={headerCta.href}
+              variant={transparent ? "dark" : "primary"}
+              size="sm"
+              className="max-sm:hidden"
+            >
+              {headerCta.label}
+              {selectionCount > 0 && (
+                <span
+                  className={cn(
+                    "ml-0.5 grid h-5 min-w-5 place-items-center rounded-full px-1 text-[0.7rem] font-bold",
+                    transparent ? "bg-anthracite text-gold-light" : "bg-gold text-anthracite",
+                  )}
+                  aria-label={`${selectionCount} Bereiche ausgewählt`}
+                >
+                  {selectionCount}
+                </span>
+              )}
+            </ButtonLink>
+            <button
+              type="button"
+              className={cn(
+                "grid h-10 w-10 place-items-center rounded-full lg:hidden",
+                transparent ? "hover:bg-white/10" : "hover:bg-ink/5",
+              )}
+              aria-expanded={open}
+              aria-controls="mobile-nav"
+              aria-label={open ? "Menü schließen" : "Menü öffnen"}
+              ref={menuButtonRef}
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
+      {/* Sibling of the header, not a child: a backdrop-filter/transform on the header would otherwise
+          make it the containing block of this fixed panel and clip it to the header's height. */}
       <div
         id="mobile-nav"
+        ref={panelRef}
         hidden={!open}
-        className="fixed inset-x-0 bottom-0 top-[4.5rem] overflow-y-auto bg-paper px-5 pb-10 pt-4 lg:hidden"
+        className="fixed inset-x-0 bottom-0 top-[4.75rem] z-40 overflow-y-auto overscroll-contain bg-paper px-5 pb-10 pt-4 md:top-[5.25rem] lg:hidden"
       >
         <nav aria-label="Mobile Navigation" className="flex flex-col">
           {mainNavigation.map((item) => {
@@ -199,6 +253,6 @@ export function Header() {
           {headerCta.label}
         </ButtonLink>
       </div>
-    </header>
+    </>
   );
 }

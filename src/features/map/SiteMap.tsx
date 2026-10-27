@@ -38,6 +38,11 @@ export interface SiteMapProps {
   labels?: "auto" | "code" | "full" | "none";
   className?: string;
   ariaLabel?: string;
+  /**
+   * Loading of the aerial base image. Defaults to "lazy": no preload is emitted and a map inside a
+   * hidden container (e.g. the reduced-motion fallback on the home page) does not download at all.
+   */
+  loading?: "lazy" | "eager";
   children?: ReactNode;
 }
 
@@ -56,6 +61,7 @@ export function SiteMap({
   labels = "auto",
   className,
   ariaLabel = "Interaktive Grundstückskarte Zur Krone",
+  loading = "lazy",
   children,
 }: SiteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -140,6 +146,8 @@ export function SiteMap({
           alt={mapConfig.baseLayer.alt}
           width={W}
           height={H}
+          loading={loading}
+          fetchPriority={loading === "eager" ? "auto" : "low"}
           decoding="async"
           draggable={false}
           className="absolute inset-0 h-full w-full object-cover"

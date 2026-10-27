@@ -4,14 +4,15 @@ import { ButtonLink } from "@/components/ui/Button";
 import { SpaceCard } from "@/features/spaces/SpaceCard";
 import { env } from "@/lib/env";
 import { listSpaceViews } from "@/server/services/space-service";
+import { pageMeta } from "@/lib/page-metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Räume – Gaststube, Säle, Wintergarten & Biergarten",
   description: "Alle Räume der Eventlocation Zur Krone in Leidersbach: Gaststube, Küche, Nebenzimmer, Bühne, Alte Wirtschaft, Wintergarten, Biergarten und die Hotel-Etage für Ihre Gäste – einzeln oder kombiniert, Preis auf Anfrage.",
-  alternates: { canonical: "/bereiche" },
-};
+  path: "/bereiche",
+});
 
 export default async function SpacesPage() {
   const spaces = await listSpaceViews();
@@ -29,11 +30,16 @@ export default async function SpacesPage() {
             Auf der Karte wählen
           </ButtonLink>
         </div>
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          {spaces.map((s) => (
-            <SpaceCard key={s.id} space={s} demo={env.demoMode} />
-          ))}
-        </div>
+        <section aria-labelledby="raeume-liste" className="mt-12">
+          <h2 id="raeume-liste" className="sr-only">
+            Alle Räume im Überblick
+          </h2>
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {spaces.map((s) => (
+              <SpaceCard key={s.id} space={s} demo={env.demoMode} />
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

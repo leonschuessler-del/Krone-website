@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { SiteMap } from "@/features/map/SiteMap";
+import { spaceHref } from "./display";
 import type { SpaceView } from "./types";
 
 /** Small site map on detail pages: the current space is highlighted, others link to their pages. */
@@ -17,7 +18,7 @@ export function SpaceMiniMap({ spaces, currentId }: { spaces: SpaceView[]; curre
       showParking={false}
       onActivate={(id) => {
         const target = spaces.find((s) => s.id === id);
-        if (target && id !== currentId) router.push(target.href);
+        if (target && id !== currentId) router.push(spaceHref(target));
       }}
       className="overflow-hidden rounded-2xl ring-1 ring-black/5"
       ariaLabel="Lage auf dem Grundstück"

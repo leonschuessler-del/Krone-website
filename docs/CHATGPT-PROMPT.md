@@ -16,7 +16,7 @@ Frag nach, bevor du etwas annimmst.
 
 ## Kontext
 - Betrieb: Landhotel Gasthof „Zur Krone“, Hauptstraße 106, 63849 Leidersbach.
-- Bestehende Website: https://www.krone-landhotel.de (Hotel, Restaurant). Sie hat einen Knopf/Menüpunkt
+- Bestehende Website: https://www.krone-landhotel.de (Hotel garni, Zimmer; seit 2026 ohne Restaurant). Sie hat einen Knopf/Menüpunkt
   „Eventlocation“. Die bestehende Website soll ansonsten UNVERÄNDERT bleiben.
 - Neue Eventlocation-Website: eigene Next.js-16-App (React, TypeScript, PostgreSQL/Drizzle) mit
   Raumplaner (Luftbild-Karte), Verfügbarkeitskalender, unverbindlichem Anfrageformular und Admin-Bereich.

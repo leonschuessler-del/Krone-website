@@ -1,3 +1,5 @@
+// Server only: importing this from client code would ship the price tables to the browser.
+import "server-only";
 import { calculateQuote, type ExtraDefinition, type PricedSpace, type Quote } from "@/domain/pricing";
 
 /**

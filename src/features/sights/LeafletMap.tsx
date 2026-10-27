@@ -42,7 +42,9 @@ export function LeafletMap({ markers, center, zoom = 10, className, height = "h-
           iconAnchor: [primary ? 9 : 6, primary ? 9 : 6],
         });
       for (const m of markers) {
-        const marker = L.marker([m.lat, m.lng], { icon: icon(!!m.primary) }).addTo(map);
+        // title gives the keyboard-focusable marker (role="button") an accessible name; `alt` would only apply to <img> icons.
+        const marker = L.marker([m.lat, m.lng], { icon: icon(!!m.primary), title: m.name, riseOnHover: true }).addTo(map);
+        marker.getElement()?.setAttribute("aria-label", `${m.name}: Details anzeigen`);
         marker.bindPopup(`<strong style="font-family:Georgia,serif;font-size:1.05rem">${m.name}</strong>${m.minutes ? `<br><span style="color:#6a6056">${m.minutes} Min. ab Hotel</span>` : ""}${m.text ? `<br><span style="color:#3a332d">${m.text}</span>` : ""}`);
         if (m.primary) marker.openPopup();
       }

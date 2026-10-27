@@ -1,9 +1,11 @@
 import { useId } from "react";
 import { cn } from "@/lib/cn";
-import { LOGO_MARK_PATH } from "./logo-path";
 
 /** Gold of the original logo (krone-landhotel.de). */
 export const BRAND_GOLD = "#bc8620";
+
+/** Static vector of crown and word mark (public/brand/logo-mark.svg), coordinate space of the viewBox below. */
+const LOGO_MARK_HREF = "/brand/logo-mark.svg#mark";
 
 /**
  * The original logo as a vector: crown and the Fraktur „Zur Krone“ are traced
@@ -25,7 +27,9 @@ export function Logo({ className, plaque = true }: { tone?: "dark" | "light"; co
             Landhotel-Gasthof
           </textPath>
         </text>
-        <path d={LOGO_MARK_PATH} fillRule="evenodd" />
+        {/* Crown + Fraktur mark from one cached file (36 KB path), not inlined into every document / client bundle.
+            Referenced by the path's id, so it keeps the outer viewBox coordinates and inherits fill. */}
+        <use href={LOGO_MARK_HREF} />
       </svg>
     </span>
   );

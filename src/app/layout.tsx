@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     siteName: "Eventlocation Zur Krone Leidersbach",
     title: "Eventlocation Zur Krone – Ein Ort. Viele Möglichkeiten.",
     description: siteConfig.description,
-    url: "/",
+    // No url here: subpages would inherit the home URL as og:url (see src/lib/page-metadata.ts).
   },
   twitter: { card: "summary_large_image" },
   formatDetection: { telephone: false },

@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, lt, ne } from "drizzle-orm";
 import { z } from "zod";
+import { siteScope } from "@/config/scope";
 import { siteConfig } from "@/config/site";
 import { roomInventory, roomTypeSeeds, stayExtras } from "@/content/hotel";
 import { freeRooms, fullyBookedNights, generateReservationNumber, nightCount, stayExtraLines, stayExtrasTotal, stayPricing, stayQuote, validateItems, validateStay, type RoomReservationLike } from "@/domain/hotel";
@@ -153,9 +154,10 @@ export async function createHotelReservation(db: Database, input: HotelReservati
   await sendEmail(db, "operator_new_hotel_request", operatorEmail() ?? "betreiber@krone.invalid (nicht konfiguriert)", ctx);
   const total = quote.total === null ? null : quote.total + extrasSum;
 
-  // online payment / card guarantee – only with a priced stay and a configured provider
+  // online payment / card guarantee – only with a priced stay and a configured provider, and never while
+  // the public site only takes non-binding requests (siteScope.requestOnly)
   let payment: HotelPaymentStart = { provider: "none" };
-  if (input.payment !== "hotel" && hotelPaymentsAvailable() && (input.payment === "guarantee" || (total !== null && total > 0))) {
+  if (!siteScope.requestOnly && input.payment !== "hotel" && hotelPaymentsAvailable() && (input.payment === "guarantee" || (total !== null && total > 0))) {
     try {
       payment = await startHotelPayment(db, {
         reservationNumber: result.reservationNumber,
@@ -171,7 +173,7 @@ export async function createHotelReservation(db: Database, input: HotelReservati
       payment = { provider: "none" };
     }
   }
-  return { reservationNumber: result.reservationNumber, status: "requested" as const, total, lines: quote.lines.map((l) => ({ roomTypeId: l.roomTypeId, rooms: l.rooms, name: l.name })), payment };
+  return { reservationNumber: result.reservationNumber, status: "requested" as const, total: siteScope.showPrices ? total : null, lines: quote.lines.map((l) => ({ roomTypeId: l.roomTypeId, rooms: l.rooms, name: l.name })), payment };
 }
 
 export async function listHotelReservations(db: Database) {

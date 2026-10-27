@@ -39,6 +39,11 @@ test.describe("Keine Preise auf der öffentlichen Seite", () => {
     }
     const calc = await request.post("/api/pricing/calculate", { data: { spaceIds: ["restaurant"] } });
     expect(calc.status()).toBe(404);
+    // archived hotel booking: room prices and reservations are not reachable publicly
+    const avail = await request.get("/api/hotel/availability?arrival=2026-12-01&departure=2026-12-03");
+    expect(avail.status(), "/api/hotel/availability").toBe(404);
+    expect((await avail.text()).match(PRICE_KEYS)?.[0] ?? null, "/api/hotel/availability").toBeNull();
+    expect((await request.post("/api/hotel/reservations", { data: {} })).status(), "/api/hotel/reservations").toBe(404);
   });
 
   test("Weiterleitungen alter Adressen", async ({ request }) => {

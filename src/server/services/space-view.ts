@@ -1,3 +1,4 @@
+import { siteScope } from "@/config/scope";
 import { getSpaceShape } from "@/config/floorplan";
 import type { Point, Space } from "@/domain/types";
 import type { SpaceView } from "@/features/spaces/types";
@@ -20,6 +21,7 @@ export function toSpaceView(space: Space, mediaFolder: string, override?: ShapeO
     ...space,
     shape: polygon && polygon.length >= 3 && labelPosition ? { polygon, labelPosition } : null,
     media: getSpaceMedia(mediaFolder, space.name),
-    href: `/bereiche/${space.slug}`,
+    // the hotel floor is an event add-on on the start page (its old detail page redirects there)
+    href: siteScope.eventOnly && space.type === "hotel" ? "/#hotel" : `/bereiche/${space.slug}`,
   };
 }

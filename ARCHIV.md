@@ -29,13 +29,16 @@ Jede archivierte `page.tsx` trägt oben den Kommentar `// ARCHIV (10/2026): nich
 `src/features/home/Offers.tsx` (rendert bei `showPrices: false` nichts),
 die Hotel-APIs und die Unit-Tests der Hotel-Domäne (laufen weiter mit `npm test`).
 
+Die zugehörigen öffentlichen Hotel-APIs bleiben im Code, antworten aber mit 404: `/api/hotel/reservations`
+solange `eventOnly` gilt, `/api/hotel/availability` zusätzlich solange `showPrices` aus ist.
+
 ## 2. Was sich öffentlich geändert hat
 
 - `/` ist die Eventlocation (vorher `/eventlocation`).
 - `/eventlocation` leitet dauerhaft (308) auf `/` weiter – alte Links funktionieren weiter, `#karte` usw. bleiben erhalten.
 - `/bereiche/hotel` leitet auf `/#hotel` weiter (die ganze Hotel-Etage als Zusatz zur Feier).
 - Navigation: Räume · Raumplaner · Galerie · FAQ · Kontakt, Knopf „Termin anfragen“.
-  Im Footer führt „Hotel & Restaurant“ auf die Hauptseite (`siteScope.mainSiteUrl`).
+  Im Footer führt „Hotel & Zimmer“ auf die Hauptseite (`siteScope.mainSiteUrl`).
 - **Keine Preise** auf der öffentlichen Seite, alles „auf Anfrage“; Anfragen sind unverbindlich.
   Preise bleiben in Datenbank und Admin für interne Angebote.
 - `sitemap.xml` enthält nur noch die öffentlichen Event-Routen.
@@ -79,7 +82,9 @@ git tag archiv/vollversion-2026-10 3a1c7ea       # Tag bei Bedarf neu anlegen un
    git mv _archiv/aktuelles aktuelles
    git mv _archiv/sehenswuerdigkeiten sehenswuerdigkeiten
    # alte Hotel-Startseite wieder als "/": Event-Startseite vorher nach eventlocation/page.tsx zurück
-   git mv page.tsx eventlocation/page.tsx   # (Weiterleitung dort vorher entfernen)
+   git rm eventlocation/page.tsx              # Weiterleitung /eventlocation → / entfernen
+   mkdir -p eventlocation                     # git rm löscht den dann leeren Ordner mit
+   git mv page.tsx eventlocation/page.tsx
    git mv _archiv/start/page.tsx page.tsx
    cd -
    git mv tests/archive/hotel-engine.spec.ts tests/e2e/hotel-engine.spec.ts
@@ -95,6 +100,9 @@ git tag archiv/vollversion-2026-10 3a1c7ea       # Tag bei Bedarf neu anlegen un
 5. **Sitemap** (`src/app/sitemap.ts`) und **StructuredData** (`src/features/home/StructuredData.tsx`,
    Typ `Hotel`) ergänzen.
 6. Prüfen: `npx tsc --noEmit`, `npm test`, `npm run test:e2e`.
+
+Hinweis: Mit `eventOnly: false` nimmt `/api/hotel/reservations` wieder Anfragen an; `/api/hotel/availability`
+liefert erst mit `showPrices: true` wieder Daten.
 
 ## 6. Grundsatz
 

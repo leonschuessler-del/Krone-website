@@ -23,3 +23,26 @@ test("Mobile: Menü öffnet und navigiert", async ({ page }) => {
   await page.waitForURL(/\/galerie$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
+
+test("Mobile: Menü ist auch nach dem Scrollen vollständig sichtbar und schließt mit Escape", async ({ page }) => {
+  await page.goto("/galerie");
+  await page.evaluate(() => window.scrollTo(0, 800));
+  const toggle = page.getByRole("button", { name: "Menü öffnen" });
+  await toggle.click();
+  const nav = page.getByRole("navigation", { name: "Mobile Navigation" });
+  await expect(nav.getByRole("link", { name: "Kontakt" })).toBeInViewport();
+  await expect(page.locator("#mobile-nav").getByRole("link", { name: "Termin anfragen" })).toBeInViewport();
+  const box = await page.locator("#mobile-nav").boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThan(400);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Menü öffnen" })).toHaveAttribute("aria-expanded", "false");
+});
+
+test("Mobile: Anker der Startseite landen von Unterseiten aus am richtigen Abschnitt", async ({ page }) => {
+  await page.goto("/faq");
+  await page.goto("/#bereiche");
+  await expect(page.locator("#bereiche")).toBeInViewport();
+  await page.goto("/galerie");
+  await page.goto("/#hotel");
+  await expect(page.locator("#hotel")).toBeInViewport();
+});

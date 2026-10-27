@@ -42,10 +42,28 @@ export function ScrollTour({ spaces, hero }: Props) {
   const [active, setActive] = useState(0);
   const [announced, setAnnounced] = useState("");
 
+  // With "reduce motion" the film is hidden (motion-reduce:hidden) and the static hero
+  // shows instead: then the player is not mounted at all – no frames fetched or decoded.
+  // Follows the setting live (mount / unmount on change).
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
-    return mountTourPlayer(section, { chapters, map: { width: MAP_W, height: MAP_H }, onActive: setActive });
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let unmount: (() => void) | null = null;
+    const sync = () => {
+      const show = !mq.matches && section.offsetHeight > 0;
+      if (show && !unmount) unmount = mountTourPlayer(section, { chapters, map: { width: MAP_W, height: MAP_H }, onActive: setActive });
+      else if (!show && unmount) {
+        unmount();
+        unmount = null;
+      }
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => {
+      mq.removeEventListener("change", sync);
+      unmount?.();
+    };
   }, [chapters]);
 
   // Screen-reader announcement once the chapter settled and only while pinned.
@@ -79,6 +97,8 @@ export function ScrollTour({ spaces, hero }: Props) {
       <div className="sticky top-0 h-[100svh] w-full overflow-hidden bg-anthracite text-paper">
         {/* IMAGE SEQUENCES (drawn by the tour player) */}
         <picture data-tour-poster>
+          {/* reduced motion: the film is hidden – skip the poster download (1×1 transparent GIF) */}
+          <source media="(prefers-reduced-motion: reduce)" srcSet="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
           <source media="(max-aspect-ratio: 1/1)" srcSet={chapters[0]!.posterPortrait} />
           <img aria-hidden="true" src={chapters[0]!.poster} alt="" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
         </picture>
@@ -121,7 +141,8 @@ export function ScrollTour({ spaces, hero }: Props) {
 
         {/* legibility gradients (faded out by the player in the planner) */}
         <div data-tour-shade className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-t from-anthracite/85 via-anthracite/10 to-anthracite/40" />
+          {/* phones: the text sits mid-picture on the bright roof – a deeper scrim there */}
+          <div className="absolute inset-0 bg-gradient-to-t from-anthracite/90 via-anthracite/50 to-anthracite/40 lg:from-anthracite/85 lg:via-anthracite/10" />
           <div className="absolute inset-0 bg-gradient-to-r from-anthracite/60 via-transparent to-transparent" />
         </div>
 
@@ -169,9 +190,9 @@ export function ScrollTour({ spaces, hero }: Props) {
               return (
                 <div key={c.id} {...common} className={cn("container-page absolute inset-x-0 bottom-0 pb-24 md:pb-28", !isActive && "pointer-events-none")}>
                   <div className="max-w-3xl">
-                    <p className="eyebrow !text-gold-light">{hero.eyebrow}</p>
+                    <p className="eyebrow !text-gold-light [text-shadow:0_1px_8px_rgb(22_19_17/0.85)] max-lg:font-semibold">{hero.eyebrow}</p>
                     <h1 className="mt-5 text-[2.9rem] leading-[1.02] sm:text-6xl lg:text-[5.4rem] short:mt-3 short:text-[2.25rem]">
-                      Willkommen <em className="font-medium text-gold-light">in der Krone.</em>
+                      Willkommen <em className="font-medium text-gold-light [text-shadow:0_2px_14px_rgb(22_19_17/0.7)]">in der Krone.</em>
                     </h1>
                     <p className="mt-6 max-w-xl text-lg leading-relaxed text-paper/85 md:text-xl short:hidden">{hero.subline}</p>
                     <div className="mt-8 flex flex-col gap-3 sm:flex-row short:mt-5">

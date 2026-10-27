@@ -8,16 +8,18 @@ import { env } from "@/lib/env";
 import { getDb } from "@/server/db/client";
 import { listOfferedExtras } from "@/server/services/pricing-service";
 import { listSpaceViews } from "@/server/services/space-service";
+import { pageMeta } from "@/lib/page-metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: siteScope.requestOnly ? "Termin anfragen" : "Buchen & Anfragen",
   description: siteScope.requestOnly
     ? "Räume wählen, freie Termine prüfen und unverbindlich anfragen – Sie erhalten ein individuelles Angebot. Zur Krone Leidersbach."
     : "Bereiche wählen, freie Termine prüfen und direkt buchen oder unverbindlich anfragen – Zur Krone Leidersbach.",
-  robots: { index: false },
-};
+  path: "/buchen",
+  noindex: true,
+});
 
 export default async function BookingPage() {
   const db = await getDb();

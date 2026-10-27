@@ -12,8 +12,7 @@ import { useAvailabilityCheck } from "@/features/availability/use-availability-c
 import { fetchJson, useAsyncResource } from "@/lib/use-async-resource";
 import { AvailabilityResult } from "@/features/booking/AvailabilityResult";
 import { scheduleHasRange, usePriceQuote } from "@/features/booking/hooks";
-import { PriceBreakdown } from "@/features/booking/PriceBreakdown";
-import { provisionalQuote, type ProvisionalExtra } from "@/features/booking/provisional-quote";
+import dynamic from "next/dynamic";
 import { SchedulePicker } from "@/features/booking/SchedulePicker";
 import { SiteMap } from "@/features/map/SiteMap";
 import type { SpaceView } from "@/features/spaces/types";
@@ -22,6 +21,9 @@ import { cn } from "@/lib/cn";
 import { formatDateLong, formatDateTime, formatDuration, formatMoney, formatTime, pluralize } from "@/lib/format";
 import { contactSchema, zodErrorMessages } from "@/server/validation";
 import { useBookingStore } from "@/store/booking-store";
+
+// Loaded only when prices are shown (siteScope.showPrices) – keeps the price breakdown out of the public bundle.
+const PriceBreakdown = dynamic(() => import("@/features/booking/PriceBreakdown").then((m) => m.PriceBreakdown));
 
 export interface WizardExtra {
   id: string;
@@ -93,6 +95,9 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
   const honeypot = useRef<HTMLInputElement>(null);
   const navigatingRef = useRef(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // what should receive focus after the next render: the new step's heading or the first invalid field
+  const focusTarget = useRef<"heading" | "error" | null>(null);
 
   const bookable = useMemo(() => spaces.filter((x) => x.bookable), [spaces]);
   const selected = s.selectedSpaceIds.filter((id) => bookable.some((b) => b.id === id));
@@ -199,7 +204,22 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
     return e;
   }
 
+  // Move focus after the DOM reflects the new step / errors (keyboard and screen-reader users).
+  useEffect(() => {
+    const t = focusTarget.current;
+    focusTarget.current = null;
+    if (t === "heading") headingRef.current?.focus({ preventScroll: true });
+    if (t === "error") {
+      const el = topRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-error-anchor]');
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      // queued after goTo's scroll-to-top so the field stays in view
+      requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "center" }));
+    }
+  }, [step, errors]);
+
   function goTo(target: number) {
+    focusTarget.current = "heading";
     s.setStep(Math.min(Math.max(1, target), LAST_STEP));
     setErrors({});
     setSubmitError(null);
@@ -209,7 +229,10 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
   function next() {
     const e = validateStep(stepId);
     setErrors(e);
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      focusTarget.current = "error";
+      return;
+    }
     if (stepId === "spaces") track("booking_started", { spaces: selected.length });
     goTo(step + 1);
   }
@@ -220,6 +243,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
       if (Object.keys(e).length) {
         goTo(stepNumber(id));
         setErrors(e);
+        focusTarget.current = "error";
         return;
       }
     }
@@ -355,6 +379,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
 
   const chosenExtras = extras.filter((e) => (s.extras[e.id] ?? 0) > 0);
   const eventLabel = eventTypes.find((t) => t.id === s.event.eventType)?.label ?? null;
+  const errorCount = Object.keys(errors).length;
   return (
     <div ref={topRef} className="scroll-mt-28" data-testid="booking-wizard" data-step={step}>
       <Progress step={step} onGoTo={(n) => n < step && goTo(n)} />
@@ -362,7 +387,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:gap-12">
         <div className="min-w-0">
           <div className="card-surface p-5 sm:p-8">
-            <h2 className="font-serif text-3xl" data-testid="step-title">
+            <h2 ref={headingRef} tabIndex={-1} className="font-serif text-3xl outline-none" data-testid="step-title">
               <span className="mr-2 text-gold-dark">{step}.</span>
               {STEP_LABEL[stepId]}
             </h2>
@@ -686,6 +711,11 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
               </div>
             )}
 
+            {/* one announcement for all field errors instead of one alert per field */}
+            <p role="alert" className="sr-only">
+              {errorCount ? `Bitte prüfen Sie ${errorCount === 1 ? "eine markierte Angabe" : `${errorCount} markierte Angaben`}.` : ""}
+            </p>
+
             {/* Navigation */}
             <div className="mt-8 flex flex-col-reverse gap-3 border-t border-sand pt-6 sm:flex-row sm:items-center sm:justify-between">
               {step > 1 ? (
@@ -764,13 +794,9 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                   )
                 ) : (
                   <>
-                    <PriceBreakdown
-                      quote={provisionalQuote(spaces, selected, { extras: extras.map((e) => ({ id: e.id, name: e.name, priceModel: (e.priceModel ?? "on_request") as ProvisionalExtra["priceModel"], unitPrice: e.unitPrice ?? null })), chosenExtras: Object.entries(s.extras).filter(([, n]) => n > 0).map(([id]) => id), guestCount: guests })}
-                      tone="dark"
-                      demo={demo}
-                      showDueNow={false}
-                    />
-                    {selected.length > 0 && <p className="mt-2 text-xs text-paper/50">Vorläufig – Pauschalen Fr–So; weitere Tage und Gästezahl ändern den Betrag.</p>}
+                    {/* without a date the server quote is not fetched – the amounts follow once the date is set */}
+                    <PriceBreakdown quote={q ?? null} tone="dark" demo={demo} showDueNow={false} />
+                    {selected.length > 0 && <p className="mt-2 text-xs text-paper/50">Der Betrag wird berechnet, sobald der Termin feststeht.</p>}
                   </>
                 )}
                 {quote.state === "loading" && <p className="mt-2 text-xs text-paper/50">wird aktualisiert …</p>}
@@ -1060,8 +1086,9 @@ function ModeOption({ checked, disabled, onSelect, title, text }: { checked: boo
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p className="field-error" role="alert">
+    // span (not p): may sit inside a <label>; tabIndex/data-error-anchor let the wizard focus errors without their own field
+    <span className="field-error block" tabIndex={-1} data-error-anchor>
       {message}
-    </p>
+    </span>
   );
 }
