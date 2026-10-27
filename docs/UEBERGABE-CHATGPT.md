@@ -210,7 +210,7 @@ AUTH_SECRET erzeugen: `node -e "console.log(require('crypto').randomBytes(48).to
 | `ARCHIV.md` | was archiviert wurde und wie man es zurückholt |
 
 **Archiv:** Hotel, Zimmerbuchung, Angebote und Sehenswürdigkeiten sind **nicht gelöscht**, sondern
-unter `src/app/(site)/_archiv/` abgelegt (nicht erreichbar) und im Git-Tag `archiv/vollversion-2026-10`
+unter `src/app/(site)/_archiv/` abgelegt (nicht erreichbar) und im Commit `3a1c7ea` (Stand vor dem Umbau)
 gesichert. Details: [ARCHIV.md](../ARCHIV.md).
 
 **Preise wieder einschalten** (nur zur Info, derzeit nicht gewünscht): in `src/config/scope.ts`

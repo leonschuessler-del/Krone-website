@@ -21,7 +21,7 @@ bestehende Website [krone-landhotel.de](https://www.krone-landhotel.de) beim Kno
 
 - `/` ist die Eventlocation; `/eventlocation` leitet dauerhaft auf `/` weiter.
 - Hotel, Zimmerbuchung, Angebote und Sehenswürdigkeiten sind **archiviert, nicht gelöscht**:
-  `src/app/(site)/_archiv/` (nicht geroutet) und Git-Tag `archiv/vollversion-2026-10`.
+  `src/app/(site)/_archiv/` (nicht geroutet) und Commit `3a1c7ea` (Stand vor dem Umbau).
 - **Keine Preise** im Browser, alles „auf Anfrage“; Anfragen sind unverbindlich.
   Schalter: `src/config/scope.ts` (`eventOnly`, `showPrices`, `requestOnly`, `mainSiteUrl`).
 - Was wo liegt und wie man es zurückholt: **[ARCHIV.md](ARCHIV.md)**.

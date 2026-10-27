@@ -59,13 +59,15 @@ verbindliche Buchungen mit Zahlung. Beides ist unabhängig vom Archiv.
 
 ## 4. Vollständiger Stand vor dem Umbau
 
-Lokales Git-Tag **`archiv/vollversion-2026-10`** (Commit `3a1c7ea`) – die komplette Website
-mit Hotel, Buchungsmaschine, Angeboten und Preisen, so wie sie vor dem Umbau war.
+Commit **`3a1c7ea`** auf dem Branch `claude/clever-lovelace-vysb7y` (auf GitHub vorhanden) – die komplette
+Website mit Hotel, Buchungsmaschine, Angeboten und Preisen, so wie sie vor dem Umbau war. Lokal gibt es dazu das
+Git-Tag `archiv/vollversion-2026-10`; auf GitHub liegt nur der Commit (Tags ließen sich aus der Arbeitsumgebung nicht
+hochladen), er bleibt über die Branch-Historie dauerhaft erreichbar.
 
 ```bash
-git show archiv/vollversion-2026-10 --stat      # ansehen
-git checkout archiv/vollversion-2026-10         # ausprobieren (detached HEAD)
-git push origin archiv/vollversion-2026-10      # Tag sichern, falls noch nicht auf dem Server
+git show 3a1c7ea --stat                          # ansehen
+git checkout 3a1c7ea                             # ausprobieren (detached HEAD)
+git tag archiv/vollversion-2026-10 3a1c7ea       # Tag bei Bedarf neu anlegen und mit git push origin --tags sichern
 ```
 
 ## 5. Zurückholen – Schritt für Schritt
@@ -86,7 +88,7 @@ git push origin archiv/vollversion-2026-10      # Tag sichern, falls noch nicht 
    Canonical/Links wieder auf `/eventlocation` setzen.
 2. **Navigation** in `src/config/navigation.ts` erweitern (Hotel, Umgebung, Aktuelles,
    „Zimmer buchen“) und `heroRoutes` um `/hotel`, `/eventlocation`, `/sehenswuerdigkeiten`,
-   `/aktuelles` ergänzen. Die alte Fassung steht im Tag (`git show archiv/vollversion-2026-10:src/config/navigation.ts`).
+   `/aktuelles` ergänzen. Die alte Fassung steht im Tag (`git show 3a1c7ea:src/config/navigation.ts`).
 3. **Weiterleitungen** zurücknehmen: `src/app/(site)/bereiche/hotel/page.tsx` wieder auf `/hotel`.
 4. **Schalter** in `src/config/scope.ts` setzen (`eventOnly: false`, bei Bedarf `showPrices: true`,
    `requestOnly: false`).
