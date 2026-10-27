@@ -11,7 +11,7 @@ import frameCounts from "@/generated/tour-frames.json";
  *  Wintergarten → Biergarten → Küche → Alte Wirtschaft → Hotel → Blick von oben.
  *
  *  Each chapter is an image sequence (/public/media/tour/frames/<id>/{d,m}/,
- *  packed 6 frames per file; d = 16:9 1920×1080, m = 9:16 810×1440 for phones)
+ *  packed 6 frames per file; d = 16:9 1920×1080, m = 9:16 720×1280 for phones)
  *  drawn on a canvas. Unlike video seeking this scrubs smoothly in every
  *  browser (incl. iOS Safari and embedded viewers) and in both directions.
  *  The grading/extraction pipeline is documented in docs/MEDIA.md.

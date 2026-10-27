@@ -83,9 +83,10 @@ export function ScrollTour({ spaces, hero }: Props) {
           <img aria-hidden="true" src={chapters[0]!.poster} alt="" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />
         </picture>
         <canvas data-tour-canvas className="absolute inset-0 h-full w-full" aria-hidden="true" />
-        {/* blurred photo behind the planner, where the map no longer covers the screen */}
+        {/* blurred photo behind the planner, where the map no longer covers the screen.
+            Pre-blurred tiny image (1 KB) instead of a CSS blur filter: no full-screen blur per frame. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img data-tour-backdrop src="/media/floorplan/aerial-1280.webp" alt="" aria-hidden="true" loading="lazy" className="tour-backdrop absolute inset-0 h-full w-full object-cover" style={{ opacity: 0, visibility: "hidden" }} />
+        <img data-tour-backdrop src="/media/tour/planner-backdrop.webp" alt="" aria-hidden="true" decoding="async" className="tour-backdrop absolute inset-0 h-full w-full object-cover" style={{ opacity: 0, visibility: "hidden" }} />
 
         {/* FINALE: drone photo from above with the bookable areas */}
         <div
@@ -96,7 +97,7 @@ export function ScrollTour({ spaces, hero }: Props) {
           aria-hidden="true"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mapConfig.baseLayer.src} srcSet={mapConfig.baseLayer.srcSet} sizes="150vw" alt="" className="absolute inset-0 h-full w-full" draggable={false} loading="lazy" />
+          <img src={mapConfig.baseLayer.src} srcSet={mapConfig.baseLayer.srcSet} sizes="150vw" alt="" className="absolute inset-0 h-full w-full" draggable={false} loading="lazy" decoding="async" fetchPriority="low" />
           <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="absolute inset-0 h-full w-full will-change-transform">
             <g data-tour-areas style={{ opacity: 0 }}>
               {mapFeatures
@@ -139,7 +140,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                 aria-label={`${s.name} ${on ? "abwählen" : "auswählen"}`}
                 tabIndex={-1}
                 onClick={() => toggleSpace(s.id, s.requires)}
-                className="tour-label absolute left-0 top-0 inline-flex items-center gap-2 whitespace-nowrap rounded-full border py-0.5 pl-0.5 shadow-[0_8px_20px_-8px_rgb(0_0_0/0.8)] backdrop-blur-md transition-colors"
+                className="tour-label absolute left-0 top-0 inline-flex items-center gap-2 whitespace-nowrap rounded-full border py-0.5 pl-0.5 shadow-[0_8px_20px_-8px_rgb(0_0_0/0.8)] transition-colors"
               >
                 <span className="tour-label-code grid h-7 min-w-7 place-items-center rounded-full px-1 font-serif text-[0.78rem] font-semibold">{s.code}</span>
                 <span className="tour-label-name pr-3 font-serif text-[0.92rem] leading-none">{s.name}</span>
@@ -149,7 +150,7 @@ export function ScrollTour({ spaces, hero }: Props) {
           {mapFeatures
             .filter((f) => f.type === "parking")
             .map((f) => (
-              <span key={f.id} data-x={f.labelPosition.x} data-y={f.labelPosition.y} className="tour-parking absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/60 py-0.5 pl-0.5 pr-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-paper/85 backdrop-blur-sm" aria-hidden="true">
+              <span key={f.id} data-x={f.labelPosition.x} data-y={f.labelPosition.y} className="tour-parking absolute left-0 top-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/75 py-0.5 pl-0.5 pr-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-paper/85" aria-hidden="true">
                 <span className="grid h-5 w-5 place-items-center rounded-full border border-white/40 text-[0.62rem] font-bold">P</span>
                 {f.label}
               </span>
@@ -177,7 +178,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                       <button type="button" data-tour-start className="inline-flex h-13 items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#d4b06a] to-[#b8904a] px-7 font-semibold text-anthracite shadow-[0_8px_20px_-10px_rgb(138_106_47/0.9)]">
                         Rundgang starten <ArrowDown className="h-4 w-4" />
                       </button>
-                      <Link href="#karte" data-tour-jump="planner" prefetch={false} className="inline-flex h-13 items-center justify-center rounded-full border border-white/20 bg-white/5 px-7 font-semibold backdrop-blur hover:bg-white/10">
+                      <Link href="#karte" data-tour-jump="planner" prefetch={false} className="inline-flex h-13 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] px-7 font-semibold transition-colors hover:bg-white/15">
                         Direkt zum Raumplaner
                       </Link>
                     </div>
@@ -198,7 +199,7 @@ export function ScrollTour({ spaces, hero }: Props) {
                   <h2 className="mt-3 text-5xl md:text-7xl short:text-4xl">{s.name}</h2>
                   {s.shortDescription && <p className="mt-4 text-lg text-paper/85 [@media(max-height:440px)]:hidden">{s.shortDescription}</p>}
                   <div className="mt-6 flex flex-wrap gap-3">
-                    <Link href={s.href} className="inline-flex h-11 items-center rounded-full border border-white/25 bg-white/5 px-5 font-semibold backdrop-blur hover:bg-white/15" tabIndex={isActive ? 0 : -1}>
+                    <Link href={s.href} className="inline-flex h-11 items-center rounded-full border border-white/25 bg-white/[0.08] px-5 font-semibold transition-colors hover:bg-white/15" tabIndex={isActive ? 0 : -1}>
                       Details ansehen
                     </Link>
                     {s.bookable && <SelectSpaceButton spaceId={s.id} name={s.name} requires={s.requires} className="h-11" />}
@@ -238,7 +239,7 @@ export function ScrollTour({ spaces, hero }: Props) {
         <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10" aria-hidden="true">
           <div data-tour-progress className="h-full origin-left bg-gradient-to-r from-gold to-gold-light" style={{ transform: "scaleX(0)" }} />
         </div>
-        <Link data-tour-skip data-tour-jump="planner" href="#karte" prefetch={false} className="absolute bottom-5 right-5 hidden items-center gap-1.5 rounded-full border border-white/15 bg-anthracite/50 px-3.5 py-1.5 text-xs font-semibold text-paper/85 backdrop-blur hover:text-paper sm:inline-flex">
+        <Link data-tour-skip data-tour-jump="planner" href="#karte" prefetch={false} className="absolute bottom-5 right-5 hidden items-center gap-1.5 rounded-full border border-white/15 bg-anthracite/70 px-3.5 py-1.5 text-xs font-semibold text-paper/85 transition-colors hover:text-paper sm:inline-flex">
           {tourConfig.copy.skip} <ArrowDown className="h-3.5 w-3.5" />
         </Link>
         <p className="sr-only" aria-live="polite">
