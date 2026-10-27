@@ -4,6 +4,9 @@ import { defineConfig, devices } from "@playwright/test";
  * E2E tests run against a production build with a fresh in-memory demo
  * database (PGlite), so they never touch local development data.
  *   npm run test:e2e
+ *
+ * Only tests/e2e runs. Specs of archived pages (hotel booking engine, 10/2026)
+ * live in tests/archive and are deliberately outside testDir – see ARCHIV.md.
  */
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 

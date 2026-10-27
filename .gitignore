@@ -33,3 +33,6 @@ skills-lock.json
 
 # python tooling
 __pycache__/
+
+# agent worktrees
+.claude/worktrees/

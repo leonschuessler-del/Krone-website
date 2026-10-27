@@ -1,4 +1,5 @@
 import { asc, eq } from "drizzle-orm";
+import { siteScope } from "@/config/scope";
 import type { Space } from "@/domain/types";
 import type { SpaceView } from "@/features/spaces/types";
 import { getDb, type Database } from "@/server/db/client";
@@ -68,15 +69,48 @@ export async function listSpaces(db?: Database, options: { includeInactive?: boo
   return rows.map((r) => rowToSpace(r, feats.get(r.id) ?? []));
 }
 
-export async function listSpaceViews(db?: Database, options: { includeInactive?: boolean } = {}): Promise<SpaceView[]> {
+/** Price-related facts of a space – never part of a public view while prices are hidden. */
+const PRICE_FACTS = new Set<string>(["basePrice", "priceModel", "deposit", "cleaningFee"]);
+
+/**
+ * The public face of a space. With `siteScope.showPrices === false` every
+ * amount (rent, deposit, cleaning fee) is removed and the price model reads
+ * "on_request" – so nothing priced reaches the browser, neither as rendered
+ * text nor inside the props serialised into the RSC payload or an API answer.
+ * Prices stay in the database and in the admin for internal quotes.
+ */
+export function toPublicSpaceView(view: SpaceView): SpaceView {
+  if (siteScope.showPrices) return view;
+  return {
+    ...view,
+    basePrice: null,
+    priceModel: "on_request",
+    deposit: null,
+    cleaningFee: null,
+    needsVerification: view.needsVerification.filter((f) => !PRICE_FACTS.has(f)),
+  };
+}
+
+/**
+ * Spaces as the pages and public APIs receive them. Public by default (see
+ * toPublicSpaceView); internal callers that need the amounts pass
+ * `includePrices: true` – never hand such a view to a client component.
+ */
+export async function listSpaceViews(db?: Database, options: { includeInactive?: boolean; includePrices?: boolean } = {}): Promise<SpaceView[]> {
   const d = db ?? (await getDb());
   const [rows, feats] = await Promise.all([listSpaceRows(d, options), featuresBySpace(d)]);
-  return rows.map((r) =>
+  const views = rows.map((r) =>
     toSpaceView(rowToSpace(r, feats.get(r.id) ?? []), r.mediaFolder, {
       polygon: r.polygonOverride ?? null,
       labelPosition: r.labelPositionOverride ?? null,
     }),
   );
+  return options.includePrices ? views : views.map(toPublicSpaceView);
+}
+
+/** Explicit name for the public list – identical to listSpaceViews() without `includePrices`. */
+export function listPublicSpaceViews(db?: Database, options: { includeInactive?: boolean } = {}): Promise<SpaceView[]> {
+  return listSpaceViews(db, { includeInactive: options.includeInactive });
 }
 
 export async function getSpaceViewBySlug(slug: string, db?: Database): Promise<SpaceView | null> {

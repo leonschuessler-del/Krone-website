@@ -1,3 +1,4 @@
+// ARCHIV (10/2026): nicht geroutet, siehe ARCHIV.md
 import type { Metadata } from "next";
 import { BookingEngine } from "@/features/hotel/engine/BookingEngine";
 import { engineRooms } from "@/features/hotel/engine/rooms.server";

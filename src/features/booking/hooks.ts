@@ -1,5 +1,6 @@
 "use client";
 
+import { siteScope } from "@/config/scope";
 import type { Quote } from "@/domain/pricing";
 import type { AvailabilityCalendarResponse } from "@/features/availability/api-types";
 import { fetchJson, useAsyncResource } from "@/lib/use-async-resource";
@@ -13,7 +14,10 @@ export function scheduleHasRange(s: ScheduleDraft): boolean {
   return Boolean(s.startTime && s.endTime);
 }
 
-/** Server-side price quote for the current selection (debounced). */
+/**
+ * Server-side price quote for the current selection (debounced).
+ * Never fetches while the site shows no prices (the endpoint answers 404 then).
+ */
 export function usePriceQuote(
   spaceIds: string[],
   schedule: ScheduleDraft,
@@ -31,7 +35,7 @@ export function usePriceQuote(
     extras: Object.entries(extras).map(([extraId, quantity]) => ({ extraId, quantity })),
   };
   const key = JSON.stringify({ ...body, spaceIds: [...spaceIds].sort() });
-  const active = enabled && spaceIds.length > 0 && scheduleHasRange(schedule);
+  const active = siteScope.showPrices && enabled && spaceIds.length > 0 && scheduleHasRange(schedule);
   return useAsyncResource<QuoteResponse>(
     key,
     active,

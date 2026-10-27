@@ -1,3 +1,4 @@
+import { siteScope } from "@/config/scope";
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import type { Database } from "@/server/db/client";
@@ -9,6 +10,10 @@ import { emailLog } from "@/server/db/schema";
  *    in `email_log` and can be viewed in the admin (/admin/emails).
  *  - EMAIL_PROVIDER=resend: sent via the Resend HTTP API (needs EMAIL_API_KEY
  *    and EMAIL_FROM). DEMO_MODE always forces preview.
+ *
+ * Prices: while siteScope.showPrices === false no customer mail carries an
+ * amount – renderEmail drops `totalLabel` for every template that does not go
+ * to the operator (INTERNAL_TEMPLATES), whatever the caller passes.
  */
 
 export type EmailTemplate =
@@ -38,6 +43,11 @@ export interface EmailContext {
   spaces?: string[];
   dateLabel?: string;
   timeLabel?: string;
+  eventLabel?: string;
+  guestsLabel?: string;
+  /** chosen add-ons, names only (e.g. "Hüpfburg, Getränkepaket (2×)") */
+  extrasLabel?: string;
+  /** Amount – customer mails only show it while siteScope.showPrices is true. */
   totalLabel?: string;
   handoverLabel?: string;
   message?: string;
@@ -47,6 +57,11 @@ export interface EmailContext {
   phone?: string;
 }
 
+/** Mails to the operator – the only ones that may carry amounts when prices are hidden. */
+const INTERNAL_TEMPLATES: ReadonlySet<EmailTemplate> = new Set<EmailTemplate>(["operator_new_request", "operator_new_hotel_request", "contact_message"]);
+
+const isInquiryNumber = (n?: string) => Boolean(n?.startsWith("KA"));
+
 const TEMPLATES: Record<EmailTemplate, (c: EmailContext) => { subject: string; body: string[] }> = {
   booking_request_received: (c) => ({
     subject: `Ihre Buchung ${c.bookingNumber} – Zur Krone`,
@@ -54,7 +69,12 @@ const TEMPLATES: Record<EmailTemplate, (c: EmailContext) => { subject: string; b
   }),
   inquiry_received: (c) => ({
     subject: `Ihre Anfrage ${c.bookingNumber} – Zur Krone`,
-    body: [`Guten Tag ${c.customerName},`, `vielen Dank für Ihre unverbindliche Anfrage. Wir melden uns schnellstmöglich bei Ihnen.`],
+    body: [
+      `Guten Tag ${c.customerName},`,
+      `vielen Dank für Ihre unverbindliche Anfrage – sie ist bei uns eingegangen.`,
+      `Wir prüfen Termin, Räume und Ihre Wünsche und senden Ihnen ein individuelles Angebot. Gebucht ist erst, wenn Sie das Angebot annehmen.`,
+      c.phone ? `Fragen vorab? Sie erreichen uns unter ${c.phone}.` : ``,
+    ].filter(Boolean),
   }),
   booking_confirmed: (c) => ({
     subject: `Bestätigung ${c.bookingNumber} – Zur Krone`,
@@ -101,11 +121,13 @@ const TEMPLATES: Record<EmailTemplate, (c: EmailContext) => { subject: string; b
   }),
   hotel_payment_received: (c) => ({
     subject: `Zahlung erhalten – Zimmerreservierung ${c.bookingNumber}`,
-    body: [`Guten Tag ${c.customerName},`, `vielen Dank – Ihre Zahlung über ${c.totalLabel} für die Reservierung ${c.bookingNumber} ist eingegangen.`, `Wir prüfen die Zimmer und bestätigen Ihnen die Reservierung persönlich. Sollte ein Zimmer wider Erwarten nicht frei sein, erstatten wir den Betrag vollständig.`],
+    body: [`Guten Tag ${c.customerName},`, `vielen Dank – Ihre Zahlung${siteScope.showPrices && c.totalLabel ? ` über ${c.totalLabel}` : ""} für die Reservierung ${c.bookingNumber} ist eingegangen.`, `Wir prüfen die Zimmer und bestätigen Ihnen die Reservierung persönlich. Sollte ein Zimmer wider Erwarten nicht frei sein, erstatten wir den Betrag vollständig.`],
   }),
   hotel_card_guaranteed: (c) => ({
     subject: `Karte hinterlegt – Zimmerreservierung ${c.bookingNumber}`,
-    body: [`Guten Tag ${c.customerName},`, `Ihre Karte sichert die Reservierung ${c.bookingNumber}. Es wurde nichts abgebucht.`, `Bezahlt wird im Hotel. Belastet wird die Karte nur bei Nichtanreise oder einer Stornierung innerhalb von zwei Tagen vor der Anreise (80 % des Gesamtpreises, bei Nichtanreise der Gesamtpreis).`],
+    body: [`Guten Tag ${c.customerName},`, `Ihre Karte sichert die Reservierung ${c.bookingNumber}. Es wurde nichts abgebucht.`, siteScope.showPrices
+        ? `Bezahlt wird im Hotel. Belastet wird die Karte nur bei Nichtanreise oder einer Stornierung innerhalb von zwei Tagen vor der Anreise (80 % des Gesamtpreises, bei Nichtanreise der Gesamtpreis).`
+        : `Bezahlt wird im Hotel. Belastet wird die Karte nur bei Nichtanreise oder einer kurzfristigen Stornierung gemäß unseren Stornobedingungen.`],
   }),
   hotel_confirmed: (c) => ({
     subject: `Ihre Zimmerreservierung ${c.bookingNumber} ist bestätigt – Zur Krone`,
@@ -124,8 +146,12 @@ const TEMPLATES: Record<EmailTemplate, (c: EmailContext) => { subject: string; b
     body: [`Neue Zimmeranfrage von ${c.customerName}.`, c.message ? `Nachricht: ${c.message}` : ``, `Bestätigen oder ablehnen: Verwaltungsbereich → Hotel.`].filter(Boolean),
   }),
   operator_new_request: (c) => ({
-    subject: `Neue ${c.bookingNumber?.startsWith("KA") ? "Anfrage" : "Buchung"} ${c.bookingNumber}`,
-    body: [`Neue Online-${c.bookingNumber?.startsWith("KA") ? "Anfrage" : "Buchung"} von ${c.customerName}.`, c.message ? `Nachricht: ${c.message}` : ``, `Annehmen oder ablehnen: im Verwaltungsbereich unter „Buchungen“.`].filter(Boolean),
+    subject: `Neue ${isInquiryNumber(c.bookingNumber) ? "Anfrage" : "Buchung"} ${c.bookingNumber}`,
+    body: [
+      `Neue Online-${isInquiryNumber(c.bookingNumber) ? "Anfrage" : "Buchung"} von ${c.customerName}${c.phone ? ` (Tel. ${c.phone})` : ""}.`,
+      c.message ? `Nachricht: ${c.message}` : ``,
+      `Annehmen oder ablehnen: im Verwaltungsbereich unter „Buchungen“.`,
+    ].filter(Boolean),
   }),
   contact_message: (c) => ({
     subject: `Kontaktanfrage von ${c.customerName}`,
@@ -138,21 +164,28 @@ function escapeHtml(s: string): string {
 }
 
 export function renderEmail(template: EmailTemplate, ctx: EmailContext): { subject: string; html: string; text: string } {
-  const { subject, body } = TEMPLATES[template](ctx);
+  const internal = INTERNAL_TEMPLATES.has(template);
+  // no amount in any customer mail while the site shows no prices
+  const c: EmailContext = siteScope.showPrices || internal ? ctx : { ...ctx, totalLabel: undefined };
+  const { subject, body } = TEMPLATES[template](c);
   const details: Array<[string, string | undefined]> = [
-    ["Referenz", ctx.bookingNumber],
-    ["Bereiche", ctx.spaces?.join(", ")],
-    ["Datum", ctx.dateLabel],
-    ["Zeitraum", ctx.timeLabel],
-    ["Übergabe", ctx.handoverLabel],
-    ["Preis", ctx.totalLabel],
+    ["Referenz", c.bookingNumber],
+    ["Bereiche", c.spaces?.join(", ")],
+    ["Datum", c.dateLabel],
+    ["Zeitraum", c.timeLabel],
+    ["Anlass", c.eventLabel],
+    ["Gäste", c.guestsLabel],
+    ["Zusatzleistungen", c.extrasLabel],
+    ["Übergabe", c.handoverLabel],
+    [internal ? "Preis (intern)" : "Preis", c.totalLabel],
   ];
+  const viewLabel = isInquiryNumber(c.bookingNumber) ? "Anfrage" : "Buchung";
   const rows = details.filter(([, v]) => v);
   const text = [
     ...body,
     "",
     ...rows.map(([k, v]) => `${k}: ${v}`),
-    ctx.bookingUrl ? `\nBuchung ansehen: ${ctx.bookingUrl}` : "",
+    c.bookingUrl ? `\n${viewLabel} ansehen: ${c.bookingUrl}` : "",
     "",
     `${siteConfig.name} · ${siteConfig.address.postalCode} ${siteConfig.address.city}`,
     env.demoMode ? "\n[DEMO – diese E-Mail wurde nicht versendet]" : "",
@@ -163,7 +196,7 @@ export function renderEmail(template: EmailTemplate, ctx: EmailContext): { subje
 <tr><td style="background:#1c1917;padding:24px 32px;color:#d8bb7e;font-family:Georgia,serif;font-size:22px;letter-spacing:4px">ZUR KRONE</td></tr>
 <tr><td style="padding:32px">${body.map((p) => `<p style="margin:0 0 14px;line-height:1.55">${escapeHtml(p)}</p>`).join("")}
 ${rows.length ? `<table role="presentation" cellpadding="6" style="margin:18px 0;border-top:1px solid #e8dfcd;width:100%">${rows.map(([k, v]) => `<tr><td style="color:#6b6158;width:120px">${escapeHtml(k)}</td><td><strong>${escapeHtml(v!)}</strong></td></tr>`).join("")}</table>` : ""}
-${ctx.bookingUrl ? `<p><a href="${escapeHtml(ctx.bookingUrl)}" style="display:inline-block;background:#b8904a;color:#1c1917;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:bold">Buchung anzeigen</a></p>` : ""}
+${c.bookingUrl ? `<p><a href="${escapeHtml(c.bookingUrl)}" style="display:inline-block;background:#b8904a;color:#1c1917;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:bold">${viewLabel} anzeigen</a></p>` : ""}
 ${env.demoMode ? `<p style="color:#a5711d;font-size:12px">DEMO – diese E-Mail wurde nicht versendet.</p>` : ""}
 </td></tr><tr><td style="padding:18px 32px;background:#fbf8f2;color:#6b6158;font-size:12px">${escapeHtml(siteConfig.name)} · ${escapeHtml(siteConfig.address.postalCode)} ${escapeHtml(siteConfig.address.city)}</td></tr>
 </table></td></tr></table></body></html>`;

@@ -155,32 +155,21 @@ body { font-size: 1rem; }
 .pv-check-row { flex-direction: row !important; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .pv-check-row input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-gold-dark); }
 
-/* prices, add-ons, hotel */
-.pv-price { margin-top: 0.25rem; font-size: 0.92rem; }
-.pv-price > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--color-sand); }
-.pv-price dt small { display: block; color: var(--color-muted); font-size: 0.75rem; }
-.pv-price dd { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pv-price .pv-price-sum { margin-top: 0.4rem; border-top: 2px solid var(--color-sand); }
-.pv-price .pv-price-total { border-bottom: 0; font-weight: 600; font-size: 1.15rem; }
+/* add-ons (no prices: "Preis auf Anfrage") */
 .pv-choices-list { display: grid; gap: 0.5rem; }
 .pv-choices-list .pv-choice { align-items: center; }
-.pv-choice-price { margin-left: auto; white-space: nowrap; font-weight: 600; }
+.pv-choice-price { margin-left: auto; max-width: 7.5rem; text-align: right; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-gold-dark); }
 .pv-choice.is-fixed { border-color: var(--color-gold); background: var(--color-gold-pale); }
 .pv-choice.is-off { opacity: 0.5; }
 .pv-guests { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--color-muted); }
 .pv-guests input { height: 2.6rem; border-radius: 0.75rem; border: 1px solid var(--color-stone); padding: 0 0.75rem; color: var(--color-ink); }
 .pv-rule { display: block; margin-top: 0.4rem; font-size: 0.8rem; color: #a5711d; }
-.pv-hotel-dates { margin-top: 1rem; }
-.pv-hotel-dates label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--color-muted); }
-.pv-hotel-dates input { height: 2.8rem; border-radius: 0.75rem; border: 1px solid var(--color-stone); padding: 0 0.75rem; font-family: var(--font-serif); font-size: 1.1rem; color: var(--color-ink); }
-.pv-hotel-total { display: flex; justify-content: space-between; align-items: baseline; margin: 0.25rem 0 0; }
-.pv-hotel-total strong { font-family: var(--font-serif); font-size: 1.5rem; }
 
 .pv-dialog-top { z-index: 110; }
 .pv-dialog-top .pv-backdrop { background: rgb(21 18 15 / 0.55); }
 .pv-back { display: inline-flex; align-items: center; height: 2.4rem; padding: 0 0.9rem; border-radius: 999px; border: 1px solid var(--color-stone); background: #fff; font-weight: 600; font-size: 0.85rem; }
 .pv-total-line { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-top: 1.25rem; padding: 0.75rem 1rem; border-radius: 0.9rem; background: var(--color-cream); font-size: 0.9rem; color: var(--color-muted); }
-.pv-total-line strong { font-family: var(--font-serif); font-size: 1.4rem; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.pv-total-line strong { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 500; color: var(--color-ink); }
 .pv-day.is-range { background: var(--color-gold-pale); border-color: var(--color-gold); }
 .pv-h3 { margin-top: 1.25rem; font-size: 1.25rem; }
 
@@ -189,51 +178,7 @@ body { font-size: 1rem; }
 .pv-grid-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
 .pv-grid-item:hover img { transform: scale(1.04); }
 
-.pv-tip { margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; border: 1px solid rgb(184 144 74 / 0.5); background: var(--color-gold-pale); font-size: 0.82rem; color: #5d4413; }
-.pv-choice-price small { display: block; font-weight: 500; font-size: 0.7rem; color: var(--color-muted); }
-
-/* hotel: arrival/departure calendar + room steppers */
-.pv-stay-dates { gap: 0.6rem; }
-.pv-stay-date { flex: 1; border: 1px solid var(--color-stone); border-radius: 0.9rem; padding: 0.6rem 0.9rem; background: #fff; display: grid; gap: 0.15rem; }
-.pv-stay-date small { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); font-weight: 700; }
-.pv-stay-date strong { font-family: var(--font-serif); font-size: 1.1rem; }
-.pv-stay-date.is-active { border-color: var(--color-gold); box-shadow: 0 0 0 2px rgb(184 144 74 / 0.25); }
-.pv-stay-cal { margin-top: 0.75rem; }
-.pv-stay-months { display: grid; gap: 1rem; }
-@media (min-width: 760px) { .pv-stay-months { grid-template-columns: 1fr 1fr; } }
-.pv-stay-month > strong { display: block; text-align: center; font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 0.4rem; }
-.pv-day.is-range { background: var(--color-gold-pale); }
-.pv-room { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; cursor: default; }
-.pv-room > span:first-child { display: grid; gap: 0.15rem; min-width: 0; flex: 1; }
-.pv-room.is-on { border-color: var(--color-gold); box-shadow: 0 0 0 2px rgb(184 144 74 / 0.25); }
-.pv-stepper { display: inline-flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-.pv-stepper button { width: 2.2rem; height: 2.2rem; border-radius: 999px; border: 1px solid var(--color-stone); background: #fff; font-size: 1.2rem; line-height: 1; }
-.pv-stepper button:last-child { background: var(--color-anthracite); color: var(--color-paper); border-color: transparent; }
-.pv-stepper button:disabled { opacity: 0.3; }
-.pv-stepper b { min-width: 1.4rem; text-align: center; font-family: var(--font-serif); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
-.pv-stay-sum p { display: flex; justify-content: space-between; margin: 0.15rem 0; font-size: 0.9rem; }
-.pv-stay-sum .pv-good { color: #3f6b3a; }
-
-/* relaunch: hotel CTA replaces the React widget, big buttons, map box */
-.pv-hotel-cta { display: grid; gap: 0.9rem; justify-items: start; padding: 2rem; border: 1px solid var(--color-sand); background: #fff; }
-.pv-btn-lg { height: 3.5rem; padding: 0 2rem; }
+/* map box */
 [data-pv-map] .leaflet-container { position: absolute; inset: 0; font-family: var(--font-sans); }
 
-/* hotel dialog: guests on top, suggestions, big counters */
-.pv-stay-guests select { font-family: var(--font-serif); font-size: 1.1rem; border: 0; background: transparent; padding: 0; color: var(--color-ink); }
-.pv-suggest-title { margin-top: 1.25rem; }
-.pv-suggest { display: grid; gap: 0.6rem; margin-top: 0.6rem; }
-@media (min-width: 640px) { .pv-suggest { grid-template-columns: 1fr 1fr; } }
-.pv-suggest-card { text-align: left; border: 1px solid var(--color-sand); background: #fff; border-radius: 1rem; padding: 0.9rem 1rem; display: grid; gap: 0.2rem; cursor: pointer; }
-.pv-suggest-card.is-on { border-color: var(--color-gold); box-shadow: 0 0 0 2px rgb(188 134 32 / 0.25); }
-.pv-suggest-card strong { font-family: var(--font-serif); font-size: 1.15rem; }
-.pv-suggest-card span { font-size: 0.8rem; color: var(--color-muted); }
-.pv-suggest-card b { font-family: var(--font-serif); font-size: 1.25rem; justify-self: end; }
-.pv-suggest-card b small { font-family: var(--font-sans); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-muted); }
-.pv-tag { display: inline-block; justify-self: start; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--color-cream); color: var(--color-gold-dark); }
-.pv-tag.is-best { background: #e5eddf; color: #3f6b3a; }
-.pv-stepper { gap: 0.25rem; padding: 0.25rem; border-radius: 999px; border: 1px solid var(--color-sand); background: var(--color-cream); }
-.pv-room.is-on .pv-stepper { border-color: var(--color-gold); background: var(--color-gold-pale); }
-.pv-stepper button { width: 2.6rem; height: 2.6rem; border: 0; }
-.pv-stepper b { min-width: 2.2rem; font-size: 1.7rem; font-weight: 600; }
 .leaflet-container { font-family: var(--font-sans); }

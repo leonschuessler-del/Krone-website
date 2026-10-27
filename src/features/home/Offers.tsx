@@ -5,14 +5,20 @@ import { FLOOR_NIGHT_TIERS, FLOOR_PRICE_PER_NIGHT, FLOOR_ROOMS_SUM, LONG_STAY_NI
 import { LASTMINUTE_DAYS, OFFERS, upcomingWeekends } from "@/domain/offers";
 import { todayLocal } from "@/domain/time";
 import { formatDateMedium, formatMoney } from "@/lib/format";
+import { siteScope } from "@/config/scope";
 
 /**
  * "Angebote": the automatic offers of the pricing engine, explained once on the
  * home page. Nothing here is a manual discount – every card mirrors a rule in
  * domain/offers.ts or content/hotel.ts, so the price shown in the request is
  * always the price promised here.
+ *
+ * Event-only scope (10/2026, siteScope.showPrices === false): every card is a
+ * price or discount, so the whole section renders nothing – it is no longer
+ * placed on the start page, the guard only keeps it from leaking if reused.
  */
 export function Offers() {
+  if (!siteScope.showPrices) return null;
   const today = todayLocal();
   const weekends = upcomingWeekends(today);
   // Rooms are never discounted (LONG_STAY_PERCENT is 0): the floor card shows the night tiers instead.
@@ -29,7 +35,7 @@ export function Offers() {
       title: `${OFFERS.lastminute.percent} % auf die Raummiete`,
       text: `Ein Wochenende in den nächsten ${LASTMINUTE_DAYS} Tagen, das noch frei ist? Dann rechnet der Preis den Vorteil automatisch ab – ohne Code, ohne Nachfragen.`,
       detail: weekends.length ? `Nächste Termine: ${weekends.map((d) => formatDateMedium(d)).join(" · ")}` : null,
-      href: "/anfrage",
+      href: "/buchen",
       cta: "Wochenende prüfen",
     },
     {
@@ -38,7 +44,7 @@ export function Offers() {
       title: `${OFFERS.midweek.percent} % Montag bis Donnerstag`,
       text: "Firmenfeier, Trauerkaffee oder Geburtstag unter der Woche: Die Raummiete sinkt um zehn Prozent, Service und Zusatzleistungen bleiben gleich.",
       detail: "Gilt für Mietzeiten bis drei Tage.",
-      href: "/anfrage",
+      href: "/buchen",
       cta: "Termin finden",
     },
     {
@@ -47,7 +53,7 @@ export function Offers() {
       title: "7 Tage zum Preis von 6",
       text: "Die Pauschale gilt für bis zu drei Tage, jeder weitere Tag kostet 100 € – ab dem siebten Tag nichts mehr.",
       detail: "Aufbau am Donnerstag, Feier am Samstag, Abbau am Montag – alles in einer Pauschale.",
-      href: "/anfrage",
+      href: "/buchen",
       cta: "Woche planen",
     },
     {

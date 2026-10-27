@@ -14,6 +14,9 @@ import type { Space } from "@/domain/types";
  * (function and approximate position on the property) and are marked as
  * placeholders.
  *
+ * Public site (siteScope.showPrices === false): basePrice/priceModel/deposit stay
+ * here for the seed and the admin only – no customer text names a price.
+ *
  * Map geometry (polygons, label positions) lives in `src/config/floorplan.ts`.
  */
 
@@ -224,11 +227,11 @@ export const spaceSeeds: SpaceSeed[] = [
     includedInFullVenue: false,
     availableForStandaloneRental: true,
     bookingMode: "inquiry",
-    shortDescription: "Übernachten im Haus: acht Doppelzimmer, zwei Einzelzimmer und ein Apartment im Obergeschoss, Frühstück inklusive.",
+    shortDescription: "Übernachten im Haus: acht Doppelzimmer, zwei Einzelzimmer und ein Apartment im Obergeschoss, mit Frühstück.",
     longDescription:
       "Im Obergeschoss über Restaurant, Nebenzimmer und Bühne liegt das Landhotel: acht Doppelzimmer, zwei Einzelzimmer und ein Apartment, " +
-      "alle mit eigenem Bad, dazu ein heller Flur und ein Aufenthaltsraum mit Balkon. Die Zimmer werden einzeln gebucht, " +
-      "Frühstück ist inklusive – ideal für Gäste einer Feier im Haus, aber ebenso für Reisende im Spessart.",
+      "alle mit eigenem Bad, dazu ein heller Flur und ein Aufenthaltsraum mit Balkon. " +
+      "Frühstück gibt es am Morgen im Haus. Zu Ihrer Feier fragen Sie die ganze Etage als Zusatzleistung mit an; einzelne Zimmer buchen Ihre Gäste über die Hauptseite der Krone.",
     needsVerification: [...UNKNOWN_FACTS, "apartmentPrice"],
   },
 ];

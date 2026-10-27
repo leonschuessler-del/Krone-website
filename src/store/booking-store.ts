@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { siteScope } from "@/config/scope";
 import type { RentalMode, SpaceId } from "@/domain/types";
 import { track } from "@/lib/analytics";
 
@@ -120,6 +121,11 @@ const emptyContact: ContactDraft = {
 
 const unique = (ids: SpaceId[]) => Array.from(new Set(ids));
 
+type SubmissionMode = BookingDraftState["submissionMode"];
+/** With siteScope.requestOnly every submission is a non-binding request – a "booking" mode can never be set. */
+const allowedMode = (mode: SubmissionMode): SubmissionMode => (siteScope.requestOnly ? "inquiry" : mode);
+const defaultMode: SubmissionMode = allowedMode("booking");
+
 export const useBookingStore = create<BookingDraftState>()(
   persist(
     (set, get) => ({
@@ -131,7 +137,7 @@ export const useBookingStore = create<BookingDraftState>()(
       handover: { handoverSlotId: null, returnSlotId: null },
       acceptedTerms: {},
       step: 1,
-      submissionMode: "booking",
+      submissionMode: defaultMode,
       previewSpaceId: null,
 
       toggleSpace: (id, requires = []) => {
@@ -168,7 +174,7 @@ export const useBookingStore = create<BookingDraftState>()(
       setHandover: (patch) => set({ handover: { ...get().handover, ...patch } }),
       setTermAccepted: (termId, accepted) => set({ acceptedTerms: { ...get().acceptedTerms, [termId]: accepted } }),
       setStep: (step) => set({ step }),
-      setSubmissionMode: (mode) => set({ submissionMode: mode }),
+      setSubmissionMode: (mode) => set({ submissionMode: allowedMode(mode) }),
       resetCheckout: () =>
         set({
           selectedSpaceIds: [],
@@ -178,7 +184,7 @@ export const useBookingStore = create<BookingDraftState>()(
           handover: { handoverSlotId: null, returnSlotId: null },
           acceptedTerms: {},
           step: 1,
-          submissionMode: "booking",
+          submissionMode: defaultMode,
           previewSpaceId: null,
         }),
     }),
@@ -187,6 +193,11 @@ export const useBookingStore = create<BookingDraftState>()(
       version: 1,
       storage: createJSONStorage(() => sessionStorage),
       skipHydration: true,
+      // a draft from an older session may still say "booking" – clamp it to what the site allows
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<BookingDraftState>;
+        return { ...current, ...p, submissionMode: allowedMode(p.submissionMode ?? current.submissionMode) };
+      },
       partialize: (s) => ({
         selectedSpaceIds: s.selectedSpaceIds,
         schedule: s.schedule,

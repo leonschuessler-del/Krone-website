@@ -8,8 +8,8 @@ import { listSpaceViews } from "@/server/services/space-service";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Bereiche – Restaurant, Eventräume, Biergarten & Hotel",
-  description: "Alle Bereiche der Krone Leidersbach: Restaurant, Küche, Nebenzimmer, Bühne, Alte Wirtschaft, Wintergarten, Biergarten und Hotel.",
+  title: "Räume – Gaststube, Säle, Wintergarten & Biergarten",
+  description: "Alle Räume der Eventlocation Zur Krone in Leidersbach: Gaststube, Küche, Nebenzimmer, Bühne, Alte Wirtschaft, Wintergarten, Biergarten und die Hotel-Etage für Ihre Gäste – einzeln oder kombiniert, Preis auf Anfrage.",
   alternates: { canonical: "/bereiche" },
 };
 
@@ -18,14 +18,14 @@ export default async function SpacesPage() {
   return (
     <div className="bg-paper pb-24 pt-28 md:pt-32">
       <div className="container-page">
-        <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: "Bereiche" }]} />
+        <Breadcrumbs items={[{ label: "Start", href: "/" }, { label: "Räume" }]} />
         <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
-            <p className="eyebrow">Bereiche</p>
+            <p className="eyebrow">Die Räume</p>
             <h1 className="mt-3 text-5xl md:text-6xl">Räume für jeden Anlass</h1>
-            <p className="mt-4 text-lg text-ink-soft">Jeder Bereich ist einzeln oder kombiniert buchbar. Wählen Sie aus – oder stellen Sie Ihre Kombination direkt auf der Karte zusammen.</p>
+            <p className="mt-4 text-lg text-ink-soft">Jeder Raum ist einzeln oder kombiniert anfragbar. Wählen Sie aus – oder stellen Sie Ihre Kombination direkt auf der Karte zusammen. Ihr Angebot erhalten Sie persönlich.</p>
           </div>
-          <ButtonLink href="/eventlocation#karte" variant="gold">
+          <ButtonLink href="/#karte" variant="gold">
             Auf der Karte wählen
           </ButtonLink>
         </div>

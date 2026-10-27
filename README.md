@@ -13,6 +13,23 @@ den Betreiber.
 > Unbekannte Fakten sind `null` und werden als „Angabe folgt“ / „Preis folgt“
 > angezeigt, niemals als 0.
 
+## Umfang 10/2026: nur Eventlocation
+
+Seit dem 27.10.2026 ist die öffentliche Website **nur noch die Eventlocation**. Sie wird in die
+bestehende Website [krone-landhotel.de](https://www.krone-landhotel.de) beim Knopf
+„Eventlocation“ eingebunden.
+
+- `/` ist die Eventlocation; `/eventlocation` leitet dauerhaft auf `/` weiter.
+- Hotel, Zimmerbuchung, Angebote und Sehenswürdigkeiten sind **archiviert, nicht gelöscht**:
+  `src/app/(site)/_archiv/` (nicht geroutet) und Git-Tag `archiv/vollversion-2026-10`.
+- **Keine Preise** im Browser, alles „auf Anfrage“; Anfragen sind unverbindlich.
+  Schalter: `src/config/scope.ts` (`eventOnly`, `showPrices`, `requestOnly`, `mainSiteUrl`).
+- Was wo liegt und wie man es zurückholt: **[ARCHIV.md](ARCHIV.md)**.
+  Einbindung in die Hauptseite (Übergabe an ChatGPT): **[docs/UEBERGABE-CHATGPT.md](docs/UEBERGABE-CHATGPT.md)**.
+
+Abschnitte weiter unten, die Hotel, Preise oder Zahlung beschreiben, gelten für den archivierten
+Vollumfang.
+
 ---
 
 ## Inhalt

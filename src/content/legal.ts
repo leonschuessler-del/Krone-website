@@ -8,6 +8,11 @@
  *
  * AGB, Mietbedingungen, Hausordnung: structure only (`draft: true`) – the
  * operator's own terms are inserted here; nothing is invented.
+ *
+ * Event-only scope (10/2026, siteScope.showPrices === false): no amounts in
+ * these texts – where terms depend on money (rent, deposit, payment) they refer
+ * to the individual offer. Percentage cancellation rules are conditions and
+ * stay; all of it needs the operator's legal review before launch.
  */
 export interface LegalSection {
   id: string;
@@ -118,7 +123,7 @@ export const legalDocuments: Record<string, LegalDocument> = {
         id: "anfragen",
         heading: "Raumplaner, Buchungsanfragen und Kontakt",
         body: [
-          "Wenn Sie über den Raumplaner, das Buchungsformular oder das Kontaktformular eine Anfrage senden oder uns per E-Mail oder Telefon kontaktieren, verarbeiten wir die von Ihnen angegebenen Daten: Name, E-Mail-Adresse, Telefonnummer (freiwillig), Anlass, Gästezahl, gewählte Räume, Termin und Ihre Nachricht.",
+          "Wenn Sie über den Raumplaner, das Anfrageformular oder das Kontaktformular eine Anfrage senden oder uns per E-Mail oder Telefon kontaktieren, verarbeiten wir die von Ihnen angegebenen Daten: Name, E-Mail-Adresse, Telefonnummer (freiwillig), Anlass, Gästezahl, gewählte Räume, Termin und Ihre Nachricht.",
           "Zweck ist die Prüfung der Verfügbarkeit, die Beantwortung Ihrer Anfrage und gegebenenfalls die Durchführung des Mietvertrags (Art. 6 Abs. 1 lit. b DSGVO). Wir speichern diese Daten, solange es für die Bearbeitung nötig ist; für abgeschlossene Buchungen gelten die gesetzlichen Aufbewahrungsfristen (bis zu 10 Jahre nach HGB und AO). Reine Anfragen ohne Buchung löschen wir spätestens 12 Monate nach dem letzten Kontakt.",
           "Ihre Daten werden nicht an Dritte verkauft oder für Werbung genutzt.",
         ],
@@ -152,7 +157,7 @@ export const legalDocuments: Record<string, LegalDocument> = {
         id: "karte",
         heading: "Umgebungskarte (OpenStreetMap)",
         body: [
-          "Auf der Startseite sowie den Seiten „Umgebung“ und „Kontakt“ zeigen wir eine interaktive Karte. Die Kartensoftware (Leaflet) liegt auf unserem eigenen Server; die Kartenkacheln werden von den Servern der OpenStreetMap Foundation (St John's Innovation Centre, Cowley Road, Cambridge, CB4 0WS, Vereinigtes Königreich) abgerufen, sobald die Karte in Ihr Sichtfeld scrollt. Dabei werden Ihre IP-Adresse und die angezeigten Kartenausschnitte übermittelt.",
+          "Auf der Seite „Kontakt“ zeigen wir eine interaktive Karte. Die Kartensoftware (Leaflet) liegt auf unserem eigenen Server; die Kartenkacheln werden von den Servern der OpenStreetMap Foundation (St John's Innovation Centre, Cowley Road, Cambridge, CB4 0WS, Vereinigtes Königreich) abgerufen, sobald die Karte in Ihr Sichtfeld scrollt. Dabei werden Ihre IP-Adresse und die angezeigten Kartenausschnitte übermittelt.",
           "Rechtsgrundlage ist unser berechtigtes Interesse an einer verständlichen Darstellung von Lage und Anfahrt (Art. 6 Abs. 1 lit. f DSGVO). OpenStreetMap setzt keine Cookies zu Werbezwecken und erstellt keine Nutzerprofile; für das Vereinigte Königreich liegt ein Angemessenheitsbeschluss der EU-Kommission vor. Weitere Informationen: https://wiki.osmfoundation.org/wiki/Privacy_Policy. [Hinweis für die Rechtsprüfung: alternativ Einwilligung per „Karte laden“-Schaltfläche – die Komponente unterstützt beides.]",
         ],
       },
@@ -181,7 +186,7 @@ export const legalDocuments: Record<string, LegalDocument> = {
   agb: {
     slug: "agb",
     title: "Allgemeine Geschäftsbedingungen",
-    intro: "Allgemeine Geschäftsbedingungen für die Beherbergung im Landhotel Gasthof „Zur Krone“ (Hotel garni). Für die Anmietung von Räumen gelten zusätzlich die Mietbedingungen.",
+    intro: "Allgemeine Geschäftsbedingungen für die Beherbergung im Landhotel Gasthof „Zur Krone“ (Hotel garni) – sie gelten auch, wenn Sie zu Ihrer Feier Zimmer oder die ganze Hotel-Etage für Ihre Gäste anfragen. Für die Anmietung der Veranstaltungsräume gelten die Mietbedingungen.",
     updated: "Oktober 2026 – Entwurf zur rechtlichen Prüfung",
     draft: true,
     sections: [
@@ -205,8 +210,8 @@ export const legalDocuments: Record<string, LegalDocument> = {
         id: "preise",
         heading: "3. Preise und Zahlung",
         body: [
-          "Die vereinbarten Preise verstehen sich inklusive der gesetzlichen Mehrwertsteuer und inklusive Frühstück, sofern nichts anderes angegeben ist. Zusatzleistungen (z. B. Zustellbett, Babybett, Haustier) werden gesondert berechnet.",
-          "Die Zahlung erfolgt vor Ort bei Anreise oder Abreise, bar oder mit EC-, Maestro-, Visa- oder Mastercard. Bei Gruppen und längeren Aufenthalten kann das Haus eine angemessene Vorauszahlung verlangen.",
+          "Es gelten die Preise gemäß individuellem Angebot bzw. Reservierungsbestätigung. Sie verstehen sich inklusive der gesetzlichen Mehrwertsteuer und inklusive Frühstück, sofern nichts anderes vereinbart ist. Zusatzleistungen (z. B. Zustellbett, Babybett, Haustier) werden nur nach Vereinbarung und gesondert berechnet.",
+          "Zahlungsweise und Fälligkeit richten sich nach dem individuellen Angebot. Bei Gruppen und längeren Aufenthalten kann das Haus eine angemessene Vorauszahlung verlangen.",
         ],
       },
       {
@@ -228,7 +233,7 @@ export const legalDocuments: Record<string, LegalDocument> = {
       {
         id: "haustiere",
         heading: "6. Haustiere",
-        body: ["Haustiere sind nach vorheriger Absprache gegen den ausgewiesenen Aufpreis willkommen. Der Gast haftet für Schäden, die durch mitgebrachte Tiere entstehen."],
+        body: ["Haustiere sind nach vorheriger Absprache willkommen; ein Aufpreis richtet sich nach dem individuellen Angebot. Der Gast haftet für Schäden, die durch mitgebrachte Tiere entstehen."],
       },
       {
         id: "haftung",
@@ -251,13 +256,13 @@ export const legalDocuments: Record<string, LegalDocument> = {
   mietbedingungen: {
     slug: "mietbedingungen",
     title: "Mietbedingungen",
-    intro: "Bedingungen für die Anmietung von Räumen der Krone.",
+    intro: "Bedingungen für die Anmietung der Veranstaltungsräume der Krone. Alle Konditionen erhalten Sie mit Ihrem individuellen Angebot.",
     draft: true,
     sections: [
       { id: "mietgegenstand", heading: "Mietgegenstand", body: [draftNote] },
       { id: "mietdauer", heading: "Mietdauer & Nutzung", body: [draftNote] },
-      { id: "zahlung", heading: "Miete & Zahlung", body: [draftNote] },
-      { id: "kaution", heading: "Kaution", body: [draftNote] },
+      { id: "zahlung", heading: "Miete & Zahlung", body: ["Miete, Zahlungsweise und Fälligkeit richten sich nach dem individuellen Angebot, das Sie nach Ihrer Anfrage erhalten.", draftNote] },
+      { id: "kaution", heading: "Kaution", body: ["Höhe, Fälligkeit und Rückzahlung einer Kaution richten sich nach dem individuellen Angebot.", draftNote] },
       { id: "storno", heading: "Stornierung", body: [draftNote] },
       { id: "uebergabe", heading: "Übergabe & Rückgabe", body: [draftNote] },
       { id: "haftung", heading: "Haftung & Schäden", body: [draftNote] },

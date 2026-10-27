@@ -2,14 +2,17 @@
  * Additional services (Zusatzleistungen) from the operator's price sheet
  * (10/2026, confirmed by the operator on 2026-10-02). Prices are net amounts
  * in cents (plus VAT). "tableware" is charged per guest, the others once per
- * booking. The kitchen (300, only with a caterer) is a room, see spaces.ts.
+ * booking. The kitchen (only with a caterer) is a room, see spaces.ts.
+ *
+ * Public site (siteScope.showPrices === false): only name and description are
+ * shown – unitPrice/priceModel feed the seed and the admin (internal quotes).
  */
 export const extraSeeds = [
   { id: "cold-storage", name: "Kühlhaus", category: "raum", priceModel: "flat", unitPrice: 20000, maxQuantity: 1, sortOrder: 20, description: "Nutzung des Kühlhauses für Speisen und Getränke." },
   { id: "tap-bar", name: "Zapfanlage & Theke", category: "getraenke", priceModel: "flat", unitPrice: 25000, maxQuantity: 1, sortOrder: 30, description: "Theke mit Zapfanlage für Ihre eigenen Getränke." },
-  { id: "tableware", name: "Gläser, Geschirr & Besteck", category: "service", priceModel: "per_person", unitPrice: 650, maxQuantity: 1, sortOrder: 40, description: "Komplette Eindeckung pro Gast: Gläser, Geschirr und Besteck." },
+  { id: "tableware", name: "Gläser, Geschirr & Besteck", category: "service", priceModel: "per_person", unitPrice: 650, maxQuantity: 1, sortOrder: 40, description: "Komplette Eindeckung für alle Gäste: Gläser, Geschirr und Besteck." },
   // whole hotel floor with the event – fixed price per night (proposal, see content/hotel.ts)
-  { id: "hotel-floor", name: "Ganze Hotel-Etage", category: "hotel", priceModel: "per_day", unitPrice: 84900, maxQuantity: 1, sortOrder: 50, description: "Alle 10 Zimmer und das Apartment für Ihre Gäste, pro Nacht, Frühstück inklusive." },
+  { id: "hotel-floor", name: "Ganze Hotel-Etage", category: "hotel", priceModel: "per_day", unitPrice: 84900, maxQuantity: 1, sortOrder: 50, description: "Alle zehn Zimmer und das Apartment für Ihre Gäste – mit Frühstück am nächsten Morgen." },
 ] as const satisfies ReadonlyArray<{
   id: string;
   name: string;

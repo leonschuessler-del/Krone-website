@@ -2,6 +2,7 @@
 
 import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock, Layers, RefreshCw, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
+import { siteScope } from "@/config/scope";
 import { dayNudge, eligibleOffer } from "@/domain/offers";
 import { addDays, diffDays, isoWeekday, monthRange, parseLocalDate, todayLocal, utcToLocal, zonedToUtc } from "@/domain/time";
 import type { SpaceAvailabilityStatus } from "@/domain/types";
@@ -284,8 +285,9 @@ function DayDetail({
   const common = overview.data?.commonFreeIntervals ?? [];
   const hours = [6, 9, 12, 15, 18, 21, 24, 27];
   const rentalDays = schedule.endDate && schedule.endDate > date ? diffDays(date, schedule.endDate) + 1 : 1;
-  const offer = eligibleOffer(date, rentalDays, todayLocal());
-  const nudge = dayNudge(rentalDays);
+  // discounts and "free extra day" tips are price talk – hidden while the site shows no prices
+  const offer = siteScope.showPrices ? eligibleOffer(date, rentalDays, todayLocal()) : null;
+  const nudge = siteScope.showPrices ? dayNudge(rentalDays) : null;
 
   return (
     <div className="rounded-2xl border border-sand bg-white p-4 shadow-soft sm:p-5" data-testid="day-detail">

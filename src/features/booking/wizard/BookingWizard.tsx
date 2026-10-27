@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, CreditCard, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, CreditCard, Loader2, Lock, Mail, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { PRICE_ON_REQUEST, siteScope } from "@/config/scope";
 import type { TermDefinition } from "@/content/terms";
 import { describeSelectionIssue, getFullVenueSpaceIds, isFullVenueSelection, sanitizeSpaceIds, validateSelection } from "@/domain/selection";
 import { useAvailabilityCheck } from "@/features/availability/use-availability-check";
@@ -27,8 +28,9 @@ export interface WizardExtra {
   name: string;
   description: string | null;
   category: string;
-  priceModel: string;
-  unitPrice: number | null;
+  /** only present while siteScope.showPrices is true – never sent to the browser otherwise */
+  priceModel?: string;
+  unitPrice?: number | null;
   maxQuantity: number;
   confirmed: boolean;
   isDemo: boolean;
@@ -43,7 +45,35 @@ export interface WizardProps {
   paymentProvider: "demo" | "stripe" | "none";
 }
 
-const STEPS = ["Räume", "Datum & Zeit", "Zusatzleistungen", "Veranstaltung", "Kontaktdaten", "Übergabe", "Bedingungen", "Anfrage senden", "Bestätigung"];
+type StepId = "spaces" | "schedule" | "extras" | "event" | "contact" | "handover" | "terms" | "submit";
+
+const STEP_LABEL: Record<StepId, string> = {
+  spaces: "Räume",
+  schedule: "Datum & Zeit",
+  extras: "Zusatzleistungen",
+  event: "Veranstaltung",
+  contact: "Kontaktdaten",
+  handover: "Übergabe",
+  terms: "Bedingungen",
+  submit: "Anfrage senden",
+};
+
+/**
+ * The steps of the flow. With siteScope.requestOnly (non-binding requests only)
+ * the handover step and the separate terms step fall away: handover/return
+ * times are only binding for paid bookings – for a request they are agreed in
+ * the personal offer – and the one consent a request needs (privacy) sits on
+ * the final step. Fewer steps, same data for the operator.
+ */
+const FLOW: readonly StepId[] = siteScope.requestOnly
+  ? ["spaces", "schedule", "extras", "event", "contact", "submit"]
+  : ["spaces", "schedule", "extras", "event", "contact", "handover", "terms", "submit"];
+/** Progress labels – the confirmation page is the last, implicit step. */
+const STEPS = [...FLOW.map((id) => STEP_LABEL[id]), "Bestätigung"];
+const LAST_STEP = FLOW.length;
+/** Where the consent checkboxes are asked and validated. */
+const TERMS_STEP: StepId = FLOW.includes("terms") ? "terms" : "submit";
+const stepNumber = (id: StepId) => FLOW.indexOf(id) + 1;
 
 interface HandoverOption {
   value: string;
@@ -87,13 +117,17 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
 
   const availability = useAvailabilityCheck(selected, s.schedule, { alternatives: 3, enabled: hydrated });
   const guests = Number(s.event.guestCount) || null;
-  const quote = usePriceQuote(selected, s.schedule, { extras: s.extras, guestCount: guests, enabled: hydrated });
+  // never fetches while prices are hidden (see usePriceQuote)
+  const quote = usePriceQuote(selected, s.schedule, { extras: s.extras, guestCount: guests, enabled: hydrated && siteScope.showPrices });
   const q = quote.data;
-  const inquiryOnly = !q || q.bookingMode === "inquiry" || !q.paymentEnabled;
+  const inquiryOnly = siteScope.requestOnly || !q || q.bookingMode === "inquiry" || !q.paymentEnabled;
   const mode: "booking" | "inquiry" = inquiryOnly ? "inquiry" : s.submissionMode;
   const hasRange = scheduleHasRange(s.schedule);
   const requestedStart = availability.data?.requested.start ?? null;
   const requestedEnd = availability.data?.requested.end ?? null;
+  // a draft from an older session may point past the (shorter) flow
+  const step = Math.min(Math.max(1, s.step), LAST_STEP);
+  const stepId = FLOW[step - 1]!;
 
   // Keep URL shareable (?spaces=…) without adding history entries.
   useEffect(() => {
@@ -102,10 +136,10 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
     window.history.replaceState(null, "", url);
   }, [hydrated, selected.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load handover options for step 6.
+  // Load handover options for the handover step (only in the binding-booking flow).
   const handoverRes = useAsyncResource<{ handover: HandoverOption[]; return: HandoverOption[]; individual: boolean }>(
     `${requestedStart}|${requestedEnd}`,
-    s.step === 6 && Boolean(requestedStart && requestedEnd),
+    stepId === "handover" && Boolean(requestedStart && requestedEnd),
     (signal) => fetchJson(`/api/handover?start=${encodeURIComponent(requestedStart ?? "")}&end=${encodeURIComponent(requestedEnd ?? "")}`, { signal }),
     0,
   );
@@ -125,24 +159,26 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
 
   const selectionIssues = validateSelection(selected, spaces).filter((i) => i.type !== "empty");
   const requiredTerms = terms.filter((t) => t.requiredFor.includes(mode));
+  // request-only: just the consents a request needs (privacy); the rest comes with the offer
+  const shownTerms = siteScope.requestOnly ? requiredTerms : terms;
 
-  function validateStep(step: number): Record<string, string> {
+  function validateStep(id: StepId): Record<string, string> {
     const e: Record<string, string> = {};
-    if (step === 1) {
+    if (id === "spaces") {
       if (selected.length === 0) e.spaces = "Bitte wählen Sie mindestens einen Bereich.";
       if (selectionIssues.length) e.spaces = selectionIssues.map((i) => describeSelectionIssue(i, nameOf)).join(" ");
     }
-    if (step === 2) {
+    if (id === "schedule") {
       if (!hasRange) e.schedule = s.schedule.rentalMode === "hourly" ? "Bitte wählen Sie Datum, Beginn und Ende." : "Bitte wählen Sie ein Datum.";
       else if (availability.state === "loading") e.schedule = "Die Verfügbarkeit wird noch geprüft …";
       else if (!availability.data?.bookingAllowed) e.schedule = "Der gewählte Zeitraum ist nicht für alle Bereiche verfügbar.";
     }
-    if (step === 4) {
+    if (id === "event") {
       if (!s.event.eventType) e.eventType = "Bitte wählen Sie die Art der Veranstaltung.";
       const g = Number(s.event.guestCount);
       if (!Number.isInteger(g) || g < 1 || g > 5000) e.guestCount = "Bitte geben Sie die voraussichtliche Personenzahl an.";
     }
-    if (step === 5) {
+    if (id === "contact") {
       const c = s.contact;
       const parsed = contactSchema.safeParse({
         ...c,
@@ -152,38 +188,37 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
       });
       if (!parsed.success) Object.assign(e, zodErrorMessages(parsed.error));
     }
-    if (step === 6 && !handover.individual && mode === "booking") {
+    if (id === "handover" && !handover.individual && mode === "booking") {
       if (!s.handover.handoverSlotId) e.handover = "Bitte wählen Sie eine Übergabezeit.";
       if (!s.handover.returnSlotId) e.return = "Bitte wählen Sie eine Rückgabezeit.";
     }
-    if (step === 7) {
+    if (id === TERMS_STEP) {
       const missing = requiredTerms.filter((t) => !s.acceptedTerms[t.id]);
       if (missing.length) e.terms = "Bitte bestätigen Sie alle mit * markierten Punkte.";
     }
     return e;
   }
 
-  function goTo(step: number) {
-    s.setStep(step);
+  function goTo(target: number) {
+    s.setStep(Math.min(Math.max(1, target), LAST_STEP));
     setErrors({});
     setSubmitError(null);
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   function next() {
-    const e = validateStep(s.step);
+    const e = validateStep(stepId);
     setErrors(e);
     if (Object.keys(e).length) return;
-    if (s.step === 1) track("booking_started", { spaces: selected.length });
-    goTo(Math.min(8, s.step + 1));
+    if (stepId === "spaces") track("booking_started", { spaces: selected.length });
+    goTo(step + 1);
   }
 
   async function submit() {
-    for (const step of [1, 2, 4, 5, 6, 7]) {
-      const e = validateStep(step);
+    for (const id of FLOW) {
+      const e = validateStep(id);
       if (Object.keys(e).length) {
-        setErrors(e);
-        goTo(step);
+        goTo(stepNumber(id));
         setErrors(e);
         return;
       }
@@ -218,10 +253,11 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
           ? { name: c.billingName, street: c.billingStreet, houseNumber: c.billingHouseNumber, postalCode: c.billingPostalCode, city: c.billingCity, country: c.billingCountry }
           : null,
       },
-      handoverAt: s.handover.handoverSlotId,
-      returnAt: s.handover.returnSlotId,
+      // handover/return are agreed in the offer when only requests are possible
+      handoverAt: FLOW.includes("handover") ? s.handover.handoverSlotId : null,
+      returnAt: FLOW.includes("handover") ? s.handover.returnSlotId : null,
       acceptedTerms: Object.entries(s.acceptedTerms)
-        .filter(([, v]) => v)
+        .filter(([k, v]) => v && shownTerms.some((t) => t.id === k))
         .map(([k]) => k),
       website: honeypot.current?.value ?? "",
     };
@@ -246,7 +282,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
         return;
       }
       track(mode === "inquiry" ? "inquiry_submitted" : "booking_submitted", { spaces: selected.length });
-      if (mode === "booking" && data.paymentRequired) {
+      if (!siteScope.requestOnly && mode === "booking" && data.paymentRequired) {
         const pay = await fetch("/api/payments/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -317,7 +353,8 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
     );
   }
 
-  const step = s.step;
+  const chosenExtras = extras.filter((e) => (s.extras[e.id] ?? 0) > 0);
+  const eventLabel = eventTypes.find((t) => t.id === s.event.eventType)?.label ?? null;
   return (
     <div ref={topRef} className="scroll-mt-28" data-testid="booking-wizard" data-step={step}>
       <Progress step={step} onGoTo={(n) => n < step && goTo(n)} />
@@ -327,10 +364,10 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
           <div className="card-surface p-5 sm:p-8">
             <h2 className="font-serif text-3xl" data-testid="step-title">
               <span className="mr-2 text-gold-dark">{step}.</span>
-              {STEPS[step - 1]}
+              {STEP_LABEL[stepId]}
             </h2>
 
-            {step === 1 && (
+            {stepId === "spaces" && (
               <div className="mt-6 space-y-5">
                 <p className="text-ink-soft">Wählen Sie einen oder mehrere Bereiche – direkt auf der Karte oder in der Liste.</p>
                 <SiteMap
@@ -373,7 +410,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
               </div>
             )}
 
-            {step === 2 && (
+            {stepId === "schedule" && (
               <div className="mt-6 space-y-5">
                 <SchedulePicker spaces={spaces} selectedIds={selected} schedule={s.schedule} onChange={s.setSchedule} />
                 {hasRange && (
@@ -389,9 +426,13 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
               </div>
             )}
 
-            {step === 3 && (
+            {stepId === "extras" && (
               <div className="mt-6 space-y-4">
-                <p className="text-ink-soft">Optionale Zusatzleistungen. Alles Weitere stimmen wir gern persönlich mit Ihnen ab.</p>
+                <p className="text-ink-soft">
+                  {siteScope.showPrices
+                    ? "Optionale Zusatzleistungen. Alles Weitere stimmen wir gern persönlich mit Ihnen ab."
+                    : "Optionale Zusatzleistungen – wählen Sie unverbindlich, was Ihre Veranstaltung ergänzen soll. Die Konditionen erhalten Sie mit Ihrem individuellen Angebot."}
+                </p>
                 {demo && (
                   <p className="rounded-xl bg-warning-pale px-4 py-3 text-sm text-[#5d4413]">
                     Demo: Die folgenden Leistungen sind vorbereitete Beispiele. Ob und zu welchen Konditionen sie angeboten werden, ist noch nicht bestätigt.
@@ -411,7 +452,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                               {!ex.confirmed && <span className="ml-2 rounded-full bg-cream px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-muted">Beispiel</span>}
                             </p>
                             {ex.description && <p className="text-sm text-muted">{ex.description}</p>}
-                            <p className="mt-0.5 text-sm text-ink-soft">{extraPriceLabel(ex)}</p>
+                            {siteScope.showPrices && <p className="mt-0.5 text-sm text-ink-soft">{extraPriceLabel(ex)}</p>}
                           </div>
                           {ex.maxQuantity > 1 ? (
                             <div className="flex items-center gap-2">
@@ -439,7 +480,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
               </div>
             )}
 
-            {step === 4 && (
+            {stepId === "event" && (
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 <label className="block">
                   <span className="field-label">Art der Veranstaltung *</span>
@@ -466,9 +507,9 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
               </div>
             )}
 
-            {step === 5 && <ContactStep errors={errors} />}
+            {stepId === "contact" && <ContactStep errors={errors} />}
 
-            {step === 6 && (
+            {stepId === "handover" && (
               <div className="mt-6 space-y-6">
                 <p className="text-ink-soft">
                   Wann möchten Sie die Location übernehmen – und wann geben Sie sie zurück?
@@ -513,43 +554,72 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
               </div>
             )}
 
-            {step === 7 && (
+            {stepId === "terms" && (
               <div className="mt-6 space-y-4">
                 <p className="rounded-xl border border-warning/30 bg-warning-pale px-4 py-3 text-sm text-[#5d4413]">
                   Hinweis: Die verlinkten Dokumente sind Platzhalter und werden vor dem Livegang rechtlich geprüft (LEGAL REVIEW REQUIRED).
                 </p>
-                <ul className="space-y-3">
-                  {terms.map((t) => {
-                    const required = t.requiredFor.includes(mode);
-                    const [before, after] = t.label.split("{link}");
-                    return (
-                      <li key={t.id}>
-                        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-sand p-4 hover:border-ink/30">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 h-5 w-5 shrink-0 accent-[#b8904a]"
-                            checked={Boolean(s.acceptedTerms[t.id])}
-                            onChange={(e) => s.setTermAccepted(t.id, e.target.checked)}
-                            data-testid={`term-${t.id}`}
-                          />
-                          <span className="text-[0.95rem]">
-                            {before}
-                            <Link href={t.href} target="_blank" className="font-semibold text-gold-dark underline underline-offset-4">
-                              {t.linkLabel}
-                            </Link>
-                            {after}
-                            {required ? " *" : <span className="text-muted"> (optional bei Anfragen)</span>}
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <TermsList terms={shownTerms} mode={mode} />
                 <FieldError message={errors.terms} />
               </div>
             )}
 
-            {step === 8 && (
+            {stepId === "submit" && siteScope.requestOnly && (
+              <div className="mt-6 space-y-6">
+                <RequestReview
+                  rows={[
+                    { label: "Räume", value: selectedSpaces.map((sp) => sp.name).join(", ") || "–", step: stepNumber("spaces") },
+                    {
+                      label: "Termin",
+                      value: s.schedule.date
+                        ? `${formatDateLong(s.schedule.date)}${requestedStart && requestedEnd ? ` · ${formatTime(Date.parse(requestedStart))}–${formatTime(Date.parse(requestedEnd))} Uhr` : ""}`
+                        : "–",
+                      step: stepNumber("schedule"),
+                    },
+                    {
+                      label: "Zusatzleistungen",
+                      value: chosenExtras.length ? chosenExtras.map((e) => (s.extras[e.id]! > 1 ? `${e.name} (${s.extras[e.id]}×)` : e.name)).join(", ") : "keine",
+                      step: stepNumber("extras"),
+                    },
+                    {
+                      label: "Veranstaltung",
+                      value: [eventLabel, s.event.guestCount ? pluralize(Number(s.event.guestCount) || 0, "Person", "Personen") : null].filter(Boolean).join(" · ") || "–",
+                      step: stepNumber("event"),
+                    },
+                    {
+                      label: "Kontakt",
+                      value: [`${s.contact.firstName} ${s.contact.lastName}`.trim(), s.contact.email].filter(Boolean).join(" · ") || "–",
+                      step: stepNumber("contact"),
+                    },
+                  ]}
+                  onEdit={goTo}
+                />
+                <p className="flex items-start gap-3 rounded-2xl border border-gold/40 bg-gold-pale/30 p-4 text-sm text-ink-soft">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold-dark" />
+                  <span>
+                    <strong className="block text-ink">Unverbindlich anfragen</strong>
+                    Wir prüfen Ihre Wünsche und erstellen Ihnen ein individuelles Angebot. Gebucht ist erst, wenn Sie es annehmen – online wird nichts bezahlt.
+                  </span>
+                </p>
+                <TermsList terms={shownTerms} mode={mode} />
+                <FieldError message={errors.terms} />
+                <p className="text-xs text-muted">
+                  Vorab zum Nachlesen:{" "}
+                  <Link href="/mietbedingungen" target="_blank" className="font-semibold underline underline-offset-4 hover:text-ink">
+                    Mietbedingungen
+                  </Link>{" "}
+                  ·{" "}
+                  <Link href="/hausordnung" target="_blank" className="font-semibold underline underline-offset-4 hover:text-ink">
+                    Hausordnung
+                  </Link>
+                  . Übergabe und Rückgabe der Räume stimmen wir mit dem Angebot persönlich mit Ihnen ab.
+                </p>
+                {submitError && <SubmitError message={submitError} onAdjust={() => goTo(stepNumber("schedule"))} />}
+                <input ref={honeypot} type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
+              </div>
+            )}
+
+            {stepId === "submit" && !siteScope.requestOnly && (
               <div className="mt-6 space-y-6">
                 <div role="radiogroup" aria-label="Art der Übermittlung" className="grid gap-3 sm:grid-cols-2">
                   <ModeOption
@@ -571,7 +641,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                 {mode === "booking" && terms.some((t) => t.requiredFor.includes("booking") && !s.acceptedTerms[t.id]) && (
                   <p className="rounded-xl bg-warning-pale p-4 text-sm">
                     Für eine verbindliche Buchung bestätigen Sie bitte alle Bedingungen.{" "}
-                    <button type="button" className="font-semibold underline" onClick={() => goTo(7)}>
+                    <button type="button" className="font-semibold underline" onClick={() => goTo(stepNumber("terms"))}>
                       Zu den Bedingungen
                     </button>
                   </p>
@@ -611,17 +681,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                   </div>
                 )}
 
-                {submitError && (
-                  <div role="alert" className="flex items-start gap-2 rounded-xl bg-danger-pale p-4 text-sm text-danger">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div>
-                      <p>{submitError}</p>
-                      <button type="button" className="mt-1 font-semibold underline" onClick={() => goTo(2)}>
-                        Termin anpassen
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {submitError && <SubmitError message={submitError} onAdjust={() => goTo(stepNumber("schedule"))} />}
                 <input ref={honeypot} type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
               </div>
             )}
@@ -633,11 +693,11 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                   <ArrowLeft className="h-4 w-4" /> Zurück
                 </Button>
               ) : (
-                <Link href="/eventlocation#karte" className="text-sm font-semibold text-muted hover:text-ink">
-                  Zur Karte
+                <Link href="/#karte" className="text-sm font-semibold text-muted hover:text-ink">
+                  Zum Raumplaner
                 </Link>
               )}
-              {step < 8 ? (
+              {step < LAST_STEP ? (
                 <Button variant="primary" size="lg" onClick={next} data-testid="wizard-next">
                   Weiter <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -645,7 +705,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
                 !pendingPayment && (
                   <Button variant="gold" size="lg" onClick={submit} disabled={submitting} data-testid="wizard-submit">
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "inquiry" ? <Mail className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                    {mode === "inquiry" ? "Anfrage absenden" : paymentProvider === "demo" ? "Zahlungspflichtig buchen (Demo)" : "Zahlungspflichtig buchen"}
+                    {mode === "inquiry" ? (siteScope.requestOnly ? "Anfrage senden" : "Anfrage absenden") : paymentProvider === "demo" ? "Zahlungspflichtig buchen (Demo)" : "Zahlungspflichtig buchen"}
                   </Button>
                 )
               )}
@@ -681,35 +741,64 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
               ) : (
                 <p className="text-paper/60">Termin noch offen</p>
               )}
-              {s.event.guestCount && <p className="text-paper/70">{pluralize(Number(s.event.guestCount) || 0, "Person", "Personen")}</p>}
-              {s.handover.handoverSlotId && <p className="text-paper/70">Übergabe: {formatDateTime(Date.parse(s.handover.handoverSlotId))} Uhr</p>}
-              {s.handover.returnSlotId && <p className="text-paper/70">Rückgabe: {formatDateTime(Date.parse(s.handover.returnSlotId))} Uhr</p>}
-            </div>
-            <div className="mt-4 border-t border-white/10 pt-4">
-              {hasRange ? (
-                quote.state === "error" && !q ? (
-                  <p className="text-sm text-paper/70">
-                    Preis konnte nicht berechnet werden.{" "}
-                    <button type="button" className="underline" onClick={quote.retry}>
-                      Erneut
-                    </button>
-                  </p>
-                ) : (
-                  <PriceBreakdown quote={q} tone="dark" demo={demo} showDueNow={mode === "booking"} />
-                )
-              ) : (
-                <>
-                  <PriceBreakdown
-                    quote={provisionalQuote(spaces, selected, { extras: extras.map((e) => ({ id: e.id, name: e.name, priceModel: e.priceModel as ProvisionalExtra["priceModel"], unitPrice: e.unitPrice })), chosenExtras: Object.entries(s.extras).filter(([, n]) => n > 0).map(([id]) => id), guestCount: guests })}
-                    tone="dark"
-                    demo={demo}
-                    showDueNow={false}
-                  />
-                  {selected.length > 0 && <p className="mt-2 text-xs text-paper/50">Vorläufig – Pauschalen Fr–So; weitere Tage und Gästezahl ändern den Betrag.</p>}
-                </>
+              {(eventLabel || s.event.guestCount) && (
+                <p className="text-paper/70">
+                  {[eventLabel, s.event.guestCount ? pluralize(Number(s.event.guestCount) || 0, "Person", "Personen") : null].filter(Boolean).join(" · ")}
+                </p>
               )}
-              {quote.state === "loading" && <p className="mt-2 text-xs text-paper/50">wird aktualisiert …</p>}
+              {FLOW.includes("handover") && s.handover.handoverSlotId && <p className="text-paper/70">Übergabe: {formatDateTime(Date.parse(s.handover.handoverSlotId))} Uhr</p>}
+              {FLOW.includes("handover") && s.handover.returnSlotId && <p className="text-paper/70">Rückgabe: {formatDateTime(Date.parse(s.handover.returnSlotId))} Uhr</p>}
             </div>
+            {siteScope.showPrices ? (
+              <div className="mt-4 border-t border-white/10 pt-4">
+                {hasRange ? (
+                  quote.state === "error" && !q ? (
+                    <p className="text-sm text-paper/70">
+                      Preis konnte nicht berechnet werden.{" "}
+                      <button type="button" className="underline" onClick={quote.retry}>
+                        Erneut
+                      </button>
+                    </p>
+                  ) : (
+                    <PriceBreakdown quote={q} tone="dark" demo={demo} showDueNow={mode === "booking"} />
+                  )
+                ) : (
+                  <>
+                    <PriceBreakdown
+                      quote={provisionalQuote(spaces, selected, { extras: extras.map((e) => ({ id: e.id, name: e.name, priceModel: (e.priceModel ?? "on_request") as ProvisionalExtra["priceModel"], unitPrice: e.unitPrice ?? null })), chosenExtras: Object.entries(s.extras).filter(([, n]) => n > 0).map(([id]) => id), guestCount: guests })}
+                      tone="dark"
+                      demo={demo}
+                      showDueNow={false}
+                    />
+                    {selected.length > 0 && <p className="mt-2 text-xs text-paper/50">Vorläufig – Pauschalen Fr–So; weitere Tage und Gästezahl ändern den Betrag.</p>}
+                  </>
+                )}
+                {quote.state === "loading" && <p className="mt-2 text-xs text-paper/50">wird aktualisiert …</p>}
+              </div>
+            ) : (
+              <div className="mt-4 border-t border-white/10 pt-4 text-sm" data-testid="summary-request">
+                <p className="text-xs font-semibold uppercase tracking-wider text-paper/50">Zusatzleistungen</p>
+                {chosenExtras.length ? (
+                  <ul className="mt-1.5 space-y-1">
+                    {chosenExtras.map((e) => (
+                      <li key={e.id} className="flex items-center gap-2 text-paper/85">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-gold-light" />
+                        {e.name}
+                        {(s.extras[e.id] ?? 0) > 1 && <span className="text-paper/55">· {s.extras[e.id]}×</span>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-paper/60">Noch keine gewählt</p>
+                )}
+                <div className="mt-4 rounded-xl border border-gold-light/25 bg-white/5 p-4">
+                  <p className="flex items-center gap-2 font-semibold text-gold-light">
+                    <Sparkles className="h-4 w-4 shrink-0" /> Individuelles Angebot
+                  </p>
+                  <p className="mt-1 text-paper/70">Wir erstellen Ihnen ein individuelles Angebot. Ihre Anfrage ist unverbindlich.</p>
+                </div>
+              </div>
+            )}
           </div>
         </aside>
       </div>
@@ -718,7 +807,7 @@ export function BookingWizard({ spaces, extras, eventTypes, terms, demo, payment
 }
 
 function extraPriceLabel(ex: WizardExtra): string {
-  if (ex.unitPrice === null || ex.priceModel === "on_request") return "Preis auf Anfrage";
+  if (!siteScope.showPrices || ex.unitPrice == null || !ex.priceModel || ex.priceModel === "on_request") return PRICE_ON_REQUEST;
   const unit: Record<string, string> = {
     flat: "pauschal",
     per_hour: "pro Stunde",
@@ -865,6 +954,83 @@ function SlotGroup({
       )}
       <FieldError message={error} />
     </fieldset>
+  );
+}
+
+function TermsList({ terms, mode }: { terms: TermDefinition[]; mode: "booking" | "inquiry" }) {
+  const accepted = useBookingStore((st) => st.acceptedTerms);
+  const setAccepted = useBookingStore((st) => st.setTermAccepted);
+  return (
+    <ul className="space-y-3">
+      {terms.map((t) => {
+        const required = t.requiredFor.includes(mode);
+        const [before, after] = t.label.split("{link}");
+        return (
+          <li key={t.id}>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-sand p-4 transition-colors hover:border-ink/30">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-5 w-5 shrink-0 accent-[#b8904a]"
+                checked={Boolean(accepted[t.id])}
+                onChange={(e) => setAccepted(t.id, e.target.checked)}
+                data-testid={`term-${t.id}`}
+              />
+              <span className="text-[0.95rem]">
+                {before}
+                <Link href={t.href} target="_blank" className="font-semibold text-gold-dark underline underline-offset-4">
+                  {t.linkLabel}
+                </Link>
+                {after}
+                {required ? " *" : <span className="text-muted"> (optional bei Anfragen)</span>}
+              </span>
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Final check before a request is sent – every line can be edited in place. */
+function RequestReview({ rows, onEdit }: { rows: Array<{ label: string; value: string; step: number }>; onEdit: (step: number) => void }) {
+  return (
+    <section aria-labelledby="review-title" className="rounded-2xl border border-sand bg-cream/40" data-testid="request-review">
+      <h3 id="review-title" className="border-b border-sand px-5 py-3 font-serif text-xl">
+        Ihre Anfrage im Überblick
+      </h3>
+      <dl className="divide-y divide-sand">
+        {rows.map((r) => (
+          <div key={r.label} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-0.5 px-5 py-3 sm:grid-cols-[9rem_minmax(0,1fr)_auto]">
+            <dt className="text-xs font-semibold uppercase tracking-wider text-muted sm:pt-0.5">{r.label}</dt>
+            <dd className="col-start-1 row-start-2 min-w-0 break-words font-semibold sm:col-start-2 sm:row-start-1">{r.value}</dd>
+            <dd className="col-start-2 row-span-2 row-start-1 sm:col-start-3 sm:row-span-1">
+              <button
+                type="button"
+                onClick={() => onEdit(r.step)}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-gold-dark hover:bg-gold-pale/60"
+                aria-label={`${r.label} ändern`}
+              >
+                <Pencil className="h-3.5 w-3.5" /> Ändern
+              </button>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function SubmitError({ message, onAdjust }: { message: string; onAdjust: () => void }) {
+  return (
+    <div role="alert" className="flex items-start gap-2 rounded-xl bg-danger-pale p-4 text-sm text-danger">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      <div>
+        <p>{message}</p>
+        <button type="button" className="mt-1 font-semibold underline" onClick={onAdjust}>
+          Termin anpassen
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -16,7 +16,7 @@ export const siteScope = {
   requestOnly: true,
   /** The operator's existing website – hotel, restaurant and everything not on this site. */
   mainSiteUrl: process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://www.krone-landhotel.de",
-  mainSiteLabel: "Zur Krone Hauptseite",
+  mainSiteLabel: "Landhotel Zur Krone",
 } as const;
 
 /** The one wording used wherever a price would stand. */

@@ -3,25 +3,65 @@
 Es gibt zwei Varianten:
 
 1. **Vorschau-Link (empfohlen, wird als Claude-Artifact geteilt)** – `snapshot/`:
-   eine Datei mit der echten Startseite als Schnappschuss plus `runtime.ts`.
+   statische Schnappschüsse der **Eventlocation-Seiten** plus `runtime.ts`.
+   Seit 10/2026 gibt es nur noch die Eventlocation (`src/config/scope.ts`,
+   `ARCHIV.md`); Hotel, Aktuelles/Angebote und Umgebung sind archiviert und
+   nicht Teil der Vorschau.
    Läuft in **jedem** Browser und in eingebetteten Viewern, auch wenn dort
    WebAssembly oder Video-Spulen gesperrt sind:
+
+   | Datei | Seite |
+   |---|---|
+   | `index.html` | `/` – Startseite = Eventlocation (Scroll-Rundgang, Raumplaner, Räume, Galerie-Auszug, Ablauf, FAQ) |
+   | `bereiche.html` | `/bereiche` – alle Räume |
+   | `galerie.html` | `/galerie` |
+   | `faq.html` | `/faq` |
+   | `kontakt.html` | `/kontakt` (Karte mit dem Haus) |
+
    - Scroll-Rundgang mit demselben Bildsequenz-Player wie die Website
-     (`src/features/home/tour-player.ts`)
-   - Raumdetails mit Galerie, Fläche/Plätzen (Richtwerte), Auswahl
-   - Karte, Gesamte Location, Übernachtung (Hotel), Listenansicht
-   - Verfügbarkeit & Anfrage: Kalender und Prüfung mit der echten
-     Domänenlogik (`src/domain/availability.ts`) auf dem Demo-Szenario,
-     Anfragenummer, Doppelbuchungsschutz; Anfragen bleiben im Browser
-     (localStorage)
+     (`src/features/home/tour-player.ts`); der Hero-Film läuft in der
+     720p-Fassung (`krone-film-720.mp4`, Artifact-Grenze 15 MB je Datei)
+   - Raumdetails (`/bereiche/<slug>`) öffnen sich als Dialog mit Galerie,
+     Fläche/Plätzen (Richtwerte) und Auswahl; `/bereiche/hotel` springt zum
+     Abschnitt „Die ganze Etage“ (`index.html#hotel`)
+   - `/buchen` öffnet den Anfrage-Dialog (gewählte Räume werden übernommen):
+     Räume → Termin (Kalender und Prüfung mit der echten Domänenlogik
+     `src/domain/availability.ts` auf dem Demo-Szenario, Doppelbuchungsschutz)
+     → Zusatzleistungen → Angaben → Anfragenummer. Anfragen bleiben im Browser
+     (localStorage).
+   - **Keine Preise** (`siteScope.showPrices = false`): Räume und
+     Zusatzleistungen stehen „auf Anfrage“, es gibt keine Summen, Rabatte,
+     Anzahlungen oder Kautionsbeträge. Die Seitendaten enthalten keine
+     Preisfelder (Zusatzleistungen nur mit Name und Beschreibung).
+   - **Nur Anfragen** (`siteScope.requestOnly = true`): kein verbindliches
+     Buchen, keine Zahlung. Die Hotel-Buchungsmaschine
+     (`snapshot/preview-engine.tsx`) gehört zur archivierten Hotelseite und
+     wird nicht mehr eingebunden (Datei bleibt erhalten).
+   - Links auf archivierte Seiten führen nicht ins Leere: `/hotel…` → Hauptseite
+     (`siteScope.mainSiteUrl`, z. B. krone-landhotel.de), `/aktuelles` →
+     Startseite, `/sehenswuerdigkeiten` → Startseite/Kontakt, `/eventlocation`
+     → Startseite. Rechtstexte öffnen als Ebene.
 
    ```bash
    npm run build && PGLITE_IN_MEMORY=1 npx next start -p 3200 &
    node tools/browser-demo/snapshot/build-snapshot.mjs http://localhost:3200
-   # → dist-snapshot/krone-vorschau.html (+ artifact/zur-krone-vorschau.html ohne <html>-Gerüst)
+   # → dist-snapshot/index.html, bereiche.html, galerie.html, faq.html, kontakt.html
+   #   dist-snapshot/krone-vorschau.html (= index.html)
+   #   dist-snapshot/artifact/zur-krone-vorschau.html (Startseite ohne <html>-Gerüst) + übrige Seiten
    ```
-   Die Datei lädt Bilder relativ aus `media/…` – beim Teilen `public/media`
-   mit veröffentlichen.
+   Die Dateien laden Bilder und Filme relativ aus `media/…` – beim Teilen
+   `public/media` (und `public/brand`, `public/map`) mit veröffentlichen.
+
+   **Preis-Prüfung:** Nach dem Schreiben durchsucht der Build sichtbaren Text,
+   Seitendaten und Rechtstexte nach €-Beträgen, „Euro“, Prozentangaben und
+   Währungsformaten. Fundstellen werden ausgegeben und der Lauf endet mit
+   Exit-Code 1 (Dateien liegen trotzdem zur Kontrolle vor). Bewusst
+   überspringen: `SNAPSHOT_ALLOW_PRICES=1`.
+   Nur einzelne Seiten bauen: `SNAPSHOT_ONLY=index.html,galerie.html`.
+   Seiten früherer Builds, die es nicht mehr gibt (hotel.html, aktuelles.html …),
+   verschiebt ein vollständiger Lauf nach `dist-snapshot/_alt/` bzw.
+   `dist-snapshot/artifact/_alt/` – sie werden nicht gelöscht, aber auch nicht
+   mehr versehentlich veröffentlicht.
 
 2. **Volle App im Browser** (unten): echte Seiten + PostgreSQL als WASM.
    Braucht WebAssembly; in manchen eingebetteten Viewern blockiert.

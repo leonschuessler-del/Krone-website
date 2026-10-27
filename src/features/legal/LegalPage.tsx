@@ -1,12 +1,19 @@
 import { Info } from "lucide-react";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { siteScope } from "@/config/scope";
 import type { LegalDocument } from "@/content/legal";
 import { env } from "@/lib/env";
 
+/** Provider-specific sections only appear when that provider is actually in use. */
+function isActive(when: LegalDocument["sections"][number]["when"]): boolean {
+  if (!when) return true;
+  // requestOnly: the public site never takes payments, so no payment-provider notice either.
+  if (when === "stripe") return env.paymentProvider === "stripe" && !siteScope.requestOnly;
+  return env.emailProvider === "resend";
+}
+
 export function LegalPage({ doc }: { doc: LegalDocument }) {
-  const sections = doc.sections.filter(
-    (s) => !s.when || (s.when === "stripe" && env.paymentProvider === "stripe") || (s.when === "resend" && env.emailProvider === "resend"),
-  );
+  const sections = doc.sections.filter((s) => isActive(s.when));
   return (
     <div className="bg-paper pb-24 pt-28 md:pt-36">
       <div className="container-page max-w-3xl">
@@ -17,7 +24,7 @@ export function LegalPage({ doc }: { doc: LegalDocument }) {
         </p>
         {doc.draft && (
           <div role="note" className="mt-6 flex items-start gap-3 rounded-2xl border border-sand bg-cream p-5 text-sm text-ink-soft">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-gold-dark" />
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-gold-dark" aria-hidden />
             <p>Diese Bedingungen werden derzeit überarbeitet. Bei Fragen erreichen Sie uns jederzeit telefonisch oder per E-Mail.</p>
           </div>
         )}

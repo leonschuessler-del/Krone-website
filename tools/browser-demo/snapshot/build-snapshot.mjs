@@ -1,8 +1,10 @@
-// Builds the static preview of the website from a running production server:
-// one self-contained HTML file per top-level page (start, hotel, eventlocation,
-// umgebung, aktuelles, kontakt). The pages share the runtime bundle that
-// drives the scroll tour, the planner, the request and hotel dialogs, the map
-// consent and the legal layers.
+// Builds the static preview of the event-location website from a running
+// production server: one self-contained HTML file per public page (start =
+// Eventlocation, Räume, Galerie, FAQ, Kontakt). The pages share the runtime
+// bundle that drives the scroll tour, the planner, the request dialog (requests
+// only – no prices, no payment), the map and the legal layers.
+// Hotel, offers and sights are archived (see ARCHIV.md) and not part of the
+// preview; links to them go to the start page or to the operator's main site.
 // usage: node build-snapshot.mjs <baseUrl> [outDir]
 import { chromium } from "playwright";
 import { build } from "esbuild";
@@ -16,16 +18,17 @@ const OUT_DIR = process.argv[3] ?? path.join(here, "..", "dist-snapshot");
 fs.mkdirSync(OUT_DIR, { recursive: true });
 const ROOT = path.resolve(here, "../../..");
 
+// Event-only scope (10/2026). /buchen (React wizard) and /bereiche/<slug> are not
+// snapshotted: their links open the runtime's request dialog / room dialog instead.
 const ROUTES = [
-  { path: "/", file: "index.html", title: "Zur Krone – Landhotel Leidersbach", map: "home" },
-  { path: "/hotel", file: "hotel.html", title: "Hotel & Zimmer · Zur Krone" },
-  { path: "/hotel/buchen", file: "buchen.html", title: "Zimmer buchen · Zur Krone" },
-  { path: "/eventlocation", file: "eventlocation.html", title: "Eventlocation · Zur Krone", tour: true },
-  { path: "/sehenswuerdigkeiten", file: "umgebung.html", title: "Umgebung · Zur Krone", map: "sights" },
-  { path: "/aktuelles", file: "aktuelles.html", title: "Aktuelles & Angebote · Zur Krone" },
-  { path: "/kontakt", file: "kontakt.html", title: "Kontakt · Zur Krone", map: "hotel" },
-  { path: "/galerie", file: "galerie.html", title: "Galerie · Zur Krone" },
+  { path: "/", file: "index.html", title: "Eventlocation Zur Krone · Leidersbach" },
+  { path: "/bereiche", file: "bereiche.html", title: "Räume · Eventlocation Zur Krone" },
+  { path: "/galerie", file: "galerie.html", title: "Galerie · Eventlocation Zur Krone" },
+  { path: "/faq", file: "faq.html", title: "Häufige Fragen · Eventlocation Zur Krone" },
+  { path: "/kontakt", file: "kontakt.html", title: "Kontakt · Eventlocation Zur Krone" },
 ];
+/** Archived pages (not routed any more) → where their old links go in the preview. */
+const ARCHIVED = { "/aktuelles": "index.html", "/sehenswuerdigkeiten": "index.html#kontakt", "/eventlocation": "index.html" };
 
 // 1) runtime bundle (real tour timeline + config + domain logic)
 const bundle = await build({
@@ -37,7 +40,14 @@ const bundle = await build({
   target: "es2020",
   jsx: "automatic",
   // browser bundle: no Node `process` – site config falls back to the public domain
-  define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_SITE_URL": '"https://krone-landhotel.de"', "process.env": "{}", "process.emit": "undefined" },
+  define: {
+    "process.env.NODE_ENV": '"production"',
+    "process.env.NEXT_PUBLIC_SITE_URL": '"https://krone-landhotel.de"',
+    // same main-site URL as the server build (src/config/scope.ts falls back to its default)
+    ...(process.env.NEXT_PUBLIC_MAIN_SITE_URL ? { "process.env.NEXT_PUBLIC_MAIN_SITE_URL": JSON.stringify(process.env.NEXT_PUBLIC_MAIN_SITE_URL) } : {}),
+    "process.env": "{}",
+    "process.emit": "undefined",
+  },
   tsconfig: path.join(ROOT, "tsconfig.json"),
   absWorkingDir: ROOT,
 });
@@ -45,14 +55,9 @@ const runtimeJs = bundle.outputFiles[0].text;
 const previewCss = fs.readFileSync(path.join(ROOT, "node_modules/leaflet/dist/leaflet.css"), "utf8").replace(/url\(images\/[^)]+\)/g, "none") + "\n" + fs.readFileSync(path.join(here, "preview.css"), "utf8");
 
 // 2) data
-const toDataUrl = async (url) => {
-  const res = await fetch(new URL(url, BASE));
-  if (!res.ok) throw new Error(`${res.status} ${url}`);
-  const type = res.headers.get("content-type")?.split(";")[0] ?? "application/octet-stream";
-  return `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`;
-};
-void toDataUrl;
-const { spaces: apiSpaces } = await (await fetch(new URL("/api/spaces", BASE))).json();
+const spacesRes = await fetch(new URL("/api/spaces", BASE));
+if (!spacesRes.ok) throw new Error(`${spacesRes.status} /api/spaces`);
+const { spaces: apiSpaces } = await spacesRes.json();
 const spaces = [];
 for (const s of apiSpaces) {
   const srcs = [s.media?.hero?.src, ...(s.media?.gallery ?? []).map((g) => g.src)].filter(Boolean);
@@ -75,9 +80,7 @@ for (const s of apiSpaces) {
     bookable: s.bookable,
     includedInFullVenue: s.includedInFullVenue,
     requires: s.requires ?? [],
-    basePrice: s.basePrice ?? null,
-    priceModel: s.priceModel ?? null,
-    cleaningFee: s.cleaningFee ?? null,
+    // no price fields: the preview only takes requests ("Preis auf Anfrage")
     images: unique.map((u) => (u.startsWith("/") ? u.slice(1) : u)),
     shape: s.shape,
   });
@@ -85,7 +88,7 @@ for (const s of apiSpaces) {
 
 // content modules the pages need (same config the site uses)
 const contentMod = await build({
-  stdin: { contents: `export { tourConfig } from "@/config/tour"; export { sights, HOTEL_COORDS } from "@/content/sights";`, resolveDir: ROOT, loader: "ts" },
+  stdin: { contents: `export { HOTEL_COORDS } from "@/content/sights"; export { extraSeeds } from "@/content/extras"; export { siteScope } from "@/config/scope";`, resolveDir: ROOT, loader: "ts" },
   bundle: true,
   format: "esm",
   write: false,
@@ -95,8 +98,10 @@ const contentMod = await build({
 });
 const tmpMod = path.join(OUT_DIR, ".content.mjs");
 fs.writeFileSync(tmpMod, contentMod.outputFiles[0].text);
-const { tourConfig, sights, HOTEL_COORDS } = await import(tmpMod + `?t=${Date.now()}`);
-void tourConfig;
+const { HOTEL_COORDS, extraSeeds, siteScope } = await import(tmpMod + `?t=${Date.now()}`);
+// add-ons for the request dialog: name and description only – the amounts stay out of the page
+const extras = extraSeeds.map((e) => ({ id: e.id, name: e.name, description: e.description }));
+const mainSiteUrl = siteScope.mainSiteUrl;
 
 // 3) snapshot the rendered pages
 const browser = await chromium.launch();
@@ -115,8 +120,6 @@ const legal = {};
   await lp.close();
 }
 
-const fileFor = (p) => ROUTES.find((r) => r.path === p)?.file ?? null;
-
 async function snapshotRoute(route) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   await page.goto(BASE + route.path, { waitUntil: "load" });
@@ -129,7 +132,7 @@ async function snapshotRoute(route) {
   await page.waitForTimeout(1200);
 
   const result = await page.evaluate(
-    async ({ spaces, headerTop, headerScrolled, route, routes }) => {
+    async ({ spaces, headerTop, headerScrolled, route, routes, archived, mainSiteUrl }) => {
       const cache = new Map();
       const dataUrl = (url) => {
         if (!cache.has(url)) {
@@ -176,14 +179,22 @@ async function snapshotRoute(route) {
         let target = null;
         let m;
         if (fileOf(p || "/")) target = fileOf(p || "/") + queryPart + hashPart;
+        else if (archived[p]) target = archived[p].includes("#") || !hashPart ? archived[p] : archived[p] + hashPart;
+        else if (/^\/hotel(\/|$)/.test(p)) {
+          // hotel & rooms live on the operator's main site
+          a.setAttribute("href", mainSiteUrl);
+          return;
+        } else if (p === "/bereiche/hotel") target = "index.html#hotel"; // the whole floor is an event add-on
         else if ((m = p.match(/^\/bereiche\/([\w-]+)/))) {
-          target = "eventlocation.html#karte";
+          // room page → room dialog of the runtime (href = fallback without JS)
+          target = "index.html#bereiche";
           a.dataset.room = m[1];
-        } else if (p === "/bereiche") target = "eventlocation.html#bereiche";
-        else if (p.startsWith("/faq")) target = "eventlocation.html#faq";
-        else if (p.startsWith("/buchen")) {
-          target = "eventlocation.html#karte";
+        } else if (p.startsWith("/buchen")) {
+          // booking wizard → request dialog of the runtime (same rooms preselected)
+          target = "index.html#karte";
           a.dataset.flow = "";
+          const pre = new URLSearchParams(query).get("spaces");
+          if (pre) a.dataset.flowSpaces = pre;
         } else if ((m = p.match(/^\/(impressum|datenschutz|agb|mietbedingungen|hausordnung)$/))) {
           a.setAttribute("href", "#");
           a.dataset.legal = m[1];
@@ -264,7 +275,7 @@ async function snapshotRoute(route) {
       }
       doc.querySelectorAll("link[rel~=icon], link[rel=apple-touch-icon], link[rel=manifest]").forEach((el) => el.remove());
 
-      // --- tour (eventlocation): markup is driven by the shared tour player; reset the state captured at scroll 0
+      // --- tour (start page): markup is driven by the shared tour player; reset the state captured at scroll 0
       const section = doc.querySelector("#rundgang");
       if (section) section.querySelectorAll("[data-tour-poster]").forEach((img) => (img.style.visibility = ""));
 
@@ -307,22 +318,12 @@ async function snapshotRoute(route) {
         }
       }
 
-      // --- booking engine (React) → mounted by the runtime with a local stand-in API
-      doc.querySelectorAll("[data-booking-engine]").forEach((w) => {
-        w.replaceChildren();
-        w.setAttribute("data-pv-engine", "");
-      });
-      // --- booking bar (start page / hotel page) → booking page with the dates as query
-      doc.querySelectorAll("[data-testid=booking-bar]").forEach((f) => {
-        f.setAttribute("action", "buchen.html");
-        f.setAttribute("method", "get");
-        f.setAttribute("data-pv-bookingbar", "");
-      });
+      // (the hotel booking engine and the hotel booking bar are archived – not part of the event site)
       // --- contact form → preview confirmation
-      doc.querySelectorAll("main form:not([data-testid=booking-bar])").forEach((f) => f.setAttribute("data-pv-contact", ""));
-      // --- map consent → runtime loads Leaflet
+      doc.querySelectorAll("main form").forEach((f) => f.setAttribute("data-pv-contact", ""));
+      // --- map consent → runtime loads Leaflet (the house only)
       doc.querySelectorAll("[data-testid=map]").forEach((m) => {
-        m.setAttribute("data-pv-map", route.map ?? "hotel");
+        m.setAttribute("data-pv-map", "hotel");
         m.className = m.className.replace(/\bleaflet-[\w-]+/g, "").replace(/\s+/g, " ").trim();
         m.replaceChildren();
       });
@@ -356,7 +357,7 @@ async function snapshotRoute(route) {
         headers,
       };
     },
-    { spaces, headerTop, headerScrolled, route, routes: ROUTES.map((r) => ({ path: r.path, file: r.file })) },
+    { spaces, headerTop, headerScrolled, route, routes: ROUTES.map((r) => ({ path: r.path, file: r.file })), archived: ARCHIVED, mainSiteUrl },
   );
   await page.close();
   return result;
@@ -364,6 +365,20 @@ async function snapshotRoute(route) {
 
 const pill = `<div class="pv-pill" aria-hidden="true">Vorschau · Demo-Inhalte</div>`;
 const written = [];
+/** Anything that looks like an amount of money or a discount must not reach the page (siteScope.showPrices === false). */
+const PRICE_PATTERNS = [/€/, /\bEUR\b/, /\d[\d.,]*\s?(?:Euro|%)/i, /\bab\s+\d[\d.,]*\s?(?:€|Euro)/i, /currency/i];
+const priceHits = [];
+const scanPrices = (label, text) => {
+  // only visible text and data: drop tags/attributes of the markup, keep the payload JSON as is
+  for (const re of PRICE_PATTERNS) {
+    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    for (const m of text.matchAll(g)) {
+      priceHits.push(`${label}: …${text.slice(Math.max(0, m.index - 50), m.index + 30).replace(/\s+/g, " ")}…`);
+      if (priceHits.length > 40) return;
+    }
+  }
+};
+const visibleText = (html) => html.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
 const ONLY = process.env.SNAPSHOT_ONLY?.split(",").filter(Boolean);
 for (const route of ROUTES) {
   if (ONLY?.length && !ONLY.includes(route.file)) continue;
@@ -371,12 +386,18 @@ for (const route of ROUTES) {
   const payload = {
     page: route.file,
     spaces: spaces.map(({ shape: _shape, ...s }) => s),
+    extras,
+    mainSiteUrl,
     headerTop: result.headers[0],
     headerScrolled: result.headers[1],
     legal,
-    sights: sights.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, minutes: s.minutes })),
     hotelCoords: HOTEL_COORDS,
   };
+  if (!siteScope.showPrices) {
+    scanPrices(route.file, visibleText(result.bodyHtml + result.headers.join("")));
+    scanPrices(`${route.file} (Daten)`, JSON.stringify({ ...payload, legal: undefined, headerTop: undefined, headerScrolled: undefined }));
+    if (route.file === "index.html") for (const [slug, l] of Object.entries(legal)) scanPrices(`Rechtstext ${slug}`, visibleText(l.html));
+  }
   const scripts =
     `<script>window.__PREVIEW__=${JSON.stringify(payload).replace(/</g, "\\u003c")};</script>` +
     `<script>${runtimeJs.replace(/<\/script/gi, "<\\/script")}</script>`;
@@ -396,4 +417,24 @@ for (const route of ROUTES) {
 }
 await browser.close();
 fs.rmSync(tmpMod, { force: true });
+// pages of earlier builds that are no longer part of the site (hotel, offers, sights …) must not be
+// published by mistake → moved aside (not deleted) into _alt/
+if (!ONLY?.length) {
+  const keep = new Set([...ROUTES.map((r) => r.file), "krone-vorschau.html", "zur-krone-vorschau.html"]);
+  for (const dir of [OUT_DIR, path.join(OUT_DIR, "artifact")]) {
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith(".html") || keep.has(f)) continue;
+      const aside = path.join(dir, "_alt");
+      fs.mkdirSync(aside, { recursive: true });
+      fs.renameSync(path.join(dir, f), path.join(aside, f));
+      console.log("moved stale", path.relative(OUT_DIR, path.join(dir, f)), "→ _alt/");
+    }
+  }
+}
 console.log("wrote", written.join(", "), "→", OUT_DIR);
+if (priceHits.length) {
+  // files are written so they can be inspected – but the build is marked as failed
+  console.error(`\nPreis-Prüfung: ${priceHits.length} Stelle(n) mit Betrag/Prozent gefunden (siteScope.showPrices = false):`);
+  for (const h of priceHits) console.error("  - " + h);
+  if (!process.env.SNAPSHOT_ALLOW_PRICES) process.exitCode = 1;
+}

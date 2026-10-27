@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { SpaceImage } from "@/components/media/SpaceImage";
+import { PRICE_ON_REQUEST, siteScope } from "@/config/scope";
 import { siteConfig } from "@/config/site";
 import { getFullVenueSpaceIds, isFullVenueSelection } from "@/domain/selection";
 import type { AvailabilityCheckResponse } from "@/features/availability/api-types";
@@ -17,7 +18,7 @@ import { SchedulePicker } from "@/features/booking/SchedulePicker";
 import type { MapSpaceStatus, SpaceView } from "@/features/spaces/types";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { displayFacts } from "@/content/space-estimates";
+import { displayFacts, spaceEstimates } from "@/content/space-estimates";
 import { formatDateMedium, formatMoney, formatTime, pluralize } from "@/lib/format";
 import { useBookingStore, type ScheduleDraft } from "@/store/booking-store";
 import { SiteMap } from "./SiteMap";
@@ -82,7 +83,8 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
 
   const mapCheck = useAvailabilityCheck(allIds, schedule);
   const selectionCheck = useAvailabilityCheck(selected, schedule, { alternatives: 3 });
-  const quote = usePriceQuote(selected, schedule, { enabled: selectionCheck.data?.bookingAllowed ?? false });
+  // no public quote while prices are hidden (the endpoint answers 404 then)
+  const quote = usePriceQuote(selected, schedule, { enabled: siteScope.showPrices && (selectionCheck.data?.bookingAllowed ?? false) });
   const { statuses, detail } = useMemo(() => deriveMapStatus(mapCheck.data), [mapCheck.data]);
 
   useEffect(() => {
@@ -327,7 +329,7 @@ export function MapConfigurator({ spaces, demo }: { spaces: SpaceView[]; demo: b
                 }}
                 data-testid="schedule-continue"
               >
-                Weiter zur Buchung <ArrowRight className="h-4 w-4" />
+                {siteScope.requestOnly ? "Weiter zur Anfrage" : "Weiter zur Buchung"} <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -470,8 +472,8 @@ function MapLegend({ spaces, selected, onToggle, hasStatus }: { spaces: SpaceVie
         {notDrawn.map((s) => (
           <li key={s.id} className="inline-flex items-center gap-1.5 text-muted">
             <span className="h-3 w-3 rounded-sm border border-dashed border-taupe" />
-            <Link href={s.href} className="underline-offset-4 hover:underline">
-              {s.type === "hotel" ? "Übernachtung im Hotel (1. OG) – unter der Karte hinzufügen" : `${s.name} – genaue Abgrenzung folgt`}
+            <Link href={s.type === "hotel" ? "#planner-hotel" : s.href} className="underline-offset-4 hover:underline">
+              {s.type === "hotel" ? "Übernachtung im Haus (1. OG) – unter der Karte hinzufügen" : `${s.name} – genaue Abgrenzung folgt`}
             </Link>
           </li>
         ))}
@@ -591,8 +593,9 @@ function SelectionPanelContent({
   onInquiry: () => void;
 }) {
   const selectedSpaces = spaces.filter((s) => selected.includes(s.id));
-  const q = quote.data;
-  const inquiryOnly = q ? q.bookingMode === "inquiry" : false;
+  const q = siteScope.showPrices ? quote.data : null;
+  const inquiryOnly = siteScope.requestOnly || (q ? q.bookingMode === "inquiry" : false);
+  const seats = selectedSpaces.reduce((sum, s) => (s.type === "hotel" ? sum : sum + (s.capacitySeated ?? spaceEstimates[s.id]?.seats ?? 0)), 0);
 
   return (
     <div data-testid="selection-panel">
@@ -650,24 +653,42 @@ function SelectionPanelContent({
             )}
           </dd>
         </div>
-        <div className="flex items-start justify-between gap-3">
-          <dt className="text-paper/60">Preis</dt>
-          <dd className="text-right" data-testid="panel-price">
-            {!hasRange || selected.length === 0 ? (
-              <span className="text-paper/70">wird berechnet</span>
-            ) : quote.state === "loading" && !q ? (
-              <span className="text-paper/70">wird berechnet …</span>
-            ) : q ? (
-              <span>
-                <span className="font-serif text-xl font-semibold">{formatMoney(q.total, inquiryOnly ? "auf Anfrage" : "Preis folgt")}</span>
-                {q.total !== null && <span className="block text-xs text-paper/60">Mietsumme inkl. Reinigung{q.deposit ? ` · zzgl. ${formatMoney(q.deposit)} Kaution` : ""}</span>}
-                {(demo || q.isDemo) && q.total !== null && <span className="mt-0.5 block text-[0.7rem] uppercase tracking-wider text-gold-light">Demo-Preis – unverbindlich</span>}
-              </span>
-            ) : (
-              <span className="text-paper/70">{quote.state === "error" ? "Preis konnte nicht berechnet werden" : "–"}</span>
+        {siteScope.showPrices ? (
+          <div className="flex items-start justify-between gap-3">
+            <dt className="text-paper/60">Preis</dt>
+            <dd className="text-right" data-testid="panel-price">
+              {!hasRange || selected.length === 0 ? (
+                <span className="text-paper/70">wird berechnet</span>
+              ) : quote.state === "loading" && !q ? (
+                <span className="text-paper/70">wird berechnet …</span>
+              ) : q ? (
+                <span>
+                  <span className="font-serif text-xl font-semibold">{formatMoney(q.total, inquiryOnly ? "auf Anfrage" : "Preis folgt")}</span>
+                  {q.total !== null && <span className="block text-xs text-paper/60">Mietsumme inkl. Reinigung{q.deposit ? ` · zzgl. ${formatMoney(q.deposit)} Kaution` : ""}</span>}
+                  {(demo || q.isDemo) && q.total !== null && <span className="mt-0.5 block text-[0.7rem] uppercase tracking-wider text-gold-light">Demo-Preis – unverbindlich</span>}
+                </span>
+              ) : (
+                <span className="text-paper/70">{quote.state === "error" ? "Preis konnte nicht berechnet werden" : "–"}</span>
+              )}
+            </dd>
+          </div>
+        ) : (
+          <>
+            {selected.length > 0 && (
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-paper/60">Sitzplätze</dt>
+                <dd className="text-right font-semibold tabular-nums">{seats > 0 ? `ca. ${seats}` : "nach Absprache"}</dd>
+              </div>
             )}
-          </dd>
-        </div>
+            <div className="flex items-start justify-between gap-3">
+              <dt className="text-paper/60">Angebot</dt>
+              <dd className="text-right" data-testid="panel-offer">
+                <span className="font-semibold">Individuell für Ihr Fest</span>
+                <span className="block text-xs text-paper/60">{PRICE_ON_REQUEST} · unverbindlich</span>
+              </dd>
+            </div>
+          </>
+        )}
       </dl>
 
       <div className="mt-5 space-y-2.5">
@@ -676,7 +697,7 @@ function SelectionPanelContent({
           <ArrowRight className="h-4 w-4" />
         </Button>
         {hasRange && allAvailable && inquiryOnly && (
-          <p className="text-xs text-paper/60">Diese Kombination wird individuell kalkuliert – Sie senden eine unverbindliche Anfrage.</p>
+          <p className="text-xs text-paper/60">Sie senden eine unverbindliche Anfrage – wir melden uns mit einem individuellen Angebot.</p>
         )}
         {!fullVenueSelected && (
           <Button variant="dark" className="w-full" onClick={onFullVenue}>
@@ -693,7 +714,6 @@ function SelectionPanelContent({
   );
 }
 
-/** The upper floor is rented as a whole – shown as its own button next to the map. */
 /** Overnight stay: the whole upper floor, booked as one add-on for the guests of the event. */
 function HotelCard({ hotel, selected, status, onToggle }: { hotel: SpaceView; selected: boolean; status?: MapSpaceStatus; onToggle: () => void }) {
   const thumbs = hotel.media.gallery.slice(0, 3);
@@ -703,6 +723,7 @@ function HotelCard({ hotel, selected, status, onToggle }: { hotel: SpaceView; se
         "mt-5 grid overflow-hidden rounded-[1.25rem] bg-anthracite text-paper shadow-soft transition-shadow md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]",
         selected && "ring-2 ring-paper/70",
       )}
+      id="planner-hotel"
       data-testid="hotel-card"
     >
       <div className="relative min-h-52">
@@ -740,10 +761,10 @@ function HotelCard({ hotel, selected, status, onToggle }: { hotel: SpaceView; se
             {selected ? <Check className="h-4 w-4" /> : null}
             {selected ? "Übernachtung ist dabei" : "Übernachtung hinzufügen"}
           </Button>
-          <Link href={hotel.href} className="inline-flex h-9 items-center rounded-full border border-white/25 px-4 text-sm font-semibold hover:border-white/60">
-            Zimmer ansehen
-          </Link>
-          <span className="w-full text-xs text-paper/55">Exklusiv für Ihre Gesellschaft · Preis auf Anfrage</span>
+          <a href={siteScope.mainSiteUrl} className="inline-flex h-9 items-center rounded-full border border-white/25 px-4 text-sm font-semibold hover:border-white/60">
+            Hotel &amp; Zimmer
+          </a>
+          <span className="w-full text-xs text-paper/55">Exklusiv für Ihre Gesellschaft · {PRICE_ON_REQUEST}</span>
         </div>
       </div>
     </div>

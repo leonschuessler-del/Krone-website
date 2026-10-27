@@ -1,27 +1,28 @@
 import { siteConfig } from "@/config/site";
+import { siteScope } from "@/config/scope";
 
 /**
- * schema.org data with VERIFIED facts only (name, locality, postal code,
- * country, URL). No ratings, reviews, prices, phone numbers or opening hours
- * are emitted until they are confirmed.
+ * schema.org data for the event location with VERIFIED facts only (name,
+ * address, phone, e-mail, URL). Event-only scope (10/2026): no priceRange,
+ * offers or prices; no ratings, reviews or opening hours until confirmed.
+ * The hotel is the operator's main site and only referenced via `sameAs`.
  */
 export function StructuredData() {
-  const { address } = siteConfig;
+  const { address, contact } = siteConfig;
   const data = {
     "@context": "https://schema.org",
-    "@type": ["Hotel", "EventVenue"],
-    name: "Landhotel Gasthof Zur Krone",
-    foundingDate: "1919",
-    checkinTime: "15:30",
-    checkoutTime: "10:00",
-    petsAllowed: true,
-    amenityFeature: [
-      { "@type": "LocationFeatureSpecification", name: "Frühstück inklusive", value: true },
-      { "@type": "LocationFeatureSpecification", name: "Kostenlose Parkplätze", value: true },
-      { "@type": "LocationFeatureSpecification", name: "WLAN", value: true },
-    ],
+    "@type": ["EventVenue", "LocalBusiness"],
+    name: "Eventlocation Zur Krone Leidersbach",
+    alternateName: "Landhotel Gasthof Zur Krone",
     description: siteConfig.description,
     url: siteConfig.url,
+    maximumAttendeeCapacity: 160,
+    amenityFeature: [
+      { "@type": "LocationFeatureSpecification", name: "Profiküche", value: true },
+      { "@type": "LocationFeatureSpecification", name: "Biergarten", value: true },
+      { "@type": "LocationFeatureSpecification", name: "Übernachtung im Haus", value: true },
+      { "@type": "LocationFeatureSpecification", name: "Parkplätze am Haus", value: true },
+    ],
     address: {
       "@type": "PostalAddress",
       ...(address.street ? { streetAddress: address.street } : {}),
@@ -29,8 +30,9 @@ export function StructuredData() {
       addressLocality: address.city,
       addressCountry: address.countryCode,
     },
-    ...(siteConfig.contact.phone ? { telephone: siteConfig.contact.phone } : {}),
-    ...(siteConfig.contact.email ? { email: siteConfig.contact.email } : {}),
+    ...(contact.phone ? { telephone: contact.phone } : {}),
+    ...(contact.email ? { email: contact.email } : {}),
+    sameAs: [siteScope.mainSiteUrl],
   };
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />;
 }

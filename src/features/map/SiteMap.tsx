@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X as XIcon } from "lucide-react";
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { floorplanMeta, mapFeatures } from "@/config/floorplan";
 import { mapConfig } from "@/config/map";
@@ -242,9 +242,9 @@ export function SiteMap({
               >
                 <span
                   className={cn(
-                    "relative inline-flex items-center gap-2 whitespace-nowrap rounded-full border shadow-[0_6px_18px_-8px_rgb(0_0_0/0.7)] backdrop-blur-md transition-colors duration-300",
+                    "relative inline-flex items-center gap-2 whitespace-nowrap rounded-full border shadow-[0_6px_18px_-8px_rgb(0_0_0/0.7)] transition-colors duration-300",
                     labelMode === "full" ? "py-1 pl-1 pr-3" : "p-0.5",
-                    selected ? "border-white bg-paper text-anthracite" : "border-white/25 bg-[#15120f]/70 text-paper",
+                    selected ? "border-white bg-paper text-anthracite" : "border-white/25 bg-[#15120f]/85 text-paper",
                   )}
                 >
                   <span
@@ -278,7 +278,7 @@ export function SiteMap({
               f.type === "toilets" ? (
                 <span
                   key={f.id}
-                  className="absolute grid h-5 min-w-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-[#15120f]/60 px-1 text-[0.55rem] font-semibold tracking-[0.08em] text-paper/80 backdrop-blur-sm"
+                  className="absolute grid h-5 min-w-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-[#15120f]/80 px-1 text-[0.55rem] font-semibold tracking-[0.08em] text-paper/80"
                   style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
                   title={`${f.label} – ${f.note}`}
                 >
@@ -287,7 +287,7 @@ export function SiteMap({
               ) : (
                 <span
                   key={f.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/60 px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-paper/85 backdrop-blur-sm"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/80 px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-paper/85"
                   style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
                 >
                   ↓ {f.label}
@@ -300,7 +300,7 @@ export function SiteMap({
               .map((f) => (
                 <span
                   key={f.id}
-                  className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/60 py-0.5 pl-0.5 pr-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-paper/85 backdrop-blur-sm"
+                  className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/25 bg-[#15120f]/80 py-0.5 pl-0.5 pr-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-paper/85"
                   style={{ left: pct(f.labelPosition.x, W), top: pct(f.labelPosition.y, H) }}
                   title={`${f.label} – ${f.note ?? "nicht buchbar"}`}
                 >
@@ -315,7 +315,7 @@ export function SiteMap({
       {interactive && hovered?.shape && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-20 hidden w-56 -translate-x-1/2 rounded-xl border border-white/10 bg-anthracite/95 px-4 py-3 text-left text-paper shadow-lift backdrop-blur-sm md:block"
+          className="pointer-events-none absolute z-20 hidden w-56 -translate-x-1/2 rounded-xl border border-white/10 bg-anthracite/95 px-4 py-3 text-left text-paper shadow-lift md:block"
           style={{
             left: pct(Math.min(Math.max(hovered.shape.labelPosition.x, 160), W - 160), W),
             top: pct(hovered.shape.labelPosition.y, H),

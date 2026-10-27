@@ -5,17 +5,18 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
+  // Event-only scope (10/2026): this site is the event location of the Krone.
   title: {
-    default: "Zur Krone Leidersbach – Landhotel, Gasthof & Eventlocation",
-    template: "%s · Zur Krone Leidersbach",
+    default: "Eventlocation Zur Krone – Räume mieten in Leidersbach",
+    template: "%s · Eventlocation Zur Krone",
   },
   description: siteConfig.description,
-  applicationName: "Zur Krone",
+  applicationName: "Eventlocation Zur Krone",
   openGraph: {
     type: "website",
     locale: "de_DE",
-    siteName: "Zur Krone Leidersbach",
-    title: "Zur Krone Leidersbach – Ein Ort. Viele Möglichkeiten.",
+    siteName: "Eventlocation Zur Krone Leidersbach",
+    title: "Eventlocation Zur Krone – Ein Ort. Viele Möglichkeiten.",
     description: siteConfig.description,
     url: "/",
   },

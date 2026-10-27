@@ -6,9 +6,28 @@ import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { ButtonLink } from "@/components/ui/Button";
-import { headerCta, heroRoutes, mainNavigation } from "@/config/navigation";
+import { headerCta, heroRoutes, isExternalHref, mainNavigation, type NavItem } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { useSelectionCount } from "@/store/booking-store";
+
+/** Section ids the menu links to on the start page ("/#bereiche" → "bereiche"). */
+const HASH_TARGETS = mainNavigation.map((i) => (i.href.startsWith("/#") ? i.href.slice(2) : null)).filter((id): id is string => Boolean(id));
+
+/** A menu entry: next/link for own routes, a plain <a> for other websites. */
+function NavAnchor({ item, className, onClick, current }: { item: NavItem; className: string; onClick?: () => void; current?: "page" | "location" }) {
+  if (item.external || isExternalHref(item.href)) {
+    return (
+      <a href={item.href} className={className} onClick={onClick}>
+        {item.label}
+      </a>
+    );
+  }
+  return (
+    <Link href={item.href} className={className} onClick={onClick} aria-current={current}>
+      {item.label}
+    </Link>
+  );
+}
 
 export function Header() {
   const pathname = usePathname();
@@ -51,12 +70,40 @@ export function Header() {
     };
   }, [open]);
 
+  // Start page: the menu entry of the section in view ("Räume", "Raumplaner") is marked.
+  // One IntersectionObserver, state is only set from its callback – cheap while scrolling.
+  const [sectionInView, setSectionInView] = useState<string | null>(null);
+  useEffect(() => {
+    if (pathname !== "/" || typeof IntersectionObserver === "undefined") return;
+    const visible = new Set<string>();
+    const els = HASH_TARGETS.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => el !== null);
+    if (!els.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        setSectionInView(HASH_TARGETS.find((id) => visible.has(id)) ?? null);
+      },
+      // a band across the middle of the viewport: a section counts once it fills the reading area
+      { rootMargin: "-40% 0px -50% 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [pathname]);
+
   const transparent = overHero && !scrolled && !open;
-  // Most specific matching nav item (e.g. /bereiche/hotel → "Hotel", not "Bereiche").
+  // Most specific matching route item (e.g. /galerie); hash items only on the start page, while their section is in view.
   const activeHref = mainNavigation
     .map((i) => i.href)
-    .filter((href) => !href.includes("#") && (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)))
+    .filter((href) => !href.includes("#") && !isExternalHref(href) && (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)))
     .sort((a, b) => b.length - a.length)[0];
+  const currentOf = (item: NavItem): "page" | "location" | undefined => {
+    if (item.href === activeHref) return "page";
+    if (pathname === "/" && sectionInView && item.href === `/#${sectionInView}`) return "location";
+    return undefined;
+  };
 
   return (
     <header
@@ -74,20 +121,18 @@ export function Header() {
 
         <nav aria-label="Hauptnavigation" className="hidden items-center gap-1 lg:flex">
           {mainNavigation.map((item) => {
-            const active = item.href === activeHref;
+            const current = currentOf(item);
             return (
-              <Link
+              <NavAnchor
                 key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
+                item={item}
+                current={current}
                 className={cn(
                   "nav-link px-3.5 py-2 text-[0.72rem] font-medium uppercase tracking-[0.2em] transition-colors duration-300",
                   transparent ? "text-paper/85 hover:text-paper" : "text-ink-soft hover:text-ink",
-                  active && (transparent ? "text-paper" : "text-ink"),
+                  current && (transparent ? "text-paper" : "text-ink"),
                 )}
-              >
-                {item.label}
-              </Link>
+              />
             );
           })}
         </nav>
@@ -134,17 +179,21 @@ export function Header() {
         className="fixed inset-x-0 bottom-0 top-[4.5rem] overflow-y-auto bg-paper px-5 pb-10 pt-4 lg:hidden"
       >
         <nav aria-label="Mobile Navigation" className="flex flex-col">
-          {mainNavigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              aria-current={item.href === activeHref ? "page" : undefined}
-              className="border-b border-sand py-4 font-serif text-2xl text-ink transition-colors hover:text-gold-dark active:text-gold-dark aria-[current=page]:text-gold-dark"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {mainNavigation.map((item) => {
+            const current = currentOf(item);
+            return (
+              <NavAnchor
+                key={item.href}
+                item={item}
+                current={current}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "border-b border-sand py-4 font-serif text-2xl text-ink transition-colors hover:text-gold-dark active:text-gold-dark",
+                  current && "text-gold-dark",
+                )}
+              />
+            );
+          })}
         </nav>
         <ButtonLink href={headerCta.href} variant="gold" size="lg" className="mt-8 w-full" onClick={() => setOpen(false)}>
           {headerCta.label}

@@ -1,3 +1,4 @@
+// ARCHIV (10/2026): nicht geroutet, siehe ARCHIV.md
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Armchair, Baby, Bath, BedSingle, Briefcase, CalendarX, Car, Check, Clock, Coffee, CookingPot, CreditCard, KeyRound, LampDesk, Motorbike, PawPrint, Phone, PlugZap, Receipt, ShieldCheck, Sun, Tv, Wifi, type LucideIcon } from "lucide-react";

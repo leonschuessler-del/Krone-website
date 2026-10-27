@@ -2,6 +2,10 @@
  * Static preview: the real booking engine (React) mounted into the snapshot
  * of /hotel/buchen with a local stand-in for the API – availability from the
  * domain logic, reservations kept in the viewer's browser (localStorage).
+ *
+ * ARCHIVED (10/2026): the public site is event-only (src/config/scope.ts, ARCHIV.md).
+ * runtime.ts no longer mounts this engine and build-snapshot.mjs no longer
+ * snapshots /hotel/buchen. Kept unchanged for a later hotel relaunch.
  */
 import { createRoot } from "react-dom/client";
 import manifest from "@/generated/media-manifest.json";

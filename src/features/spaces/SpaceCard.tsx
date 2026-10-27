@@ -1,13 +1,36 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarCheck, Euro, Ruler, Users } from "lucide-react";
+import type { ReactNode } from "react";
+import { ArrowUpRight, BedDouble, CalendarCheck, DoorOpen, Euro, Ruler, TreeDeciduous, Users, type LucideIcon } from "lucide-react";
 import { SpaceImage } from "@/components/media/SpaceImage";
+import { siteScope } from "@/config/scope";
 import { displayFacts } from "@/content/space-estimates";
 import type { SpaceView } from "./types";
 import { SelectSpaceButton } from "./SelectSpaceButton";
 import { formatPriceFrom } from "./price-label";
 
+const KIND: Record<SpaceView["type"], { label: string; icon: LucideIcon }> = {
+  indoor: { label: "Innenraum", icon: DoorOpen },
+  outdoor: { label: "Im Freien", icon: TreeDeciduous },
+  hotel: { label: "Event-Add-on", icon: BedDouble },
+  service: { label: "Zusatzleistung", icon: DoorOpen },
+};
+
+function Fact({ icon: Icon, label, children, wide }: { icon: LucideIcon; label: string; children: ReactNode; wide?: boolean }) {
+  return (
+    <div className={wide ? "col-span-2 min-w-0" : "min-w-0"}>
+      <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
+        <Icon className="h-3 w-3 text-gold-dark" aria-hidden />
+        {label}
+      </dt>
+      <dd className="font-semibold">{children}</dd>
+    </div>
+  );
+}
+
 export function SpaceCard({ space, demo }: { space: SpaceView; demo: boolean }) {
-  const price = formatPriceFrom(space);
+  const facts = displayFacts(space);
+  const kind = KIND[space.type];
+  const isHotel = space.type === "hotel";
   return (
     <article className="group card-surface hover-lift hover-zoom flex flex-col overflow-hidden" data-testid={`space-card-${space.id}`}>
       <Link href={space.href} className="relative block aspect-[3/2] overflow-hidden" tabIndex={-1} aria-hidden="true">
@@ -34,37 +57,25 @@ export function SpaceCard({ space, demo }: { space: SpaceView; demo: boolean }) 
         </h3>
         <p className="mt-1.5 line-clamp-2 text-[0.95rem] text-ink-soft">{space.shortDescription}</p>
         <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-          <div>
-            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
-              <Ruler className="h-3 w-3 text-gold-dark" aria-hidden />
-              Fläche
-            </dt>
-            <dd className="font-semibold">{displayFacts(space).area}</dd>
-          </div>
-          <div>
-            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
-              <Users className="h-3 w-3 text-gold-dark" aria-hidden />
-              Plätze
-            </dt>
-            <dd className="font-semibold">{displayFacts(space).seats}</dd>
-          </div>
-          <div>
-            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
-              <Euro className="h-3 w-3 text-gold-dark" aria-hidden />
-              Preis
-            </dt>
-            <dd className="font-semibold">
-              {price}
+          {isHotel ? (
+            <Fact icon={BedDouble} label="Zimmer" wide>
+              {facts.seats}
+            </Fact>
+          ) : (
+            <>
+              <Fact icon={Ruler} label="Fläche">{facts.area}</Fact>
+              <Fact icon={Users} label="Plätze">{facts.seats}</Fact>
+            </>
+          )}
+          {siteScope.showPrices ? (
+            <Fact icon={Euro} label="Preis">
+              {formatPriceFrom(space)}
               {demo && space.basePrice !== null && <span className="ml-1 text-[0.65rem] font-semibold uppercase tracking-wider text-warning">Demo</span>}
-            </dd>
-          </div>
-          <div>
-            <dt className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted">
-              <CalendarCheck className="h-3 w-3 text-gold-dark" aria-hidden />
-              Verfügbarkeit
-            </dt>
-            <dd className="font-semibold">{space.bookable ? "im Kalender" : "auf Anfrage"}</dd>
-          </div>
+            </Fact>
+          ) : (
+            <Fact icon={kind.icon} label="Art">{kind.label}</Fact>
+          )}
+          <Fact icon={CalendarCheck} label="Verfügbarkeit">{space.bookable ? "im Kalender" : "auf Anfrage"}</Fact>
         </dl>
         <div className="mt-auto flex items-center gap-2 pt-5">
           <Link href={space.href} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-full border border-ink/20 text-sm font-semibold transition-colors hover:border-gold hover:text-gold-dark">
@@ -73,7 +84,7 @@ export function SpaceCard({ space, demo }: { space: SpaceView; demo: boolean }) 
           {space.bookable ? (
             <SelectSpaceButton spaceId={space.id} name={space.name} requires={space.requires} className="flex-1" />
           ) : (
-            <Link href="/kontakt?betreff=Hotel" className="inline-flex h-10 flex-1 items-center justify-center rounded-full bg-cream text-sm font-semibold hover:bg-sand">
+            <Link href={`/kontakt?betreff=${encodeURIComponent(space.name)}`} className="inline-flex h-10 flex-1 items-center justify-center rounded-full bg-cream text-sm font-semibold hover:bg-sand">
               Anfragen
             </Link>
           )}

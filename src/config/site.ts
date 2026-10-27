@@ -12,9 +12,9 @@ export const siteConfig = {
   legalName: "Landhotel Gasthof „Zur Krone“, Inh. Boris Schüßler" as string | null, // Impressum krone-landhotel.de
   brandLine: "Landhotel · Gasthof",
   locality: "Leidersbach",
-  tagline: "Eventlocation · Landhotel · Leidersbach",
+  tagline: "Eventlocation · Leidersbach",
   description:
-    "Landhotel Gasthof „Zur Krone“ in Leidersbach: Eventlocation für Hochzeiten, Feiern und Firmenveranstaltungen bis 160 Personen – Säle, Wintergarten, Biergarten und Hotel, einzeln oder kombiniert buchbar.",
+    "Eventlocation „Zur Krone“ in Leidersbach: Räume für Hochzeiten, Feiern und Firmenveranstaltungen bis 160 Personen – Restaurant, Nebenzimmer, Bühne, Alte Wirtschaft, Wintergarten und Biergarten, einzeln oder kombiniert. Übernachtung für Ihre Gäste im Haus. Unverbindlich anfragen.",
   locale: "de-DE",
   timeZone: "Europe/Berlin",
   currency: "EUR",
@@ -50,15 +50,18 @@ export const siteConfig = {
   ],
 
   hero: {
-    eyebrow: "Eventlocation · Landhotel · Leidersbach",
+    eyebrow: "Eventlocation · Leidersbach",
     title: "Willkommen in der Krone.",
-    subline: "Hochzeiten, Feiern und Firmenveranstaltungen bis 160 Personen. Säle, Wintergarten, Biergarten und ein eigenes Hotel unter einem Dach.",
-    primaryCta: { label: "Location entdecken", href: "#location" },
-    secondaryCta: { label: "Bereiche auswählen", href: "#karte" },
+    subline: "Hochzeiten, Feiern und Firmenveranstaltungen bis 160 Personen. Säle, Wintergarten und Biergarten unter einem Dach – und Zimmer für Ihre Gäste gleich darüber.",
+    primaryCta: { label: "Räume entdecken", href: "#bereiche" },
+    secondaryCta: { label: "Termin anfragen", href: "/buchen" },
+    /**
+     * Reference only – the player resolves the film itself (src/lib/media.ts → getHeroVideo,
+     * see public/media/hero/README.md). Paths point to files that exist.
+     */
     video: {
-      /** Put the final film here. Until the file exists, a stylised animated placeholder is shown. */
-      src: "/media/hero/krone-property-tour.mp4",
-      srcWebm: "/media/hero/krone-property-tour.webm",
+      src: "/media/hero/krone-film.mp4",
+      srcSmall: "/media/hero/krone-film-720.mp4",
       poster: "/media/hero/poster.webp",
     },
   },
@@ -67,8 +70,8 @@ export const siteConfig = {
     eyebrow: "Das Haus",
     title: "Ein Gasthof mit Platz für große und kleine Feste.",
     text:
-      "Unter einem Dach liegen Gaststube, Nebenzimmer, Bühne, Alte Wirtschaft und Wintergarten, dahinter der Biergarten, darüber das Landhotel. " +
-      "Sie mieten genau die Räume, die Ihr Anlass braucht: einen einzelnen oder das ganze Haus.",
+      "Unter einem Dach liegen Gaststube, Nebenzimmer, Bühne, Alte Wirtschaft und Wintergarten, dahinter der Biergarten, darüber die Zimmer für Ihre Gäste. " +
+      "Sie wählen genau die Räume, die Ihr Anlass braucht – einen einzelnen oder das ganze Haus. Das Angebot stellen wir Ihnen persönlich zusammen.",
   },
 
   mapSection: {
@@ -79,7 +82,7 @@ export const siteConfig = {
   },
 
   demoNotice:
-    "Demo-Modus: Verfügbarkeiten, Preise und Zusatzleistungen sind Beispieldaten und nicht verbindlich. Es werden keine Zahlungen ausgeführt und keine E-Mails versendet.",
+    "Demo-Modus: Verfügbarkeiten und Zusatzleistungen sind Beispieldaten und nicht verbindlich. Es werden keine E-Mails versendet.",
 } as const;
 
 export type SiteConfig = typeof siteConfig;

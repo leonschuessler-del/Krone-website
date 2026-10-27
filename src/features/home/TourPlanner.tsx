@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarDays, Check, Info } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Info, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
+import { PRICE_ON_REQUEST, siteScope } from "@/config/scope";
 import { tourConfig } from "@/config/tour";
-import { displayFacts } from "@/content/space-estimates";
+import { displayFacts, spaceEstimates } from "@/content/space-estimates";
 import { getFullVenueSpaceIds, isFullVenueSelection } from "@/domain/selection";
 import { useAvailabilityCheck } from "@/features/availability/use-availability-check";
 import { AvailabilityResult } from "@/features/booking/AvailabilityResult";
@@ -49,7 +50,9 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
   const hasRange = scheduleHasRange(schedule);
   const allAvailable = check.data?.bookingAllowed === true && check.state !== "loading";
   const label = scheduleLabel(schedule);
-  const estimate = provisionalQuote(bookable, selected);
+  // prices only while the site shows them – otherwise a short summary of the selection
+  const estimate = siteScope.showPrices ? provisionalQuote(bookable, selected) : null;
+  const seats = bookable.reduce((sum, s) => (selected.includes(s.id) && s.type !== "hotel" ? sum + (s.capacitySeated ?? spaceEstimates[s.id]?.seats ?? 0) : sum), 0);
 
   const goToBooking = (inquiry = false) => {
     setSubmissionMode(inquiry ? "inquiry" : "booking");
@@ -63,7 +66,7 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
     <div
       data-tour-caption={index}
       data-tour-planner
-      className="tour-planner absolute inset-x-3 bottom-3 z-10 flex max-h-[min(23rem,47svh)] flex-col overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#171411]/72 text-paper shadow-[0_30px_80px_-30px_rgb(0_0_0/0.9)] backdrop-blur-xl lg:inset-x-auto lg:bottom-6 lg:right-6 lg:top-24 lg:max-h-none lg:w-[24.5rem]"
+      className="tour-planner absolute inset-x-3 bottom-3 z-10 flex max-h-[min(23rem,47svh)] flex-col overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#171411]/92 text-paper shadow-[0_30px_80px_-30px_rgb(0_0_0/0.9)] lg:inset-x-auto lg:bottom-6 lg:right-6 lg:top-24 lg:max-h-none lg:w-[24.5rem]"
       style={{ opacity: 0, visibility: "hidden" }}
     >
       <div className="border-b border-white/10 px-5 pb-4 pt-5 lg:px-7 lg:pb-6 lg:pt-7">
@@ -125,27 +128,44 @@ export function TourPlannerPanel({ spaces, index }: { spaces: SpaceView[]; index
       </ul>
 
       <div className="border-t border-white/10 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 lg:px-7 lg:pb-6 lg:pt-5">
-        {/* estimate for the current selection – the preview runtime updates the figures via data-pv-* */}
-        <dl data-pv-pricebox className={cn("mb-3 space-y-0.5 text-sm", selected.length === 0 && "hidden")}>
-          <div className="flex justify-between text-paper/60">
-            <dt>Netto</dt>
-            <dd data-pv-net className="tabular-nums">{formatMoney(estimate?.total ?? null, "auf Anfrage")}</dd>
-          </div>
-          <div className="flex justify-between text-paper/60">
-            <dt>19 % MwSt.</dt>
-            <dd data-pv-vat className="tabular-nums">{formatMoney(estimate?.vat.amount ?? null, "–")}</dd>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <dt className="font-semibold">Gesamt</dt>
-            <dd data-pv-gross className="font-serif text-2xl tabular-nums" data-testid="planner-total">{formatMoney(estimate?.grossTotal ?? null, "auf Anfrage")}</dd>
-          </div>
-          <p className="flex items-center gap-1.5 text-[0.7rem] text-paper/45">
-            <Info className="h-3 w-3 shrink-0 text-gold-light" aria-hidden />
-            Pauschale Fr–So, ohne Zusatzleistungen · Kaution separat
-          </p>
-        </dl>
+        {siteScope.showPrices ? (
+          /* estimate for the current selection – the preview runtime updates the figures via data-pv-* */
+          <dl data-pv-pricebox className={cn("mb-3 space-y-0.5 text-sm", selected.length === 0 && "hidden")}>
+            <div className="flex justify-between text-paper/60">
+              <dt>Netto</dt>
+              <dd data-pv-net className="tabular-nums">{formatMoney(estimate?.total ?? null, "auf Anfrage")}</dd>
+            </div>
+            <div className="flex justify-between text-paper/60">
+              <dt>19 % MwSt.</dt>
+              <dd data-pv-vat className="tabular-nums">{formatMoney(estimate?.vat.amount ?? null, "–")}</dd>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <dt className="font-semibold">Gesamt</dt>
+              <dd data-pv-gross className="font-serif text-2xl tabular-nums" data-testid="planner-total">{formatMoney(estimate?.grossTotal ?? null, "auf Anfrage")}</dd>
+            </div>
+            <p className="flex items-center gap-1.5 text-[0.7rem] text-paper/45">
+              <Info className="h-3 w-3 shrink-0 text-gold-light" aria-hidden />
+              Pauschale Fr–So, ohne Zusatzleistungen · Kaution separat
+            </p>
+          </dl>
+        ) : (
+          /* no prices: what the selection holds – and that the offer is made for this event */
+          <dl className={cn("mb-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm", selected.length === 0 && "hidden")} data-testid="planner-summary">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-paper/60">Sitzplätze zusammen</dt>
+              <dd className="font-serif text-xl tabular-nums">{seats > 0 ? `ca. ${seats}` : "nach Absprache"}</dd>
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-[0.72rem] text-paper/55">
+              <dt className="sr-only">Preis</dt>
+              <dd className="flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 shrink-0 text-gold-light" aria-hidden />
+                Individuelles Angebot · {PRICE_ON_REQUEST}
+              </dd>
+            </div>
+          </dl>
+        )}
         <p className="mb-2 text-xs text-paper/55">
-          Übernachtung für Ihre Gäste? Die ganze Etage wählen Sie im nächsten Schritt bei den Zusatzleistungen. Einzelne Zimmer gibt es im <Link href="/hotel" className="text-gold-light underline-offset-2 hover:underline">Hotel</Link>.
+          Übernachtung für Ihre Gäste? Die ganze Etage wählen Sie im nächsten Schritt bei den Zusatzleistungen. Einzelne Zimmer finden Sie auf der <a href={siteScope.mainSiteUrl} className="text-gold-light underline-offset-2 hover:underline">Hotel-Website</a>.
         </p>
         <div className="flex items-center justify-between gap-3 text-sm">
           <span data-testid="selection-count" className="text-paper/70">

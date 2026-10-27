@@ -1,3 +1,4 @@
+// ARCHIV (10/2026): nicht geroutet, siehe ARCHIV.md
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Car } from "lucide-react";

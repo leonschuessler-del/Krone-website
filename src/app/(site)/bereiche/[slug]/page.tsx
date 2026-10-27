@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, BedDouble, BedSingle, CalendarCheck, CircleAlert, DoorOpen, Euro, Hotel, Hourglass, House, Ruler, Sparkles, TreeDeciduous, Users, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowRight, BedDouble, BedSingle, CalendarCheck, CircleAlert, DoorOpen, Euro, Handshake, Hotel, Hourglass, House, Ruler, Sparkles, TreeDeciduous, Users, Wallet, type LucideIcon } from "lucide-react";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { Gallery } from "@/components/media/Gallery";
 import { MediaPlaceholder } from "@/components/media/MediaPlaceholder";
 import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { siteScope } from "@/config/scope";
 import { SelectSpaceButton } from "@/features/spaces/SelectSpaceButton";
 import { SpaceAvailability } from "@/features/spaces/SpaceAvailability";
 import { hotelCopy, roomTypeSeeds, type RoomTypeSeed } from "@/content/hotel";
@@ -21,7 +22,9 @@ import { listSpaceViews } from "@/server/services/space-service";
 export const dynamic = "force-dynamic";
 
 const TYPE_LABEL = { indoor: "Innenbereich", outdoor: "Außenbereich", hotel: "Hotel", service: "Funktionsbereich" } as const;
-const MODE_LABEL = { instant: "Direktbuchung", inquiry: "auf Anfrage", both: "Direktbuchung oder Anfrage" } as const;
+const MODE_LABEL = siteScope.requestOnly
+  ? ({ instant: "unverbindliche Anfrage", inquiry: "unverbindliche Anfrage", both: "unverbindliche Anfrage" } as const)
+  : ({ instant: "Direktbuchung", inquiry: "auf Anfrage", both: "Direktbuchung oder Anfrage" } as const);
 
 const stripPlaceholder = (t: string | null) => t?.replace(/\s*\[PLACEHOLDER[^\]]*\]/g, "").trim() ?? null;
 
@@ -34,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!space) return { title: "Bereich nicht gefunden" };
   return {
     title: `${space.name} mieten`,
-    description: `${space.name} in der Krone Leidersbach – ${space.shortDescription ?? ""} Verfügbarkeit prüfen und buchen.`,
+    description: `${space.name} in der Krone Leidersbach – ${space.shortDescription ?? ""} Verfügbarkeit prüfen und ${siteScope.requestOnly ? "unverbindlich anfragen" : "buchen"}.`,
     alternates: { canonical: space.href },
     openGraph: { title: `${space.name} · Zur Krone Leidersbach`, images: space.media.hero ? [space.media.hero.src] : undefined },
   };
@@ -51,19 +54,25 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
   const images = space.media.hero ? [space.media.hero, ...space.media.gallery.filter((g) => g.src !== space.media.hero!.src)] : space.media.gallery;
 
   const est = displayFacts(space);
+  // While prices are hidden (siteScope.showPrices === false) rent, deposit and cleaning fee become one "on request" line.
+  const priceFacts: Array<{ icon: LucideIcon; label: string; value: string; pending?: boolean }> = siteScope.showPrices
+    ? [
+        { icon: Euro, label: "Preis", value: formatPriceFrom(space) + (demo && space.basePrice !== null ? " (Demo)" : ""), pending: space.basePrice === null },
+        { icon: Wallet, label: "Kaution", value: formatMoney(space.deposit, "Angabe folgt") + (demo && space.deposit !== null ? " (Demo)" : ""), pending: space.deposit === null },
+        { icon: Sparkles, label: "Endreinigung", value: formatMoney(space.cleaningFee, "Angabe folgt") + (demo && space.cleaningFee !== null ? " (Demo)" : ""), pending: space.cleaningFee === null },
+      ]
+    : [{ icon: Handshake, label: "Angebot", value: "individuell · auf Anfrage" }];
   const facts: Array<{ icon: LucideIcon; label: string; value: string; pending?: boolean }> = [
     { icon: Ruler, label: "Fläche", value: est.area, pending: space.areaSqm === null && est.area === "Angabe folgt" },
     { icon: space.type === "hotel" ? BedDouble : Users, label: space.type === "hotel" ? "Zimmer" : "Sitzplätze", value: est.seats, pending: space.capacitySeated === null && est.seats === "Angabe folgt" },
     { icon: Users, label: "Stehplätze", value: space.capacityStanding !== null ? String(space.capacityStanding) : "Angabe folgt", pending: space.capacityStanding === null },
-    { icon: Euro, label: "Preis", value: formatPriceFrom(space) + (demo && space.basePrice !== null ? " (Demo)" : ""), pending: space.basePrice === null },
     {
       icon: Hourglass,
       label: "Mindestdauer",
       value: space.minimumDurationMinutes !== null ? formatDuration(space.minimumDurationMinutes) : "Angabe folgt",
       pending: space.minimumDurationMinutes === null,
     },
-    { icon: Wallet, label: "Kaution", value: formatMoney(space.deposit, "Angabe folgt") + (demo && space.deposit !== null ? " (Demo)" : ""), pending: space.deposit === null },
-    { icon: Sparkles, label: "Endreinigung", value: formatMoney(space.cleaningFee, "Angabe folgt") + (demo && space.cleaningFee !== null ? " (Demo)" : ""), pending: space.cleaningFee === null },
+    ...priceFacts,
     { icon: CalendarCheck, label: "Buchung", value: space.bookable ? MODE_LABEL[space.bookingMode] : "auf Anfrage" },
     { icon: space.type === "outdoor" ? TreeDeciduous : DoorOpen, label: "Art", value: TYPE_LABEL[space.type] },
   ];
@@ -94,16 +103,16 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             {space.bookable ? (
               <>
                 <SelectSpaceButton spaceId={space.id} name={space.name} requires={space.requires} size="lg" />
-                <ButtonLink href="/eventlocation#karte" variant="dark" size="lg">
+                <ButtonLink href="/#karte" variant="dark" size="lg">
                   Zum Raumplaner <ArrowRight className="h-4 w-4" />
                 </ButtonLink>
               </>
             ) : space.type === "hotel" ? (
               <ButtonLink href="#zimmer" variant="gold" size="lg">
-                <BedDouble className="h-4 w-4" /> Zimmer buchen
+                <BedDouble className="h-4 w-4" /> Übernachtung für Ihre Gäste
               </ButtonLink>
             ) : (
-              <ButtonLink href="/eventlocation#karte" variant="gold" size="lg">
+              <ButtonLink href="/#karte" variant="gold" size="lg">
                 Zum Raumplaner <ArrowRight className="h-4 w-4" />
               </ButtonLink>
             )}
@@ -208,7 +217,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
                         </span>
                         <span className="block text-xs text-muted">{t.description}</span>
                       </span>
-                      <span className="shrink-0 font-semibold tabular-nums">{t.basePricePerNight === null ? "auf Anfrage" : `${formatMoney(t.basePricePerNight)} / Nacht`}</span>
+                      {siteScope.showPrices && <span className="shrink-0 font-semibold tabular-nums">{t.basePricePerNight === null ? "auf Anfrage" : `${formatMoney(t.basePricePerNight)} / Nacht`}</span>}
                     </li>
                   );
                 })}
@@ -216,7 +225,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
               <p className="mt-2 text-sm text-muted">Grundriss nach dem Bauplan des Hauses.</p>
               <div className="mt-6">
                 <ButtonLink href="#zimmer" variant="gold">
-                  Zimmer buchen
+                  Übernachtung anfragen
                 </ButtonLink>
               </div>
             </SectionHeading>
@@ -239,7 +248,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
             <p className="mt-2 text-sm text-muted">Drohnenaufnahme von oben – Raumgrenzen sinngemäß eingezeichnet.</p>
             {space.bookable && (
               <div className="mt-6">
-                <ButtonLink href="/eventlocation#karte" variant="secondary">
+                <ButtonLink href="/#karte" variant="secondary">
                   Zum Raumplaner
                 </ButtonLink>
               </div>
@@ -255,7 +264,11 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
         <section className="bg-cream py-20" aria-labelledby="availability-title">
           <div className="container-page">
             <SectionHeading id="availability-title" eyebrow="Verfügbarkeit" title={`Freie Termine für ${space.name}`} className="mb-10">
-              <p>Wählen Sie ein Datum und eine Uhrzeit – anschließend können Sie direkt buchen oder weitere Bereiche hinzufügen.</p>
+              <p>
+                {siteScope.requestOnly
+                  ? "Wählen Sie ein Datum und eine Uhrzeit – anschließend senden Sie eine unverbindliche Anfrage oder nehmen weitere Bereiche hinzu."
+                  : "Wählen Sie ein Datum und eine Uhrzeit – anschließend können Sie direkt buchen oder weitere Bereiche hinzufügen."}
+              </p>
             </SectionHeading>
             <SpaceAvailability space={space} spaces={spaces} />
           </div>
@@ -267,11 +280,11 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
               <p>{hotelCopy.text}</p>
             </SectionHeading>
             <div className="flex flex-wrap gap-3">
-              <ButtonLink href="/hotel/buchen" variant="gold" size="lg">
-                Zimmer buchen
+              <ButtonLink href="/#karte" variant="gold" size="lg">
+                Mit Übernachtung planen
               </ButtonLink>
-              <ButtonLink href="/hotel" variant="secondary" size="lg">
-                Zimmer & Preise
+              <ButtonLink href={siteScope.mainSiteUrl} variant="secondary" size="lg">
+                Hotel &amp; Zimmer
               </ButtonLink>
             </div>
           </div>
@@ -284,7 +297,7 @@ export default async function SpaceDetailPage({ params }: { params: Promise<{ sl
               <p className="mt-3 max-w-2xl text-ink-soft">
                 Die Küche ist kein eigener Mietraum, sondern eine Zusatzleistung zu Ihrer Feier – ausschließlich mit einem Caterer. Sie wählen sie im Raumplaner unter Zusatzleistungen.
               </p>
-              <ButtonLink href="/eventlocation#karte" variant="gold" className="mt-6">
+              <ButtonLink href="/#karte" variant="gold" className="mt-6">
                 Zum Raumplaner
               </ButtonLink>
             </div>

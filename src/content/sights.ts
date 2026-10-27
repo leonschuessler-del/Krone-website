@@ -199,5 +199,5 @@ export const arrival = [
   { id: "a3-wuerzburg", label: "A3 aus Richtung Würzburg", text: "Ausfahrt Weibersbrunn · Hessenthal · Mespelbrunn · Heimbuchenthal." },
   { id: "airport", label: "Flughafen Frankfurt", text: "ca. 59 km, 40 Minuten." },
   { id: "rail", label: "Bahn", text: "Aschaffenburg Hauptbahnhof (ICE), ca. 13 km; Buslinie 62 bis Leidersbach." },
-  { id: "parking", label: "Parken", text: "Kostenlose Stellplätze direkt am Haus." },
+  { id: "parking", label: "Parken", text: "Stellplätze direkt am Haus." },
 ];

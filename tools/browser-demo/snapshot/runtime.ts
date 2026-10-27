@@ -8,6 +8,11 @@
  *    demo scenario (src/content/demo-scenario) – incl. double-booking guard
  *  - room facts: the same estimate helper as the website
  * Requests made here stay in the viewer's browser (localStorage).
+ *
+ * Event-only scope (10/2026, src/config/scope.ts): the preview shows no prices,
+ * totals or discounts – rooms and add-ons are "auf Anfrage" – and only takes
+ * non-binding requests (no booking mode, no payment). The hotel booking engine
+ * (preview-engine.tsx) belongs to the archived hotel site and is not mounted.
  */
 import { tourConfig } from "@/config/tour";
 import { floorplanMeta } from "@/config/floorplan";
@@ -15,15 +20,13 @@ import { demoBlockSpecs } from "@/content/demo-scenario";
 import { eventTypes } from "@/content/event-types";
 import { demoSettings } from "@/content/settings";
 import { displayFacts, ESTIMATE_NOTE } from "@/content/space-estimates";
-import { extraSeeds } from "@/content/extras";
+import { PRICE_ON_REQUEST, siteScope } from "@/config/scope";
 import L from "leaflet";
-import { calculateQuote, type Quote } from "@/domain/pricing";
 import { checkSelection, selectionDayStatus, type AvailabilityContext, type SpaceAvailabilityProfile } from "@/domain/availability";
 import { generateBookingNumber } from "@/domain/booking";
 import type { AvailabilityBlock } from "@/domain/types";
 import { addDays, isoWeekday, todayLocal, zonedDateTimeToUtc, zonedToUtc } from "@/domain/time";
 import { mountTourPlayer } from "@/features/home/tour-player";
-import { mountPreviewEngine } from "./preview-engine";
 
 interface PreviewSpace {
   id: string;
@@ -41,9 +44,6 @@ interface PreviewSpace {
   bookable: boolean;
   includedInFullVenue: boolean;
   requires: string[];
-  basePrice: number | null;
-  priceModel: "hourly" | "daily" | "flat" | "on_request" | null;
-  cleaningFee: number | null;
   setupBufferMinutes: number | null;
   cleanupBufferMinutes: number | null;
   images: string[];
@@ -54,10 +54,13 @@ declare global {
     __PREVIEW__: {
       page?: string;
       spaces: PreviewSpace[];
+      /** Add-ons for the request: name and description only (no amounts in the page). */
+      extras?: Array<{ id: string; name: string; description: string }>;
+      /** The operator's main website (hotel, restaurant) – set by the snapshot build. */
+      mainSiteUrl?: string;
       headerTop: string;
       headerScrolled: string;
       legal: Record<string, { title: string; html: string }>;
-      sights?: Array<{ id: string; name: string; lat: number; lng: number; minutes: number }>;
       hotelCoords?: { lat: number; lng: number };
     };
 
@@ -72,8 +75,8 @@ const bookable = spaces.filter((s) => s.bookable);
 const selected = new Set<string>();
 const rel = (src: string) => (src.startsWith("/") ? src.slice(1) : src);
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-const PRICE_POLICY = { mode: "none" as const, downPaymentPercent: null, depositCollection: "separately" as const, depositStrategy: "sum" as const };
-const eur = (c: number | null) => (c === null ? "auf Anfrage" : (c / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" }));
+const extras = data.extras ?? [];
+const mainSiteUrl = data.mainSiteUrl ?? siteScope.mainSiteUrl;
 const LEVEL: Record<string, string> = { "ground-floor": "Erdgeschoss", "first-floor": "1. Obergeschoss", outdoor: "Außenbereich", site: "Gelände" };
 
 /* ------------------------------------------------------------------ tour */
@@ -148,18 +151,6 @@ function updateSelectionUi() {
     const text = b.querySelector("[data-pv-label]") ?? b;
     text.textContent = on ? "Ausgewählt ✓" : "Auswählen";
     b.setAttribute("aria-pressed", String(on));
-  });
-  // price box in the planner: same engine as the request dialog
-  const est = selected.size ? calculateQuote({
-    request: { spaceIds: [...selected], start: Date.UTC(2030, 0, 4, 17), end: Date.UTC(2030, 0, 4, 22), rentalMode: "hourly", dates: ["2030-01-04"], guestCount: null, extras: [] },
-    spaces: spaces.map((s) => ({ id: s.id, name: s.name, basePrice: s.basePrice, priceModel: s.priceModel, deposit: null, cleaningFee: s.cleaningFee, minimumDurationMinutes: null, bookingMode: "inquiry" as const })),
-    rules: [], bundles: [], extras: [], policy: PRICE_POLICY,
-  }) : null;
-  document.querySelectorAll<HTMLElement>("[data-pv-pricebox]").forEach((box) => {
-    box.classList.toggle("hidden", !est);
-    box.querySelector("[data-pv-net]")!.textContent = eur(est?.total ?? null);
-    box.querySelector("[data-pv-vat]")!.textContent = est?.vat.amount === null || est?.vat.amount === undefined ? "–" : eur(est.vat.amount);
-    box.querySelector("[data-pv-gross]")!.textContent = eur(est?.grossTotal ?? null);
   });
   const full = spaces.filter((s) => s.includedInFullVenue && s.bookable);
   const fullOn = full.length > 0 && full.every((s) => selected.has(s.id));
@@ -240,9 +231,9 @@ function roomHtml(s: PreviewSpace, index: number) {
           <div><dt>Buchung</dt><dd>${isHotel ? "Zimmer einzeln, Frühstück inkl." : !s.bookable ? "als Zusatzleistung" : s.id === "restaurant" ? "immer dabei" : "zusätzlich zum Restaurant"}</dd></div>
         </dl>
         ${facts.estimated ? `<p class="pv-small">ca.-Werte: ${esc(ESTIMATE_NOTE)}</p>` : ""}
-        ${!isHotel && s.bookable ? `<p class="pv-small">${s.basePrice === null ? "Preis auf Anfrage" : `${s.id === "restaurant" ? "" : "+ "}${eur(s.basePrice)} netto je Buchung (Fr–So)`} · Toiletten inklusive.</p>` : ""}
+        ${!isHotel && s.bookable ? `<p class="pv-small">${PRICE_ON_REQUEST} · Toiletten inklusive.</p>` : ""}
         <div class="pv-actions">
-          ${isHotel ? `<a class="pv-btn pv-btn-gold" href="buchen.html">Zimmer buchen</a>` : ""}
+          ${isHotel ? `<a class="pv-btn" href="${esc(mainSiteUrl)}">Hotel &amp; Zimmer</a>` : ""}
           ${s.bookable ? `<button type="button" class="pv-btn ${on ? "pv-btn-dark" : "pv-btn-gold"}" data-room-select="${s.id}">${selectLabel}</button>` : ""}
           ${s.bookable ? `<button type="button" class="pv-btn" data-flow data-flow-with="${s.id}">Verfügbarkeit prüfen</button>` : ""}
           ${!s.bookable && !isHotel ? `<p class="pv-small">Die Küche wird als Zusatzleistung gebucht (nur mit Caterer).</p>` : ""}
@@ -341,12 +332,6 @@ function interval(date: string, from: string, to: string, endDate: string | null
   const last = endDate && endDate > date ? endDate : to <= from ? addDays(date, 1) : date;
   return { start: zonedDateTimeToUtc(date, from), end: zonedDateTimeToUtc(last, to) };
 }
-function flowDates(): string[] {
-  if (!flow.date) return [];
-  const out = [flow.date];
-  for (let d = addDays(flow.date, 1); flow.endDate && d <= flow.endDate && out.length < 60; d = addDays(d, 1)) out.push(d);
-  return out;
-}
 const fmtRange = (long = true) => {
   if (!flow.date) return "";
   const f = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("de-DE", long ? { weekday: "short", day: "numeric", month: "long" } : { day: "numeric", month: "short" });
@@ -366,48 +351,30 @@ const flow = {
   extras: new Set<string>(),
   guests: 60,
   form: { event: "", guests: "", firstName: "", lastName: "", email: "", phone: "", message: "" },
-  mode: "inquiry" as "inquiry" | "booking",
   terms: false,
   error: "",
   ref: "",
 };
 
-/** Same price engine as the website: flat package per room (Fri–Sun), add-ons, 19 % VAT. */
-function quote(): Quote {
-  const ids = [...flow.spaces];
-  const start = flow.date ? interval(flow.date, flow.from, flow.to, flow.endDate) : { start: Date.now(), end: Date.now() + 5 * 3_600_000 };
-  return calculateQuote({
-    request: { spaceIds: ids, start: start.start, end: start.end, rentalMode: "hourly", dates: flowDates(), today, guestCount: flow.guests || null, extras: [...flow.extras].map((extraId) => ({ extraId, quantity: 1 })) },
-    spaces: spaces.map((s) => ({ id: s.id, name: s.name, basePrice: s.basePrice, priceModel: s.priceModel, deposit: null, cleaningFee: s.cleaningFee, minimumDurationMinutes: null, bookingMode: "inquiry" as const })),
-    rules: [],
-    bundles: [],
-    extras: extraSeeds.map((e) => ({ id: e.id, name: e.name, priceModel: e.priceModel, unitPrice: e.unitPrice, active: true, isDemo: false })),
-    policy: PRICE_POLICY,
-  });
+/** What the request contains so far – no amounts: the Krone answers with an individual offer. */
+function summaryLine() {
+  const parts = [
+    flow.spaces.size ? `${flow.spaces.size} ${flow.spaces.size === 1 ? "Raum" : "Räume"}` : "Noch keine Räume",
+    ...(flow.extras.size ? [`${flow.extras.size} Zusatzleistung${flow.extras.size === 1 ? "" : "en"}`] : []),
+  ];
+  return `<p class="pv-total-line"><span>${esc(parts.join(" · "))}</span><strong>Individuelles Angebot</strong></p>`;
 }
 
-function totalLine(q: Quote) {
-  return `<p class="pv-total-line"><span>Gesamt inkl. ${q.vat.rate} % MwSt.${flow.spaces.size ? ` · ${flow.spaces.size} ${flow.spaces.size === 1 ? "Raum" : "Räume"}` : ""}${flow.extras.size ? ` · ${flow.extras.size} Zusatzleistung${flow.extras.size === 1 ? "" : "en"}` : ""}</span><strong>${eur(q.grossTotal)}</strong></p>`;
-}
-
-function priceHtml(q: Quote) {
-  const rows = q.lines.filter((l) => l.kind === "rental" || l.kind === "extra").map((l) => `<div><dt>${esc(l.kind === "rental" ? `Miete ${l.label}` : l.label)}${l.detail ? `<small>${esc(l.detail)}</small>` : ""}</dt><dd>${eur(l.amount)}</dd></div>`).join("");
-  return `<dl class="pv-price">${rows}
-    <div class="pv-price-sum"><dt>Netto</dt><dd>${eur(q.total)}</dd></div>
-    <div><dt>${q.vat.rate} % MwSt.</dt><dd>${eur(q.vat.amount)}</dd></div>
-    <div class="pv-price-total"><dt>Gesamt</dt><dd>${eur(q.grossTotal)}</dd></div>
-  </dl>
-  <p class="pv-small">Pauschale je Raum gilt Fr–So, jeder weitere Tag + 100 € · Kaution separat · Preise zzgl. MwSt.</p>`;
-}
 let flowOpen = false;
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
 const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const nameOf = (id: string) => (id === "hotel" ? "Übernachtung (Hotel)" : (byId.get(id)?.name ?? id));
 
-function openFlow(opts: { with?: string; step?: Step } = {}) {
+function openFlow(opts: { with?: string; spaces?: string; step?: Step } = {}) {
   flow.spaces = new Set(selected);
   if (opts.with) flow.spaces.add(opts.with);
+  for (const id of (opts.spaces ?? "").split(",")) if (byId.get(id)?.bookable) flow.spaces.add(id);
   if (flow.spaces.size) flow.spaces.add("restaurant");
   flow.error = "";
   flow.ref = "";
@@ -462,10 +429,10 @@ function renderFlow() {
       <div class="pv-choices">${bookable
         .map(
           (s) => `<label class="pv-choice${s.id === "restaurant" ? " is-fixed" : ""}"><input type="checkbox" data-flow-space="${s.id}" ${flow.spaces.has(s.id) || s.id === "restaurant" ? "checked" : ""} ${s.id === "restaurant" && others ? "disabled" : ""}>
-          ${s.images[0] ? `<img src="${esc(s.images[0])}" alt="" loading="lazy">` : ""}<span><strong>${esc(nameOf(s.id))}</strong><small>${esc(displayFacts(s).seats)} · ${s.basePrice === null ? "auf Anfrage" : `${s.id === "restaurant" ? "" : "+ "}${eur(s.basePrice)} netto`}</small></span></label>`,
+          ${s.images[0] ? `<img src="${esc(s.images[0])}" alt="" loading="lazy">` : ""}<span><strong>${esc(nameOf(s.id))}</strong><small>${esc(displayFacts(s).area)} · ${esc(displayFacts(s).seats)}</small></span></label>`,
         )
         .join("")}</div>
-      ${totalLine(quote())}
+      ${summaryLine()}
       <div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${flow.spaces.size ? "" : "disabled"}>Weiter zum Termin</button></div>`;
   } else if (flow.step === 2) {
     const ids = [...flow.spaces];
@@ -498,29 +465,26 @@ function renderFlow() {
           ${check}
         </div>
       </div>
-      ${totalLine(quote())}
+      ${summaryLine()}
       <div class="pv-actions"><button type="button" class="pv-btn" data-flow-step="1">Zurück</button><button type="button" class="pv-btn pv-btn-gold" data-flow-next ${ok ? "" : "disabled"}>Weiter zu den Zusatzleistungen</button></div>`;
   } else if (flow.step === 3) {
-    const q = quote();
     body = `<h2 class="pv-h2">Was brauchen Sie dazu?</h2>
-      <p class="pv-text">Zusatzleistungen aus der Preisliste – alles optional.</p>
-      <div class="pv-flow-grid">
-        <div class="pv-choices pv-choices-list">${extraSeeds
-          .map(
-            (e) => `<label class="pv-choice"><input type="checkbox" data-flow-extra="${e.id}" ${flow.extras.has(e.id) ? "checked" : ""}><span><strong>${esc(e.name)}</strong><small>${esc(e.description)}</small></span><b class="pv-choice-price">${eur(e.unitPrice)}${e.priceModel === "per_person" ? " / Gast" : ""}</b></label>`,
-          )
-          .join("")}
-          <label class="pv-guests">Gäste (für Gläser, Geschirr &amp; Besteck)<input type="number" min="1" max="200" data-flow-guests value="${flow.guests}"></label>
-        </div>
-        <div>${priceHtml(q)}</div>
+      <p class="pv-text">Zusatzleistungen – alles optional. Den Preis nennen wir Ihnen in Ihrem persönlichen Angebot.</p>
+      <div class="pv-choices pv-choices-list">${extras
+        .map(
+          (e) => `<label class="pv-choice"><input type="checkbox" data-flow-extra="${esc(e.id)}" ${flow.extras.has(e.id) ? "checked" : ""}><span><strong>${esc(e.name)}</strong><small>${esc(e.description)}</small></span><b class="pv-choice-price">${esc(PRICE_ON_REQUEST)}</b></label>`,
+        )
+        .join("")}
+        <label class="pv-guests">Gäste (für Gläser, Geschirr &amp; Besteck)<input type="number" min="1" max="200" data-flow-guests value="${flow.guests}"></label>
       </div>
+      ${summaryLine()}
       <div class="pv-actions"><button type="button" class="pv-btn" data-flow-step="2">Zurück</button><button type="button" class="pv-btn pv-btn-gold" data-flow-next>Weiter zu Ihren Angaben</button></div>`;
   } else if (flow.step === 4) {
     const f = flow.form;
     if (!f.guests) f.guests = String(flow.guests);
     body = `<h2 class="pv-h2">Ihre Angaben</h2>
       <p class="pv-text">${esc([...flow.spaces].map(nameOf).join(", "))} · ${esc(fmtRange())}, ${flow.from}–${flow.to} Uhr</p>
-      ${totalLine(quote())}
+      ${summaryLine()}
       <form class="pv-form" data-flow-form novalidate>
         <label>Anlass<select name="event"><option value="">Bitte wählen</option>${eventTypes.map((e) => `<option value="${e.id}" ${f.event === e.id ? "selected" : ""}>${e.label}</option>`).join("")}</select></label>
         <label>Gäste (ca.)<input name="guests" type="number" min="1" inputmode="numeric" value="${esc(f.guests)}"></label>
@@ -531,20 +495,18 @@ function renderFlow() {
         <label class="pv-span">Nachricht<textarea name="message" rows="3">${esc(f.message)}</textarea></label>
         ${flow.error ? `<p class="pv-error pv-span" role="alert">${esc(flow.error)}</p>` : ""}
         <label class="pv-span pv-check-row"><input type="checkbox" name="terms" ${flow.terms ? "checked" : ""}> Ich habe die <button type="button" class="pv-link" data-legal="datenschutz">Datenschutzerklärung</button> gelesen.</label>
-        <div class="pv-actions pv-span"><button type="button" class="pv-btn" data-flow-step="3">Zurück</button><button type="submit" name="mode" value="inquiry" class="pv-btn pv-btn-gold">Anfrage senden</button></div>
-        <p class="pv-small pv-span">Die Krone prüft Ihre Anfrage und bestätigt persönlich. Vorschau: Es wird nichts versendet.</p>
+        <div class="pv-actions pv-span"><button type="button" class="pv-btn" data-flow-step="3">Zurück</button><button type="submit" class="pv-btn pv-btn-gold">Unverbindlich anfragen</button></div>
+        <p class="pv-small pv-span">Unverbindlich und kostenfrei. Die Krone prüft Ihre Anfrage und meldet sich persönlich mit einem individuellen Angebot. Vorschau: Es wird nichts versendet.</p>
       </form>`;
   } else {
-    const q = quote();
     body = `<div class="pv-done">
       <p class="pv-eyebrow">Anfrage eingegangen</p>
       <h2 class="pv-h2">Vielen Dank, ${esc(flow.form.firstName)}!</h2>
       <p class="pv-ref">Ihre Anfragenummer <strong>${esc(flow.ref)}</strong></p>
-      <p class="pv-text">Ihre Anfrage ist eingegangen und die Räume sind für Sie vorgemerkt. Die Krone meldet sich kurzfristig – bei Zusage telefonisch wegen Schlüsselübergabe und Kaution.</p>
-      <h3 class="pv-h3">Voraussichtlicher Preis</h3>
-      ${priceHtml(q)}
+      <p class="pv-text">Ihre Anfrage ist eingegangen und die Räume sind für Sie vorgemerkt. Die Krone meldet sich kurzfristig persönlich mit Ihrem individuellen Angebot.</p>
       <dl class="pv-facts">
         <div><dt>Bereiche</dt><dd>${esc([...flow.spaces].map(nameOf).join(", "))}</dd></div>
+        <div><dt>Zusatzleistungen</dt><dd>${flow.extras.size ? esc(extras.filter((e) => flow.extras.has(e.id)).map((e) => e.name).join(", ")) : "–"}</dd></div>
         <div><dt>Termin</dt><dd>${esc(fmtRange())}<br>${flow.from}–${flow.to} Uhr</dd></div>
         <div><dt>Anlass</dt><dd>${esc(eventTypes.find((e) => e.id === flow.form.event)?.label ?? "–")}</dd></div>
         <div><dt>Gäste</dt><dd>${esc(flow.form.guests || "–")}</dd></div>
@@ -564,7 +526,6 @@ function renderFlow() {
 function submitFlow(form: HTMLFormElement, submitter?: HTMLElement | null) {
   const fd = new FormData(form, submitter ?? undefined);
   for (const k of Object.keys(flow.form) as Array<keyof typeof flow.form>) flow.form[k] = String(fd.get(k) ?? "").trim();
-  flow.mode = fd.get("mode") === "booking" ? "booking" : "inquiry";
   flow.terms = !!fd.get("terms");
   if (!flow.form.firstName || !flow.form.lastName) flow.error = "Bitte geben Sie Vor- und Nachnamen an.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(flow.form.email)) flow.error = "Bitte geben Sie eine gültige E-Mail-Adresse an.";
@@ -579,7 +540,7 @@ function submitFlow(form: HTMLFormElement, submitter?: HTMLElement | null) {
     flow.step = 2;
     return renderFlow();
   }
-  flow.mode = "inquiry";
+  // request only (siteScope.requestOnly): no binding booking, no payment step
   flow.ref = generateBookingNumber("inquiry", Number(flow.date.slice(0, 4)));
   requests = [...requests, { ref: flow.ref, spaceIds: ids, date: flow.date, endDate: flow.endDate, from: flow.from, to: flow.to, name: `${flow.form.firstName} ${flow.form.lastName}`, guests: flow.form.guests, event: flow.form.event }];
   saveRequests(requests);
@@ -587,7 +548,6 @@ function submitFlow(form: HTMLFormElement, submitter?: HTMLElement | null) {
   renderFlow();
 }
 
-/* ------------------------------------------------------------- hotel flow */
 /* --------------------------------------------------------- legal on top */
 /** Legal text as a layer above the current dialog: "Zurück" returns to the request with every input kept. */
 function openLegal(doc: { title: string; html: string }) {
@@ -706,7 +666,7 @@ function initEvents() {
     }
     if ((hit = t("[data-flow]"))) {
       e.preventDefault();
-      return openFlow({ with: hit.dataset.flowWith, step: hit.dataset.flowAt === "date" && selected.size ? 2 : undefined });
+      return openFlow({ with: hit.dataset.flowWith, spaces: hit.dataset.flowSpaces, step: hit.dataset.flowAt === "date" && selected.size ? 2 : undefined });
     }
     if ((hit = t("[data-area-list]"))) return openAreaList();
     if ((hit = t("[data-map-zoom]"))) return openDialog(`<img src="media/floorplan/aerial-2900.webp" alt="Drohnenaufnahme der Krone von oben" class="pv-img-full">`, { wide: true, label: "Karte groß" });
@@ -768,13 +728,6 @@ function initEvents() {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     if (form.matches("[data-flow-form]")) return submitFlow(form, (e as SubmitEvent).submitter);
-    if (form.matches("[data-pv-bookingbar]")) {
-      const fd = new FormData(form);
-      const q = new URLSearchParams();
-      for (const [k, v] of fd.entries()) if (typeof v === "string" && v) q.set(k, v);
-      location.href = `buchen.html?${q.toString()}`;
-      return;
-    }
     if (form.matches("[data-pv-contact]")) {
       const name = String(new FormData(form).get("name") ?? "").trim();
       return openDialog(`<p class="pv-eyebrow">Kontakt</p><h2 class="pv-h2">Vielen Dank${name ? `, ${esc(name)}` : ""}!</h2><p class="pv-text">Ihre Nachricht ist angekommen – wir melden uns persönlich, meist innerhalb eines Tages.</p><p class="pv-small">Vorschau: Es wird nichts versendet. Auf der echten Website erhalten Sie sofort eine Bestätigung per E-Mail.</p><div class="pv-actions"><button type="button" class="pv-btn pv-btn-gold" data-close>Schließen</button></div>`, { label: "Kontakt" });
@@ -832,14 +785,11 @@ function initMaps() {
       iconAnchor: [primary ? 9 : 6, primary ? 9 : 6],
     });
   const mount = (container: HTMLElement) => {
-    const kind = container.dataset.pvMap;
+    // event-only: every map shows the house (the sights map is archived)
     container.innerHTML = "";
-    const wide = kind === "sights";
-    const map = L.map(container, { scrollWheelZoom: false }).setView(wide ? [49.93, 9.3] : kind === "home" ? [49.97, 9.05] : [home.lat, home.lng], wide || kind === "home" ? 9 : 14);
+    const map = L.map(container, { scrollWheelZoom: false }).setView([home.lat, home.lng], 14);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende' }).addTo(map);
     L.marker([home.lat, home.lng], { icon: icon(true) }).addTo(map).bindPopup("<strong>Landhotel Gasthof Zur Krone</strong><br>Hauptstraße 106, 63849 Leidersbach").openPopup();
-    const list = kind === "sights" ? (data.sights ?? []) : kind === "home" ? (data.sights ?? []).filter((x) => ["mespelbrunn", "aschaffenburg", "frankfurt"].includes(x.id)) : [];
-    for (const sgt of list) L.marker([sgt.lat, sgt.lng], { icon: icon(false) }).addTo(map).bindPopup(`<strong>${esc(sgt.name)}</strong><br>${sgt.minutes} Min. ab Hotel`);
   };
   const containers = [...document.querySelectorAll<HTMLElement>("[data-pv-map]")];
   if (!containers.length) return;
@@ -861,4 +811,3 @@ initHeader();
 initEvents();
 initMaps();
 updateSelectionUi();
-mountPreviewEngine({ legal: data.legal });

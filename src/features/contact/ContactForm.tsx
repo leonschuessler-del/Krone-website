@@ -48,9 +48,9 @@ export function ContactForm({ defaultSubject = "" }: { defaultSubject?: string }
   if (status.state === "sent") {
     return (
       <div className="card-surface flex flex-col items-start gap-3 p-8" role="status">
-        <CheckCircle2 className="h-8 w-8 text-success" />
+        <CheckCircle2 className="h-8 w-8 text-success" aria-hidden />
         <h2 className="font-serif text-3xl">Vielen Dank für Ihre Nachricht!</h2>
-        <p className="text-ink-soft">Wir melden uns so bald wie möglich bei Ihnen.</p>
+        <p className="text-ink-soft">Wir melden uns persönlich bei Ihnen – meist innerhalb eines Tages.</p>
       </div>
     );
   }
@@ -74,12 +74,12 @@ export function ContactForm({ defaultSubject = "" }: { defaultSubject?: string }
       </label>
       <label className="block">
         <span className="field-label">Betreff *</span>
-        <input name="subject" required defaultValue={defaultSubject} className="field-input" aria-invalid={Boolean(fe.subject)} />
+        <input name="subject" required defaultValue={defaultSubject} placeholder="z. B. Hochzeit im Sommer" className="field-input" aria-invalid={Boolean(fe.subject)} />
         {fe.subject && <span className="field-error">{fe.subject}</span>}
       </label>
       <label className="block sm:col-span-2">
         <span className="field-label">Nachricht *</span>
-        <textarea name="message" required rows={6} maxLength={4000} className="field-input" aria-invalid={Boolean(fe.message)} />
+        <textarea name="message" required rows={6} maxLength={4000} placeholder="Anlass, Wunschtermin, Gästezahl und gewünschte Räume – so können wir Ihnen gezielt antworten." className="field-input" aria-invalid={Boolean(fe.message)} />
         {fe.message && <span className="field-error">{fe.message}</span>}
       </label>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />

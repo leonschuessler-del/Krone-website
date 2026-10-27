@@ -16,7 +16,7 @@ async function pickDate(page: Page, date: string) {
 
 test.describe("Grundstückskarte & Multi-Select", () => {
   test("Bereiche per Klick und Tastatur auswählen", async ({ page }) => {
-    await page.goto("/eventlocation#karte");
+    await page.goto("/#karte");
     const map = page.getByTestId("site-map").first();
     // 7 bookable rooms on the photo (hotel rooms are booked separately)
     await expect(map.locator("[data-space]")).toHaveCount(7);
@@ -37,7 +37,7 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   });
 
   test("Test 59: blockierter Wintergarten → 2 von 3 verfügbar, entfernen macht buchbar", async ({ page }) => {
-    await page.goto("/eventlocation#karte");
+    await page.goto("/#karte");
     const map = page.getByTestId("site-map").first();
     for (const id of ["restaurant", "stage", "winter-garden"]) await map.locator(`[data-space="${id}"]`).click();
     await page.getByTestId("open-schedule").click();
@@ -61,7 +61,7 @@ test.describe("Grundstückskarte & Multi-Select", () => {
   });
 
   test("Test 61: Gesamte Location zeigt konkret den blockierten Bereich", async ({ page }) => {
-    await page.goto("/eventlocation#karte");
+    await page.goto("/#karte");
     await page.getByTestId("full-venue").click();
     await expect(page.getByTestId("selection-count").first()).toHaveText("7 Bereiche ausgewählt");
     await page.getByTestId("open-schedule").click();
@@ -84,10 +84,15 @@ test("Test 60: komplette Anfrage Restaurant + Bühne + Biergarten bis zur Bestä
   await page.getByTestId("start-time").selectOption("15:00");
   await page.getByTestId("end-time").selectOption("23:00");
   await expect(page.getByTestId("availability-summary")).toHaveText("Alle ausgewählten Bereiche sind verfügbar.");
-  await expect(page.getByTestId("quote-total")).not.toHaveText(/0,00/);
+  // no prices anywhere: the summary promises an individual offer instead of a total
+  await expect(page.getByTestId("quote-total")).toHaveCount(0);
+  await expect(page.getByTestId("booking-summary")).toContainText("Individuelles Angebot");
+  await expect(page.getByTestId("booking-summary")).not.toContainText("€");
   await page.getByTestId("wizard-next").click();
 
+  // add-ons stay visible and selectable – without a price
   await expect(page.getByTestId("step-title")).toContainText("Zusatzleistungen");
+  await expect(page.getByTestId("booking-wizard")).not.toContainText("€");
   await page.getByTestId("wizard-next").click();
 
   await page.getByLabel("Art der Veranstaltung *").selectOption("company");
@@ -104,22 +109,29 @@ test("Test 60: komplette Anfrage Restaurant + Bühne + Biergarten bis zur Bestä
   await page.getByLabel("Ort *").fill("Leidersbach");
   await page.getByTestId("wizard-next").click();
 
-  await expect(page.getByTestId("step-title")).toContainText("Übergabe");
-  await page.locator('input[name="handover"]').last().check();
-  await page.locator('input[name="return"]').first().check();
-  await page.getByTestId("wizard-next").click();
+  // request-only: no handover step, no payment, no booking/inquiry choice – straight to the overview
+  await expect(page.getByTestId("step-title")).toHaveText("6. Anfrage senden");
+  await expect(page.getByText("Schritt 6 von 7")).toBeAttached();
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  await expect(page.getByTestId("demo-payment")).toHaveCount(0);
+  const review = page.getByTestId("request-review");
+  await expect(review).toContainText("Restaurant");
+  await expect(review).toContainText("90 Personen");
+  await expect(review).toContainText("Erika Mustermann");
+  await expect(page.getByTestId("booking-wizard")).not.toContainText("€");
 
-  for (const id of ["house_rules", "rental_terms", "cancellation", "deposit", "handover", "privacy"]) await page.getByTestId(`term-${id}`).check();
-  await page.getByTestId("wizard-next").click();
-
-  // every booking is a request the operator confirms (no online payment)
-  const inquiryRadio = page.getByRole("radio", { name: /Unverbindlich anfragen/ });
-  if (await inquiryRadio.count()) await inquiryRadio.click();
+  // the one consent a request needs
+  await page.getByTestId("wizard-submit").click();
+  await expect(page.getByText("Bitte bestätigen Sie alle mit * markierten Punkte.")).toBeVisible();
+  await page.getByTestId("term-privacy").check();
+  await expect(page.getByTestId("wizard-submit")).toHaveText(/Anfrage senden/);
   await page.getByTestId("wizard-submit").click();
 
   await page.waitForURL(/\/buchung\/KA-\d{4}-/);
   await expect(page.getByTestId("booking-number")).toHaveText(/^KA-\d{4}-[2-9A-Z]{5}$/);
-  await expect(page.getByTestId("booking-status")).toHaveText("Anfrage");
+  await expect(page.getByTestId("booking-status")).toHaveText("Anfrage eingegangen");
+  await expect(page.getByTestId("next-steps")).toContainText("Sie erhalten Ihr Angebot");
+  await expect(page.locator("main")).not.toContainText("€");
   const spaces = page.getByTestId("booking-spaces").locator("li");
   await expect(spaces).toHaveCount(3);
   await expect(page.getByTestId("booking-spaces")).toContainText("Restaurant");
@@ -148,22 +160,15 @@ test("Unverbindliche Anfrage erhält eigene Nummer", async ({ page }) => {
   await page.getByLabel("PLZ *").fill("63849");
   await page.getByLabel("Ort *").fill("Leidersbach");
   await page.getByTestId("wizard-next").click();
-  await expect(page.getByTestId("step-title")).toContainText("Übergabe");
-  await page.locator('input[name="handover"]').last().check();
-  await page.locator('input[name="return"]').first().check();
-  await page.getByTestId("wizard-next").click();
-  // booking vs. inquiry is chosen on the next step, so all starred terms are asked here
-  for (const id of ["house_rules", "rental_terms", "cancellation", "deposit", "handover", "privacy"]) await page.getByTestId(`term-${id}`).check();
-  await page.getByTestId("wizard-next").click();
-  const radio = page.getByRole("radio", { name: /Unverbindlich anfragen/ });
-  if (await radio.count()) await radio.click();
+  await expect(page.getByTestId("step-title")).toContainText("Anfrage senden");
+  await page.getByTestId("term-privacy").check();
   await page.getByTestId("wizard-submit").click();
   await page.waitForURL(/\/buchung\/KA-\d{4}-/);
-  await expect(page.getByTestId("booking-status")).toHaveText("Anfrage");
+  await expect(page.getByTestId("booking-status")).toHaveText("Anfrage eingegangen");
 });
 
 test("Ohne Restaurant geht es nicht – der Planer nimmt es automatisch dazu", async ({ page }) => {
-  await page.goto("/eventlocation#karte");
+  await page.goto("/#karte");
   const map = page.getByTestId("site-map").first();
   await map.locator('[data-space="stage"]').click();
   await expect(map.locator('[data-space="restaurant"]')).toHaveAttribute("aria-checked", "true");
@@ -180,7 +185,7 @@ test("Detailseite: Bereich auswählen und zurück zur Karte – Auswahl bleibt e
 });
 
 test("Wichtige Seiten und Links sind erreichbar", async ({ page, request }) => {
-  for (const path of ["/", "/hotel", "/eventlocation", "/sehenswuerdigkeiten", "/aktuelles", "/bereiche", "/bereiche/restaurant", "/galerie", "/kontakt", "/faq", "/impressum", "/datenschutz", "/agb", "/mietbedingungen", "/hausordnung", "/buchen", "/sitemap.xml", "/robots.txt", "/map/base.svg"]) {
+  for (const path of ["/", "/eventlocation", "/bereiche", "/bereiche/restaurant", "/galerie", "/kontakt", "/faq", "/impressum", "/datenschutz", "/agb", "/mietbedingungen", "/hausordnung", "/buchen", "/sitemap.xml", "/robots.txt", "/map/base.svg"]) {
     const res = await request.get(path);
     expect(res.status(), path).toBe(200);
   }
@@ -188,4 +193,17 @@ test("Wichtige Seiten und Links sind erreichbar", async ({ page, request }) => {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   expect(errors).toEqual([]);
+});
+
+test("Nur Anfragen: keine Online-Zahlung, keine Preis-Endpunkte", async ({ request }) => {
+  const token = "x".repeat(32);
+  for (const path of ["/api/payments/session", "/api/payments/demo/confirm"]) {
+    const res = await request.post(path, { data: { bookingNumber: "KA-2026-ABCDE", token, outcome: "succeeded" } });
+    expect(res.status(), path).toBe(404);
+  }
+  const pricing = await request.post("/api/pricing/calculate", { data: {} });
+  expect(pricing.status()).toBe(404);
+  // old links keep working
+  const old = await request.get("/eventlocation", { maxRedirects: 0 });
+  expect([301, 307, 308]).toContain(old.status());
 });

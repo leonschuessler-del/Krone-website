@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { siteScope } from "@/config/scope";
 import { useAvailabilityCheck } from "@/features/availability/use-availability-check";
 import { AvailabilityResult } from "@/features/booking/AvailabilityResult";
 import { scheduleHasRange } from "@/features/booking/hooks";
@@ -39,7 +40,7 @@ export function SpaceAvailability({ space, spaces }: { space: SpaceView; spaces:
             router.push(`/buchen?spaces=${[...new Set([...st.selectedSpaceIds, space.id])].join(",")}`);
           }}
         >
-          Mit diesem Termin buchen <ArrowRight className="h-4 w-4" />
+          {siteScope.requestOnly ? "Mit diesem Termin anfragen" : "Mit diesem Termin buchen"} <ArrowRight className="h-4 w-4" />
         </Button>
         <Button
           variant="secondary"
@@ -48,7 +49,7 @@ export function SpaceAvailability({ space, spaces }: { space: SpaceView; spaces:
             const st = useBookingStore.getState();
             st.addSpace(space.id);
             if (schedule.date) st.setSchedule(schedule);
-            router.push("/eventlocation#karte");
+            router.push("/#karte");
           }}
         >
           Weitere Bereiche hinzufügen

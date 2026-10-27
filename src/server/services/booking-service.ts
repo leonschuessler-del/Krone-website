@@ -5,6 +5,8 @@ import { generateBookingNumber, statusBlocksAvailability } from "@/domain/bookin
 import { describeSelectionIssue, sanitizeSpaceIds, validateSelection } from "@/domain/selection";
 import { resolveSchedule, type ScheduleInput } from "@/domain/schedule";
 import { utcToLocal } from "@/domain/time";
+import { siteScope } from "@/config/scope";
+import { siteConfig } from "@/config/site";
 import type { BookingKind } from "@/domain/types";
 import { env } from "@/lib/env";
 import { formatDateTime, formatInstantDateLong, formatMoney, formatTimeRange } from "@/lib/format";
@@ -20,9 +22,9 @@ import {
   type BillingAddress,
 } from "@/server/db/schema";
 import { requiredTermIds } from "@/content/terms";
-import { eventTypes } from "@/content/event-types";
+import { eventTypeLabel, eventTypes } from "@/content/event-types";
 import { rowToBlock, toProfile } from "./availability-service";
-import { operatorEmail, sendEmail } from "./email-service";
+import { operatorEmail, sendEmail, type EmailContext } from "./email-service";
 import { getHandoverOptions, isAllowedOption } from "./handover-service";
 import { releaseExpiredHolds } from "./hold-service";
 import { calculatePrice } from "./pricing-service";
@@ -45,6 +47,9 @@ import { listSpaceRows, rowToSpace } from "./space-service";
  *   3. The EXCLUDE constraint on availability_blocks is the final guarantee:
  *      if two transactions still collide, the second INSERT fails
  *      (SQLSTATE 23P01) and the whole transaction rolls back → no double booking.
+ *   0. With siteScope.requestOnly every submission is stored as a
+ *      non-binding inquiry – also when a client sends kind "booking". No
+ *      payment is created, nothing binding happens online.
  *   4. Instant bookings first hold the spaces (`reserved`, expiring) while the
  *      payment is pending. Only a successful payment turns the hold into
  *      `booked` and the booking into `confirmed`. A failed payment never
@@ -114,7 +119,9 @@ function isExclusionViolation(err: unknown): boolean {
   return e?.code === "23P01" || e?.cause?.code === "23P01" || /exclusion constraint/i.test(e?.message ?? "");
 }
 
-export async function createBooking(db: Database, input: BookingSubmission, now = Date.now()): Promise<BookingCreated> {
+export async function createBooking(db: Database, submission: BookingSubmission, now = Date.now()): Promise<BookingCreated> {
+  // request-only site: the server decides, not the client
+  const input: BookingSubmission = siteScope.requestOnly ? { ...submission, kind: "inquiry" } : submission;
   // ---- 1. validation ---------------------------------------------------------
   const rows = await listSpaceRows(db);
   const allSpaces = rows.map((r) => rowToSpace(r));
@@ -337,20 +344,38 @@ export async function createBooking(db: Database, input: BookingSubmission, now 
 
     // ---- 4. notifications (outside the transaction) -----------------------------
     const url = `${env.siteUrl}/buchung/${created.booking.bookingNumber}?token=${accessToken}`;
-    const ctxMail = {
+    const extrasLabel = quote.lines
+      .filter((l) => l.kind === "extra")
+      .map((l) => {
+        const qty = input.extras.find((e) => e.extraId === l.refId)?.quantity ?? 1;
+        return qty > 1 ? `${l.label} (${qty}×)` : l.label;
+      })
+      .join(", ");
+    const ctxMail: EmailContext = {
       customerName: `${input.contact.firstName} ${input.contact.lastName}`,
       bookingNumber: created.booking.bookingNumber,
       bookingUrl: url,
       spaces: spaceIds.map(nameOf),
       dateLabel: formatInstantDateLong(resolved.start),
       timeLabel: formatTimeRange(resolved.start, resolved.end),
-      totalLabel: formatMoney(quote.total, "auf Anfrage"),
+      eventLabel: input.event.eventType ? eventTypeLabel(input.event.eventType) : undefined,
+      guestsLabel: input.event.guestCount ? `${input.event.guestCount} Personen` : undefined,
+      extrasLabel: extrasLabel || undefined,
+      // the customer only sees an amount while the site shows prices; renderEmail enforces this again
+      totalLabel: siteScope.showPrices ? formatMoney(quote.total, "auf Anfrage") : undefined,
       handoverLabel: handoverAt ? `${formatDateTime(handoverAt)} Uhr` : undefined,
+      phone: siteConfig.contact.phone ?? undefined,
     };
     await sendEmail(db, input.kind === "inquiry" ? "inquiry_received" : "booking_request_received", created.customer.email, ctxMail, created.booking.id);
+    // internal mail to the operator: may carry the calculated (net) amount as orientation for the quote
+    const ctxOperator: EmailContext = {
+      ...ctxMail,
+      totalLabel: quote.total !== null ? `${formatMoney(quote.total)} netto (intern, berechnet)` : "manuell kalkulieren",
+      message: input.event.notes ?? undefined,
+      phone: input.contact.phone,
+    };
     const op = operatorEmail();
-    if (op) await sendEmail(db, "operator_new_request", op, ctxMail, created.booking.id);
-    else await sendEmail(db, "operator_new_request", "betreiber@krone.invalid (nicht konfiguriert)", ctxMail, created.booking.id);
+    await sendEmail(db, "operator_new_request", op ?? "betreiber@krone.invalid (nicht konfiguriert)", ctxOperator, created.booking.id);
 
     return {
       bookingNumber: created.booking.bookingNumber,
@@ -358,7 +383,8 @@ export async function createBooking(db: Database, input: BookingSubmission, now 
       kind: input.kind,
       status: created.booking.status,
       paymentRequired,
-      dueNow: created.booking.dueNow,
+      // never an amount towards the browser while prices are hidden
+      dueNow: siteScope.showPrices ? created.booking.dueNow : null,
     };
   } catch (err) {
     if (err instanceof BookingError) throw err;

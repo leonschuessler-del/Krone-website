@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { ArrowUpRight, Mail, MapPin, Phone } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
-import { footerNavigation, legalNavigation } from "@/config/navigation";
+import { footerNavigation, isExternalHref, legalNavigation } from "@/config/navigation";
 import { formatAddressLine, siteConfig } from "@/config/site";
 
 export function Footer() {
@@ -24,9 +24,16 @@ export function Footer() {
           <ul className="mt-5 space-y-2.5 text-[0.95rem]">
             {footerNavigation.map((item) => (
               <li key={item.href}>
-                <Link className="text-paper/75 transition-colors duration-300 hover:text-gold-light" href={item.href}>
-                  {item.label}
-                </Link>
+                {item.external || isExternalHref(item.href) ? (
+                  <a className="inline-flex items-center gap-1.5 text-paper/75 transition-colors duration-300 hover:text-gold-light" href={item.href}>
+                    {item.label}
+                    <ArrowUpRight className="h-3.5 w-3.5 text-gold-light/70" aria-hidden />
+                  </a>
+                ) : (
+                  <Link className="text-paper/75 transition-colors duration-300 hover:text-gold-light" href={item.href}>
+                    {item.label}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

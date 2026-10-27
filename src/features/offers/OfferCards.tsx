@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BedDouble, Briefcase, CalendarRange, Clock, PartyPopper, Percent, Sparkles } from "lucide-react";
+import { ON_REQUEST, siteScope } from "@/config/scope";
 import { restaurantPackagePrice } from "@/content/pricing-anchors";
 import type { YieldOffer } from "@/domain/yield";
 import { formatDateMedium, formatMoney } from "@/lib/format";
@@ -16,6 +17,9 @@ const WHAT = {
  * The calendar's own offers (domain/yield.ts) as scannable cards: icon, what
  * is free, when, what it costs now (example: Restaurant package) and how long
  * the offer lasts. Little text, clear numbers.
+ * While the site shows no prices (siteScope.showPrices === false) no amount
+ * and no percentage appears – the cards then only say what is free and when.
+ * (Currently only used by the archived pages under src/app/(site)/_archiv.)
  */
 export function OfferCards({ offers, limit }: { offers: YieldOffer[]; limit?: number }) {
   const list = limit ? offers.slice(0, limit) : offers;
@@ -39,7 +43,7 @@ export function OfferCards({ offers, limit }: { offers: YieldOffer[]; limit?: nu
                   <span className="block font-serif text-xl leading-tight">{o.title}</span>
                 </span>
               </span>
-              {o.percent > 0 ? (
+              {!siteScope.showPrices ? null : o.percent > 0 ? (
                 <span className="flex items-center gap-1 bg-ink px-2.5 py-1.5 text-sm font-semibold text-paper"><Percent className="h-3.5 w-3.5" aria-hidden /> −{o.percent}</span>
               ) : o.kind === "week" ? (
                 <span className="flex items-center gap-1 bg-ink px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-paper"><Sparkles className="h-3.5 w-3.5" aria-hidden /> 7 für 6</span>
@@ -52,8 +56,10 @@ export function OfferCards({ offers, limit }: { offers: YieldOffer[]; limit?: nu
                 {o.until !== o.date && o.kind !== "longterm" && <p className="text-sm text-ink-soft">bis {formatDateMedium(o.until)}</p>}
               </div>
               <div className="bg-white px-6 py-4">
-                <p className="text-[0.62rem] font-medium uppercase tracking-[0.22em] text-muted">{o.kind === "longterm" ? "Ab" : "Restaurant-Pauschale"}</p>
-                {o.kind === "longterm" ? (
+                <p className="text-[0.62rem] font-medium uppercase tracking-[0.22em] text-muted">{!siteScope.showPrices ? "Konditionen" : o.kind === "longterm" ? "Ab" : "Restaurant-Pauschale"}</p>
+                {!siteScope.showPrices ? (
+                  <p className="mt-1 font-serif text-lg leading-tight">{ON_REQUEST}</p>
+                ) : o.kind === "longterm" ? (
                   <p className="mt-1 font-serif text-lg leading-tight">490 € / Monat</p>
                 ) : (
                   <>
@@ -63,12 +69,12 @@ export function OfferCards({ offers, limit }: { offers: YieldOffer[]; limit?: nu
                 )}
               </div>
             </div>
-            <p className="px-6 pt-4 text-sm leading-relaxed text-ink-soft">{o.text}</p>
+            <p className="px-6 pt-4 text-sm leading-relaxed text-ink-soft">{siteScope.showPrices ? o.text : "Noch frei – fragen Sie unverbindlich an, wir machen Ihnen ein individuelles Angebot."}</p>
             <div className="mt-auto flex items-center justify-between px-6 py-5 text-xs uppercase tracking-[0.18em] text-muted">
               <span className="inline-flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-gold-dark" aria-hidden /> {o.kind === "longterm" ? "ohne Frist" : o.expiresInDays <= 1 ? "nur noch heute" : `noch ${o.expiresInDays} Tage`}
               </span>
-              <Link href={o.kind === "longterm" ? "/aktuelles#mietmodelle" : "/eventlocation#karte"} className="inline-flex items-center gap-1 text-ink transition-colors hover:text-gold-dark [&>svg]:transition-transform hover:[&>svg]:translate-x-0.5">
+              <Link href={o.kind === "longterm" ? "/kontakt" : "/#karte"} className="inline-flex items-center gap-1 text-ink transition-colors hover:text-gold-dark [&>svg]:transition-transform hover:[&>svg]:translate-x-0.5">
                 {o.kind === "longterm" ? "Mietmodelle" : "Anfragen"} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             </div>

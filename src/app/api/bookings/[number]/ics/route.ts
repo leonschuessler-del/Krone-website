@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const icsDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 const esc = (s: string) => s.replace(/[\\;,]/g, (m) => `\\${m}`).replace(/\n/g, "\\n");
 
-/** GET /api/bookings/:number/ics?token=… – calendar file (iCalendar) for the booking. */
+/** GET /api/bookings/:number/ics?token=… – calendar file (iCalendar) for the booking. Contains no amounts. */
 export async function GET(req: Request, { params }: { params: Promise<{ number: string }> }) {
   const { number } = await params;
   const parsed = bookingAccessSchema.safeParse({ bookingNumber: number, token: new URL(req.url).searchParams.get("token") ?? "" });
@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ number: 
     `DTSTART:${icsDate(b.startAt)}`,
     `DTEND:${icsDate(b.endAt)}`,
     `SUMMARY:${esc(`${siteConfig.name}: ${spaces}`)}`,
-    `DESCRIPTION:${esc(`${b.kind === "inquiry" ? "Anfrage" : "Buchung"} ${b.bookingNumber}`)}`,
+    `DESCRIPTION:${esc(`${b.kind === "inquiry" ? "Unverbindliche Anfrage" : "Buchung"} ${b.bookingNumber} – ${spaces}`)}`,
     `LOCATION:${esc(`${siteConfig.name}, ${siteConfig.address.postalCode} ${siteConfig.address.city}`)}`,
     b.kind === "inquiry" || b.status !== "confirmed" ? "STATUS:TENTATIVE" : "STATUS:CONFIRMED",
     "END:VEVENT",

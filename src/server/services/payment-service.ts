@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
+import { siteScope } from "@/config/scope";
 import { statusAfterPayment } from "@/domain/booking";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/format";
@@ -16,6 +17,10 @@ import { sendEmail } from "./email-service";
  *           STRIPE_WEBHOOK_SECRET. The booking is confirmed ONLY by the
  *           verified webhook `checkout.session.completed`.
  *  none   : inquiries only
+ *
+ * With siteScope.requestOnly the public site never starts a payment: the
+ * session and demo endpoints answer 404 and createBooking only stores
+ * inquiries. settlePayment stays for already existing Stripe cases (webhook).
  *
  * The Kaution (security deposit) is never treated as revenue: it is a separate
  * payment kind (`security_deposit`) and – by default – collected separately.
@@ -107,7 +112,11 @@ export async function settlePayment(db: Database, paymentId: string, outcome: "s
 
   const [customer] = await db.select().from(customers).where(eq(customers.id, booking.customerId));
   if (customer) {
-    const ctx = { customerName: `${customer.firstName} ${customer.lastName}`, bookingNumber: booking.bookingNumber, totalLabel: formatMoney(payment.amount) };
+    const ctx = {
+      customerName: `${customer.firstName} ${customer.lastName}`,
+      bookingNumber: booking.bookingNumber,
+      totalLabel: siteScope.showPrices ? formatMoney(payment.amount) : undefined,
+    };
     await sendEmail(db, "payment_received", customer.email, ctx, booking.id);
     if (status === "confirmed") await sendEmail(db, "booking_confirmed", customer.email, ctx, booking.id);
   }

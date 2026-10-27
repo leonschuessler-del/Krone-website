@@ -6,19 +6,24 @@ import { ButtonLink } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { displayFacts } from "@/content/space-estimates";
 import { getHeroVideo, getPropertyGallery, getSpaceMedia, mediaExists } from "@/lib/media";
-import { listSpaceViews } from "@/server/services/space-service";
+import { listPublicSpaceViews } from "@/server/services/space-service";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Galerie – Die Krone in Bildern",
-  description: "Haus, Zimmer, Restaurant, Wintergarten, Biergarten, Bühne und Küche: die Krone in Leidersbach in Bildern und im Film.",
+  description: "Haus, Restaurant, Nebenzimmer, Bühne, Wintergarten, Biergarten, Küche und die Zimmer für Ihre Gäste: die Eventlocation Zur Krone in Leidersbach in Bildern und im Film.",
   alternates: { canonical: "/galerie" },
+};
+
+/** The new aerial front shot (gallery-01) gets a real description instead of the generic "Impression 1". */
+const PROPERTY_ALT: Record<string, string> = {
+  "/media/property/gallery-01": "Die Krone von vorn aus der Luft: Hausfront mit Schriftzug, Hofeinfahrt und Biergarten",
 };
 
 /** Chapter texts – what one sees, in one or two sentences. */
 const CHAPTER_TEXT: Record<string, string> = {
-  hotel: "Zehn Zimmer und ein Apartment im ersten Obergeschoss. Holz, ruhige Farben, eigenes Bad – und morgens Frühstück im Haus.",
+  hotel: "Zehn Zimmer und ein Apartment im ersten Obergeschoss – für Ihre Gäste direkt über der Feier. Eigenes Bad, morgens Frühstück im Haus.",
   restaurant: "Das Herz des Hauses: 60 Plätze, Theke, Eingang. Jede Veranstaltung beginnt hier.",
   "side-room": "Das Nebenzimmer für Gesellschaften bis 55 Personen, per Schiebetür zur Bühne zu öffnen.",
   stage: "Leicht erhöht, mit Licht und Technik – für Reden, Musik und den ersten Tanz.",
@@ -29,21 +34,22 @@ const CHAPTER_TEXT: Record<string, string> = {
 };
 
 export default async function GalleryPage() {
-  const spaces = (await listSpaceViews()).filter((s) => s.media.gallery.length || s.media.hero);
-  const property = getPropertyGallery();
+  const spaces = (await listPublicSpaceViews()).filter((s) => s.media.gallery.length || s.media.hero);
+  const property = getPropertyGallery().map((img) => ({ ...img, alt: PROPERTY_ALT[img.src.replace(/\.[a-z0-9]+$/i, "")] ?? img.alt }));
   const film = getHeroVideo();
   const hotel = getSpaceMedia("hotel", "Hotel");
   const hero = mediaExists("/media/property/house-front.webp") ? "/media/property/house-front.webp" : (property[0]?.src ?? null);
   const chapters = [
-    { id: "hotel", name: "Hotel & Zimmer", images: hotel.hero ? [hotel.hero, ...hotel.gallery.filter((g) => g.src !== hotel.hero!.src)] : hotel.gallery, href: "/hotel", facts: null },
     ...spaces
       .filter((s) => s.id !== "hotel")
       .map((s) => ({ id: s.id, name: s.name, images: s.media.hero ? [s.media.hero, ...s.media.gallery.filter((g) => g.src !== s.media.hero!.src)] : s.media.gallery, href: s.href, facts: displayFacts(s) })),
-  ];
+    // the upper floor is an add-on to the event – its chapter comes last and leads to the planner section on the start page
+    { id: "hotel", name: "Übernachten im Haus", images: hotel.hero ? [hotel.hero, ...hotel.gallery.filter((g) => g.src !== hotel.hero!.src)] : hotel.gallery, href: "/#hotel", facts: null },
+  ].filter((c) => c.images.length > 0);
   return (
     <article>
       <header className="relative isolate flex min-h-[70svh] items-end overflow-hidden bg-anthracite text-paper" data-hero>
-        {hero && <Image src={hero} alt="Landhotel Gasthof Zur Krone" fill priority sizes="100vw" className="object-cover object-[50%_35%]" />}
+        {hero && <Image src={hero} alt="Eventlocation Zur Krone in Leidersbach" fill priority sizes="100vw" className="object-cover object-[50%_35%]" />}
         <div className="absolute inset-0 bg-gradient-to-t from-anthracite via-anthracite/55 to-anthracite/35" />
         <div className="absolute inset-0 bg-gradient-to-r from-anthracite/70 via-transparent to-transparent" />
         <div className="container-page relative pb-16 pt-40 text-shadow-hero">
@@ -51,7 +57,7 @@ export default async function GalleryPage() {
           <h1 className="mt-5 max-w-3xl text-[3rem] font-light leading-[0.98] md:text-[4.8rem]">
             Die Krone <em>in Bildern.</em>
           </h1>
-          <p className="mt-6 max-w-xl text-lg font-light text-paper/85">Ein Rundgang durch Haus, Zimmer und Räume – vom Frühstückstisch bis zum Biergarten.</p>
+          <p className="mt-6 max-w-xl text-lg font-light text-paper/85">Ein Rundgang durch Haus und Räume – vom Restaurant bis zum Biergarten.</p>
         </div>
       </header>
 
@@ -106,7 +112,7 @@ export default async function GalleryPage() {
                 )}
               </SectionHeading>
               <ButtonLink href={c.href} variant="secondary">
-                {c.id === "hotel" ? "Zum Hotel" : "Zum Raum"} <ArrowRight className="h-4 w-4" />
+                {c.id === "hotel" ? "Übernachtung" : "Zum Raum"} <ArrowRight className="h-4 w-4" />
               </ButtonLink>
             </div>
             <div className="mt-10">

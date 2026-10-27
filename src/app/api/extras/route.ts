@@ -1,3 +1,4 @@
+import { siteScope } from "@/config/scope";
 import { env } from "@/lib/env";
 import { getDb } from "@/server/db/client";
 import { handleServiceError, json } from "@/server/http";
@@ -5,7 +6,11 @@ import { listOfferedExtras } from "@/server/services/pricing-service";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/extras – additional services offered in the booking flow */
+/**
+ * GET /api/extras – additional services offered in the booking flow.
+ * While prices are hidden (siteScope.showPrices === false) the answer carries
+ * no price model and no unit price – the add-ons stay visible and selectable.
+ */
 export async function GET() {
   try {
     const extras = await listOfferedExtras(await getDb());
@@ -16,8 +21,7 @@ export async function GET() {
         name: e.name,
         description: e.description,
         category: e.category,
-        priceModel: e.priceModel,
-        unitPrice: e.unitPrice,
+        ...(siteScope.showPrices ? { priceModel: e.priceModel, unitPrice: e.unitPrice } : {}),
         maxQuantity: e.maxQuantity,
         confirmed: e.confirmed,
         isDemo: e.isDemo,

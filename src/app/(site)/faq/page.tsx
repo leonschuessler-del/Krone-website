@@ -5,7 +5,7 @@ import { FaqList } from "@/features/home/FaqList";
 
 export const metadata: Metadata = {
   title: "Häufige Fragen",
-  description: "Antworten zu Buchung, Kombination von Bereichen, Verfügbarkeit, Kaution und Übergabe in der Krone Leidersbach.",
+  description: "Antworten rund um die Eventlocation Zur Krone in Leidersbach: Räume kombinieren, freie Termine, Zusatzleistungen, Übernachtung, Angebot und Übergabe.",
   alternates: { canonical: "/faq" },
 };
 
