@@ -241,6 +241,10 @@ async function snapshotRoute(route) {
           img.removeAttribute("loading");
           img.removeAttribute("fetchpriority");
         }
+        // the logo mark is an external <use> reference (public/brand/logo-mark.svg) → relative next to the page
+        for (const u of root.querySelectorAll("use[href^='/brand/'], use[href^='/media/']")) {
+          u.setAttribute("href", u.getAttribute("href").slice(1));
+        }
         for (const v of root.querySelectorAll("video")) {
           v.querySelectorAll("source").forEach((s) => {
             let src = s.getAttribute("src") ?? "";
