@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { packCount, pickSet, posterUrl } from "@/features/home/tour-player";
+import { existsSync, readFileSync } from "node:fs";
+import { canvasScale, fetchWindow, FRAME_SIZE, PACK, packCount, pickSet, posterUrl } from "@/features/home/tour-player";
 import { describe, expect, it } from "vitest";
 import { FINALE_START_CAMERA, tourConfig, WIDE_CAMERA } from "@/config/tour";
 import { cameraTransform, chapterSpans, computeFrame, fitTransform, overviewCamera, plannerProgress, smoothstep, TAIL } from "@/features/home/tour-timeline";
@@ -158,5 +158,83 @@ describe("planner at the end of the film", () => {
     expect(box.x1 * t.scale + t.tx).toBeLessThanOrEqual(free.right + 0.01);
     expect(box.y0 * t.scale + t.ty).toBeGreaterThanOrEqual(free.top - 0.01);
     expect(box.y1 * t.scale + t.ty).toBeLessThanOrEqual(free.bottom + 0.01);
+  });
+});
+
+/** width/height of a WebP file (lossy VP8, lossless VP8L or extended VP8X) */
+function webpSize(path: string): { w: number; h: number } {
+  const b = readFileSync(path);
+  const kind = b.toString("ascii", 12, 16);
+  if (kind === "VP8 ") return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  if (kind === "VP8L") {
+    const v = b.readUInt32LE(21);
+    return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 };
+  }
+  return { w: b.readUIntLE(24, 3) + 1, h: b.readUIntLE(27, 3) + 1 };
+}
+
+describe("scroll film performance budget", () => {
+  it("frame sizes in the player match the files (canvas resolution is derived from them)", () => {
+    for (const set of ["d", "m"] as const) {
+      for (const c of chapters) {
+        expect(webpSize(`public${posterUrl(c.frames.dir, set)}`)).toEqual(FRAME_SIZE[set]);
+        const last = packCount(c.frames.count) - 1;
+        const rows = c.frames.count - last * PACK;
+        expect(webpSize(`public${c.frames.dir}${set}/p${String(last).padStart(2, "0")}.webp`)).toEqual({ w: FRAME_SIZE[set].w, h: FRAME_SIZE[set].h * rows });
+      }
+    }
+  });
+
+  it("phone frames stay small enough to decode and upload smoothly", () => {
+    expect(FRAME_SIZE.m.w * FRAME_SIZE.m.h).toBeLessThanOrEqual(720 * 1280);
+    expect(FRAME_SIZE.d.w * FRAME_SIZE.d.h).toBeLessThanOrEqual(1920 * 1080);
+  });
+
+  it("the canvas never has more pixels than the frames (cover fit)", () => {
+    // 1440×900 laptop at 2×: 2880×1800 would only upscale a 1920-px frame
+    expect(canvasScale(1440, 900, 2, FRAME_SIZE.d)).toBeCloseTo(1.2);
+    // 1920×1080 monitor at 1×: native
+    expect(canvasScale(1920, 1080, 1, FRAME_SIZE.d)).toBe(1);
+    // phone 390×844 at 3×
+    const k = canvasScale(390, 844, 3, FRAME_SIZE.m);
+    expect(844 * k).toBeLessThanOrEqual(FRAME_SIZE.m.h + 0.5);
+    expect(k).toBeGreaterThan(1.4);
+    // never more than 2×, never less than 0.5×
+    expect(canvasScale(200, 100, 4, FRAME_SIZE.d)).toBe(2);
+    expect(canvasScale(8000, 4500, 1, FRAME_SIZE.d)).toBe(0.5);
+    expect(canvasScale(0, 0, 2, FRAME_SIZE.d)).toBe(1);
+  });
+
+  it("downloads only a window around the playhead, nearest first", () => {
+    const packs = chapters.map((c) => packCount(c.frames.count));
+    const total = packs.reduce((a, b) => a + b, 0);
+    const atStart = fetchWindow(packs, new Map([[0, 0]]), 1, 10);
+    expect(atStart[0]).toEqual([0, 0]);
+    expect(atStart.length).toBeLessThan(total / 4);
+    // no duplicates
+    expect(new Set(atStart.map((x) => x.join(":"))).size).toBe(atStart.length);
+    // the next chapter's first pack is always in the window
+    expect(atStart).toContainEqual([1, 0]);
+
+    // end of a chapter: the window runs on into the next one
+    const end = (packs[1]! - 1) * PACK;
+    const w = fetchWindow(packs, new Map([[1, end]]), 1, 6);
+    expect(w[0]).toEqual([1, packs[1]! - 1]);
+    expect(w).toContainEqual([2, 0]);
+    expect(w).toContainEqual([2, 1]);
+    // two packs behind for small reversals, the last pack of the chapter behind
+    expect(w).toContainEqual([1, packs[1]! - 2]);
+    expect(w).toContainEqual([0, packs[0]! - 1]);
+
+    // scrolling back: the window runs backwards into the previous chapter
+    const back = fetchWindow(packs, new Map([[2, 0]]), -1, 4);
+    expect(back[0]).toEqual([2, 0]);
+    expect(back).toContainEqual([1, packs[1]! - 1]);
+    expect(back.every(([c]) => c <= 3)).toBe(true);
+
+    // crossfade (two playheads): the incoming clip comes first
+    const both = fetchWindow(packs, new Map([[3, (packs[3]! - 1) * PACK], [4, 0]]), 1, 4);
+    expect(both[0]).toEqual([4, 0]);
+    expect(both).toContainEqual([3, packs[3]! - 1]);
   });
 });

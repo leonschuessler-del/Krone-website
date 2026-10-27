@@ -75,7 +75,7 @@ export function MediaPlaceholder({
       <div className="relative flex flex-col items-center gap-3 text-center">
         <span
           className={cn(
-            "grid place-items-center rounded-full border bg-white/60 backdrop-blur-sm",
+            "grid place-items-center rounded-full border bg-white/75",
             size === "sm" ? "h-11 w-11" : size === "lg" ? "h-20 w-20" : "h-14 w-14",
           )}
           style={{ borderColor: `color-mix(in oklab, ${color} 45%, transparent)`, color }}

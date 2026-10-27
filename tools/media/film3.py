@@ -1,5 +1,5 @@
 """Scroll-film frames v3: same shots/segments as v2, but processed at 2560x1440
-and exported as two sets: desktop 1920x1080 (16:9) and mobile 810x1440 (9:16
+and exported as two sets: desktop 1920x1080 (16:9) and mobile 720x1280 (9:16
 centre crop) – phones no longer upscale a 1600-px strip 3x.
 usage: python3 film3.py <chapter> [...]   (REUSE=1 reuses tmp3-<cid> frames)"""
 import json, os, sys, glob, shutil
@@ -11,11 +11,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = "/home/user/Krone-website/public/media/tour/frames"
 MANIFEST = "/home/user/Krone-website/src/generated/tour-frames.json"
 IW, IH = 2560, 1440
-SETS = {"d": (1920, 1080), "m": (810, 1440)}
+SETS = {"d": (1920, 1080), "m": (720, 1280)}   # m: 720×1280 since 10/2026 (smoother on phones, see repack_tour.py)
 PACK = 6            # must match src/features/home/tour-player.ts
 STEP = 9.0
-Q = {"d": 58, "m": 64}
-QCH = {"intro": {"d": 50, "m": 56}, "finale": {"d": 50, "m": 56}}
+Q = {"d": 58, "m": 66}
+QCH = {"intro": {"d": 50, "m": 60}, "finale": {"d": 50, "m": 60}}
 SHARP = ImageFilter.UnsharpMask(radius=1.1, percent=55, threshold=2)
 
 

@@ -57,7 +57,7 @@ export function Gallery({ images, className, label = "Galerie" }: { images: Medi
         {images.map((img, i) => (
           <li key={img.src} className={cn("hover-zoom relative overflow-hidden rounded-2xl", i === 0 && "col-span-2 row-span-2")}>
             <button type="button" className="absolute inset-0 focus-visible:-outline-offset-4" onClick={() => open(i)} aria-label={`${img.alt} vergrößern`}>
-              <Image src={img.src} alt={img.alt} fill sizes={i === 0 ? "50vw" : "25vw"} className="object-cover" loading="lazy" />
+              <Image src={img.src} alt={img.alt} fill sizes={i === 0 ? "(min-width: 1408px) 660px, 50vw" : "(min-width: 1408px) 330px, 25vw"} className="object-cover" loading="lazy" />
             </button>
           </li>
         ))}
