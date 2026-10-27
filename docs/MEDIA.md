@@ -26,7 +26,7 @@ es bringt keine zusätzliche Schärfe, nur größere Dateien.
 
 | Ort | Inhalt |
 |---|---|
-| `public/media/tour/frames/<kapitel>/{d,m}/pNN.webp`, `poster.webp` | Scroll-Film: 40–200 Einzelbilder je Kapitel, je 6 in einer Datei. `d/` = 1920×1080 (Querformat), `m/` = 810×1440 (Hochformat-Ausschnitt fürs Handy). Erzeugt mit `tools/media/film3.py` (Verarbeitung in 2560×1440). Der Player zeigt immer nur scharfe Vollbilder: fehlt ein Bild noch, bleibt das nächste fertige Bild stehen, nie eine unscharfe Vorschau. Anzahl je Kapitel in `src/generated/tour-frames.json` |
+| `public/media/tour/frames/<kapitel>/{d,m}/pNN.webp`, `poster.webp` | Scroll-Film: 40–200 Einzelbilder je Kapitel, je 6 in einer Datei. `d/` = 1920×1080 (Querformat), `m/` = 720×1280 (Hochformat-Ausschnitt fürs Handy). Erzeugt mit `tools/media/film3.py` (Verarbeitung in 2560×1440); vorhandene Handy-Pakete lassen sich mit `tools/media/repack_tour.py` neu kodieren. Der Player lädt nur ein Fenster um die aktuelle Position und dekodiert in einem Worker. Der Player zeigt immer nur scharfe Vollbilder: fehlt ein Bild noch, bleibt das nächste fertige Bild stehen, nie eine unscharfe Vorschau. Anzahl je Kapitel in `src/generated/tour-frames.json` |
 | `public/media/<bereich>/hero.webp`, `gallery-NN.webp` | Titel- und Galeriebilder je Bereich |
 | `public/media/<bereich>/tour.mp4`, `poster.webp` | Raumvideo auf der Detailseite (1920×1080) |
 | `public/media/property/gallery-NN.webp` | Außen-/Drohnenbilder |

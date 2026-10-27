@@ -110,7 +110,7 @@ test("Test 60: komplette Anfrage Restaurant + Bühne + Biergarten bis zur Bestä
   await page.getByTestId("wizard-next").click();
 
   // request-only: no handover step, no payment, no booking/inquiry choice – straight to the overview
-  await expect(page.getByTestId("step-title")).toHaveText("6. Anfrage senden");
+  await expect(page.getByTestId("step-title")).toHaveText(/^6\.\s*Anfrage senden$/);
   await expect(page.getByText("Schritt 6 von 7")).toBeAttached();
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(page.getByTestId("demo-payment")).toHaveCount(0);

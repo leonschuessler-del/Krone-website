@@ -180,7 +180,7 @@
     transform-origin: left;
     transition: transform 0.35s var(--ease-out-soft);
   }
-  .nav-link:hover::after, .nav-link[aria-current="page"]::after { transform: scaleX(1); }
+  .nav-link:hover::after, .nav-link[aria-current="page"]::after, .nav-link[aria-current="location"]::after { transform: scaleX(1); }
 
   /* "the picture moves a little": slow zoom plus a tiny settle on hover, images only */
   .hover-lift { transition: transform 0.45s var(--ease-out-soft), box-shadow 0.45s var(--ease-out-soft); }
